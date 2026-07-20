@@ -9,12 +9,12 @@ Last updated: 2026-07-20
 - Branch: `docs/ft-003-provider-feasibility`
 - Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/2` (ready for review)
 - Owner: Product and engineering
-- Overall status: FT-001 merged; FT-003 complete with local and GitHub verification gates passed
-- Next action: Review and merge PR #2, then begin FT-002 from the updated `main` branch.
+- Overall status: M0 tickets FT-001, FT-002, and FT-003 are complete; PRs #1, #3, and #4 are merged; PR #2 is ready for final review
+- Next action: Review and merge PR #2, update local `main`, then begin FT-101 from the completed M0 baseline.
 
 ## Milestone checklist
 
-- [ ] M0 — Foundation and feasibility
+- [x] M0 — Foundation and feasibility
 - [ ] M1 — Simulated operations console
 - [ ] M2 — Live weather and hazard intelligence
 - [ ] M3 — Commercial flight data and operational workflow
@@ -25,7 +25,7 @@ Last updated: 2026-07-20
 
 | Milestone | Complete | Total |
 | --- | ---: | ---: |
-| M0 | 2 | 3 |
+| M0 | 3 | 3 |
 | M1 | 0 | 4 |
 | M2 | 0 | 4 |
 | M3 | 0 | 4 |
@@ -38,7 +38,9 @@ Last updated: 2026-07-20
 - `main` and `origin` are established; planning baseline commit: `8feb57d`.
 - FT-001 is merged through PR #1 at `c8e0bb4`.
 - The foundation includes the Rust health/readiness boundary, Next.js interface, PostgreSQL/PostGIS migration, production container targets, one-command startup, and green CI.
-- FT-003 is complete on `docs/ft-003-provider-feasibility`; PR #2 is ready for human review and merge, with green CI run `29777448092`.
+- FT-002 implementation is merged through PR #3; correction PR #4 is also merged and preserves provider revisions while deduplicating identical deliveries.
+- The canonical v1 contract separates raw envelopes from normalized facts, uses explicit UTC time/unit/geometry semantics, and enforces operator consistency through composite foreign keys.
+- FT-003 is complete on `docs/ft-003-provider-feasibility`; PR #2 is ready for human review and merge after reconciliation with the completed FT-002 baseline.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
