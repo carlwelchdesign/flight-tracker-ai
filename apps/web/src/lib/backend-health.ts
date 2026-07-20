@@ -55,4 +55,3 @@ function isBackendHealth(value: unknown): value is BackendHealth {
     typeof candidate.version === "string"
   );
 }
-

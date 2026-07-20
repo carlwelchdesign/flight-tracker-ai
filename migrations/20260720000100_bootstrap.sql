@@ -8,4 +8,3 @@ CREATE TABLE platform_metadata (
 INSERT INTO platform_metadata (singleton)
 VALUES (TRUE)
 ON CONFLICT (singleton) DO NOTHING;
-

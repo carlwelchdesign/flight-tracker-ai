@@ -23,4 +23,3 @@ COPY --from=builder /workspace/target/release/flight-tracker-api /usr/local/bin/
 USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["flight-tracker-api"]
-
