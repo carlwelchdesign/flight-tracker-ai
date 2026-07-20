@@ -16,11 +16,11 @@ Dependencies: FT-003
 
 Acceptance checklist:
 
-- [ ] Commercial display, storage, derived-data, and customer-use rights are confirmed.
-- [ ] Coverage and latency are tested against representative routes.
-- [ ] Rate and cost model includes normal, peak, replay, and failure behavior.
+- [ ] Commercial situational-display, tenant/customer, redistribution, source-combination, LADD/PIA, storage, and derived-data rights are confirmed in writing.
+- [ ] Cirium Sky Stream and FlightAware Firehose run the same target-tail trial for at least 14 days; coverage and p50/p95/p99 latency are recorded by region.
+- [ ] Rate and priced cost model covers 20, 100, and 500 monitored flights under normal, peak, replay, reconnect, and failure behavior.
 - [ ] Retention and deletion requirements are recorded.
-- [ ] Provider outage and termination fallback are documented.
+- [ ] Uptime definition, service credits, incident notification, support response, provider outage, and termination fallback are documented.
 - [ ] OD-002 is resolved in `../DECISIONS.md`.
 
 Verification evidence: Pending.

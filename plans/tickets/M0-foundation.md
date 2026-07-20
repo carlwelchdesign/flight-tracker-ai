@@ -58,11 +58,11 @@ Verification evidence: Pending.
 
 ## FT-003 — Complete provider and API feasibility matrix
 
-Status: Not started
+Status: In progress
 
 Branch: `docs/ft-003-provider-feasibility`
 Final commit: Pending
-Pull request: Pending
+Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/2` (draft)
 Owner: Product and engineering
 
 Compare prototype and commercial sources for flight positions, schedules, weather, hazards, airport conditions, and NOTAMs.

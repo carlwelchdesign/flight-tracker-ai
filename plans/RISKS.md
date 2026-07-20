@@ -3,8 +3,8 @@
 Scores use likelihood and impact from 1 (low) to 5 (high). Owners are roles until named people are assigned.
 
 | ID | Risk | L | I | Trigger | Mitigation | Owner | Review gate |
-|---|---|---:|---:|---|---|---|---|
-| R-01 | Flight-data license does not permit intended commercial use | 3 | 5 | Provider terms are ambiguous or restrictive | Complete written feasibility matrix and obtain commercial terms before integration | Product | M3 |
+| --- | --- | ---: | ---: | --- | --- | --- | --- |
+| R-01 | Flight-data license does not permit intended commercial situational-display use | 4 | 5 | Self-service or proposed contract excludes B2B display, retention, redistribution, or source combination | Keep simulation through M1; require written enterprise terms and legal review using the FT-003 procurement checklist before integration | Product/Legal | M0/M3 |
 | R-02 | Stale or partial data appears current | 4 | 5 | Feed delay exceeds threshold without visible warning | Track event/receive/process times; show stale and degraded states; test outages | Backend | M2 |
 | R-03 | Alert fatigue makes the product unusable | 4 | 4 | High dismissal rate or duplicate alerts | Dedupe keys, severity policy, suppression windows, dismissal reasons, replay tuning | Product | M2/M4 |
 | R-04 | Users mistake advisory output for certified guidance | 3 | 5 | Copy or UI implies authority | Explicit advisory labeling, human review, legal review, role-based controls | Product/Trust | M4 |
@@ -14,3 +14,5 @@ Scores use likelihood and impact from 1 (low) to 5 (high). Owners are roles unti
 | R-08 | Tenant data leaks across operators | 2 | 5 | Query lacks tenant scope | Tenant key in schema, scoped repository APIs, authorization tests | Security | M3 |
 | R-09 | LLM summary omits or fabricates operational detail | 3 | 5 | Draft differs materially from evidence | Constrained structured inputs, citations, human approval, evaluation set | AI/Product | M5 |
 | R-10 | Optimization cannot be validated with available truth data | 4 | 4 | No historical baseline or outcome data | Make data availability a research gate before product commitment | Product/Data | M5 |
+| R-11 | Government feed is used beyond its permitted or supported operational role | 3 | 5 | SCDS, NMS, or Internet weather data is treated as a sole operational source or as having an SLA | Confirm service-specific permitted use; keep advisory labeling, redundant/degraded behavior, source provenance, and explicit access gates | Product/Legal/Backend | M2/M3 |
+| R-12 | Restricted or privacy-limited aircraft data is displayed or retained incorrectly | 3 | 5 | LADD/PIA/blocked tail appears without authorization or persists beyond allowed retention | Capture provider and FAA obligations in contracts; model visibility entitlement and retention policy; add blocked-tail and deletion tests | Security/Legal | M3 |

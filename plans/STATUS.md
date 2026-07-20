@@ -7,7 +7,7 @@ Last updated: 2026-07-20
 - Current milestone: M0 — Foundation and feasibility
 - Active ticket: FT-003 — Complete provider and API feasibility matrix
 - Branch: `docs/ft-003-provider-feasibility`
-- Pull request: Pending
+- Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/2` (draft)
 - Owner: Product and engineering
 - Overall status: FT-001 merged; provider feasibility research in progress
 - Next action: Verify licensing, coverage, freshness, access, SLA, and cost from primary provider sources.
@@ -24,7 +24,7 @@ Last updated: 2026-07-20
 ## Ticket progress
 
 | Milestone | Complete | Total |
-|---|---:|---:|
+| --- | ---: | ---: |
 | M0 | 1 | 3 |
 | M1 | 0 | 4 |
 | M2 | 0 | 4 |

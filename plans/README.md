@@ -16,6 +16,7 @@ Build an operations-intelligence console inspired by Flight Science: live fleet 
 6. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
 7. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
 8. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
+9. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — current provider rights, limits, evidence, and procurement gates
 
 ## Planning rules
 
