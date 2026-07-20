@@ -68,3 +68,28 @@ Acceptance checklist:
 - [ ] Go, revise, or stop decision is recorded with supporting data.
 
 Verification evidence: Pending.
+
+## FT-404 — Deploy the production system and preview environments
+
+Status: Not started
+
+Branch: `feat/ft-404-production-deployment`
+Final commit: Pending
+Pull request: Pending
+
+Deploy the public Next.js interface on Vercel while placing persistent Rust ingestion and API workloads on appropriate container infrastructure with managed PostgreSQL/PostGIS.
+
+Dependencies: FT-401, FT-402
+
+Acceptance checklist:
+
+- [ ] Vercel project is connected to GitHub and creates isolated preview deployments for pull requests.
+- [ ] Production Next.js environment calls the Rust API through a server-only configured URL.
+- [ ] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
+- [ ] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
+- [ ] Secrets and environment variables are separated across development, preview, and production.
+- [ ] Production domain, TLS, security headers, logging, tracing, and alerting are verified.
+- [ ] Deployment, migration, rollback, and incident runbooks are tested.
+- [ ] End-to-end smoke checks prove browser, API, database, and degraded-state behavior.
+
+Verification evidence: Pending.

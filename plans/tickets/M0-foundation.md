@@ -4,11 +4,11 @@ Default owner: Engineering lead, with product ownership for provider selection.
 
 ## FT-001 — Scaffold the repository
 
-Status: Not started
+Status: Complete
 
 Branch: `feat/ft-001-repository-scaffold`
-Final commit: Pending
-Pull request: Pending
+Final commit: `2f9de16` (`style(ft-001): normalize file endings`)
+Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/1` (ready for review)
 
 Create a local development environment for the Next.js interface, Rust backend, PostgreSQL/PostGIS, and shared commands.
 
@@ -16,16 +16,22 @@ Dependencies: None
 
 Acceptance checklist:
 
-- [ ] Repository structure for web, Rust application, migrations, and plans is documented.
-- [ ] Git repository uses `main`, has a GitHub `origin`, and contains a baseline planning commit.
-- [ ] Ticket branch and PR conventions are documented and usable with the configured remote.
-- [ ] Rust workspace builds and exposes `/health` and `/readiness`.
-- [ ] Next.js app loads and can reach the Rust health endpoint.
-- [ ] PostgreSQL/PostGIS starts locally and migrations run from a clean database.
-- [ ] One documented command starts the development system.
-- [ ] Formatting, linting, type checking, and focused tests run in CI.
+- [x] Repository structure for web, Rust application, migrations, and plans is documented.
+- [x] Git repository uses `main`, has a GitHub `origin`, and contains a baseline planning commit.
+- [x] Ticket branch and PR conventions are documented and usable with the configured remote.
+- [x] Rust workspace builds and exposes `/health` and `/readiness`.
+- [x] Next.js app loads and can reach the Rust health endpoint.
+- [x] PostgreSQL/PostGIS starts locally and migrations run from a clean database.
+- [x] One documented command starts the development system.
+- [x] Formatting, linting, type checking, and focused tests run in CI.
 
-Verification evidence: Pending.
+Verification evidence:
+
+- Repository: `https://github.com/carlwelchdesign/flight-tracker-ai`
+- Baseline: `main` at `8feb57d` (`chore: establish project planning baseline`)
+- Delivery: `feat/ft-001-repository-scaffold`, implementation through `2f9de16`, and PR #1
+- Local gate: `make verify`; clean Compose startup; production API and web image builds; live health, readiness, PostGIS, migration, and browser checks
+- CI gate: Rust checks, web checks, and API/PostGIS smoke test passed in `https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29775876732`
 
 ## FT-002 — Define the canonical aviation event model
 

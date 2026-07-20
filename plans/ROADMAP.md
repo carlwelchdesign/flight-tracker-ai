@@ -40,7 +40,7 @@ Outcome: the system can support a limited, advisory-only evaluation with real op
 
 Gate: security review, failure drills, usability validation, runbooks, and measurable pilot criteria are complete.
 
-Tickets: FT-401–FT-403.
+Tickets: FT-401–FT-404.
 
 ## M5 — Optimization research and controlled recommendations
 

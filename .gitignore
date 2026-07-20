@@ -1,0 +1,19 @@
+# Environment and local overrides
+.env
+.env.local
+!.env.example
+
+# Rust
+/target/
+
+# Node
+node_modules/
+.next/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Local runtime data
+.data/
