@@ -11,11 +11,12 @@ Build an operations-intelligence console inspired by Flight Science: live fleet 
 1. [STATUS.md](STATUS.md) — current milestone, active ticket, and handoff notes
 2. [PRODUCT.md](PRODUCT.md) — users, MVP, non-goals, and success measures
 3. [ARCHITECTURE.md](ARCHITECTURE.md) — Rust-centered technical design and data flow
-4. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
-5. [tickets/README.md](tickets/README.md) — ticket index and update rules
-6. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
-7. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
-8. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
+4. [CANONICAL_EVENT_MODEL.md](CANONICAL_EVENT_MODEL.md) — provider-independent v1 domain and persistence contract
+5. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
+6. [tickets/README.md](tickets/README.md) — ticket index and update rules
+7. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
+8. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
+9. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
 
 ## Planning rules
 

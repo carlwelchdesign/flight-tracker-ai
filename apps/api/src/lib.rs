@@ -3,6 +3,8 @@ use serde::Serialize;
 use sqlx::PgPool;
 use tower_http::trace::TraceLayer;
 
+pub mod domain;
+
 pub const SERVICE_NAME: &str = "flight-tracker-api";
 
 #[derive(Clone)]
