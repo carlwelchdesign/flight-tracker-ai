@@ -35,7 +35,7 @@ Verification evidence:
 
 ## FT-002 — Define the canonical aviation event model
 
-Status: In progress
+Status: Not started
 
 Branch: `feat/ft-002-canonical-event-model`
 Final commit: Pending
@@ -58,11 +58,11 @@ Verification evidence: Pending.
 
 ## FT-003 — Complete provider and API feasibility matrix
 
-Status: In progress
+Status: Complete
 
 Branch: `docs/ft-003-provider-feasibility`
-Final commit: Pending
-Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/2` (draft)
+Final commit: `8c3ed48` (`docs(ft-003): record provider feasibility evidence`)
+Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/2` (ready for review)
 Owner: Product and engineering
 
 Compare prototype and commercial sources for flight positions, schedules, weather, hazards, airport conditions, and NOTAMs.
@@ -71,11 +71,17 @@ Dependencies: None
 
 Acceptance checklist:
 
-- [ ] Each source records licensing, commercial-use rights, coverage, latency, rate limits, history, SLA, and estimated usage cost.
-- [ ] OpenSky limitations and hosting restrictions are explicitly recorded.
-- [ ] NOAA endpoints and freshness expectations are confirmed with fixtures.
-- [ ] FlightAware and at least one credible alternative are evaluated for commercial flight data.
-- [ ] FAA SWIM/NOTAM access requirements and lead time are documented.
-- [ ] A provider recommendation or explicit blocked decision is added to `../DECISIONS.md`.
+- [x] Each source records licensing, commercial-use rights, coverage, latency, rate limits, history, SLA, and estimated usage cost.
+- [x] OpenSky limitations and hosting restrictions are explicitly recorded.
+- [x] NOAA endpoints and freshness expectations are confirmed with fixtures.
+- [x] FlightAware and at least one credible alternative are evaluated for commercial flight data.
+- [x] FAA SWIM/NOTAM access requirements and lead time are documented.
+- [x] A provider recommendation or explicit blocked decision is added to `../DECISIONS.md`.
 
-Verification evidence: Pending.
+Verification evidence:
+
+- Provider matrix, source register, recommendations, and procurement gates: `../PROVIDER_FEASIBILITY.md`
+- Timestamped NOAA METAR, SIGMET, and G-AIRMET observations with revalidated SHA-256 hashes: `../evidence/ft-003/NOAA_API_FIXTURES.md`
+- Decision and downstream gate: ADR-007 and OD-002 in `../DECISIONS.md`; R-01, R-11, and R-12 in `../RISKS.md`
+- Local gate: changed-document Markdown lint, `git diff --check`, NOAA response-hash verification, and `make verify`
+- CI gate: Rust checks, web checks, and API/PostGIS smoke test passed in `https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29777448092`
