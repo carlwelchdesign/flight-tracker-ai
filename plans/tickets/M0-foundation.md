@@ -4,7 +4,7 @@ Default owner: Engineering lead, with product ownership for provider selection.
 
 ## FT-001 — Scaffold the repository
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-001-repository-scaffold`
 Final commit: Pending
@@ -17,7 +17,7 @@ Dependencies: None
 Acceptance checklist:
 
 - [ ] Repository structure for web, Rust application, migrations, and plans is documented.
-- [ ] Git repository uses `main`, has a GitHub `origin`, and contains a baseline planning commit.
+- [x] Git repository uses `main`, has a GitHub `origin`, and contains a baseline planning commit.
 - [ ] Ticket branch and PR conventions are documented and usable with the configured remote.
 - [ ] Rust workspace builds and exposes `/health` and `/readiness`.
 - [ ] Next.js app loads and can reach the Rust health endpoint.
@@ -25,7 +25,10 @@ Acceptance checklist:
 - [ ] One documented command starts the development system.
 - [ ] Formatting, linting, type checking, and focused tests run in CI.
 
-Verification evidence: Pending.
+Verification evidence:
+
+- Repository: `https://github.com/carlwelchdesign/flight-tracker-ai`
+- Baseline: `main` at `8feb57d` (`chore: establish project planning baseline`)
 
 ## FT-002 — Define the canonical aviation event model
 
