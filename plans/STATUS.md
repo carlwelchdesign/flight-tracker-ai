@@ -4,13 +4,13 @@ Last updated: 2026-07-20
 
 ## Current state
 
-- Current milestone: M0 — Foundation and feasibility
-- Active ticket: None — FT-003 is complete and awaiting human merge
-- Branch: `docs/ft-003-provider-feasibility`
-- Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/2` (ready for review)
-- Owner: Product and engineering
-- Overall status: M0 tickets FT-001, FT-002, and FT-003 are complete; PRs #1, #3, and #4 are merged; PR #2 is ready for final review
-- Next action: Review and merge PR #2, update local `main`, then begin FT-101 from the completed M0 baseline.
+- Current milestone: M1 — Simulated operations console
+- Active ticket: FT-101 — Build deterministic replay infrastructure
+- Branch: `feat/ft-101-replay-infrastructure`
+- Pull request: Pending
+- Owner: Full-stack engineering
+- Overall status: M0 is complete and merged; FT-101 replay infrastructure is in progress
+- Next action: Implement the versioned scenario contract, deterministic virtual clock, provider-path adapter, and development-only controls.
 
 ## Milestone checklist
 
@@ -40,7 +40,7 @@ Last updated: 2026-07-20
 - The foundation includes the Rust health/readiness boundary, Next.js interface, PostgreSQL/PostGIS migration, production container targets, one-command startup, and green CI.
 - FT-002 implementation is merged through PR #3; correction PR #4 is also merged and preserves provider revisions while deduplicating identical deliveries.
 - The canonical v1 contract separates raw envelopes from normalized facts, uses explicit UTC time/unit/geometry semantics, and enforces operator consistency through composite foreign keys.
-- FT-003 is complete on `docs/ft-003-provider-feasibility`; PR #2 is ready for human review and merge after reconciliation with the completed FT-002 baseline.
+- FT-003 is merged through PR #2 at `7edfa2a`; M0 is complete.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

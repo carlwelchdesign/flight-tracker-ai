@@ -4,11 +4,12 @@ Default owner: Full-stack engineering, with product-design review for dispatcher
 
 ## FT-101 — Build deterministic replay infrastructure
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-101-replay-infrastructure`
 Final commit: Pending
 Pull request: Pending
+Owner: Full-stack engineering
 
 Create a versioned scenario format and virtual clock that emits positions and operational events through the same path used by live providers.
 
