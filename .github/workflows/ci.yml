@@ -88,5 +88,5 @@ jobs:
           grep '"postgis":"ok"' /tmp/readiness.json
       - name: Verify canonical schema contract
         env:
-          TEST_DATABASE_URL: postgres://flight_tracker:flight_tracker@127.0.0.1:5432/flight_tracker
+          TEST_DATABASE_URL: postgres://flight_tracker:flight_tracker@127.0.0.1:5432/flight_tracker?sslmode=disable
         run: cargo test --locked -p flight-tracker-api --test schema_contract -- --nocapture

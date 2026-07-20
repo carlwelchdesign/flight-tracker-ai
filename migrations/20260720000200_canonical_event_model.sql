@@ -26,7 +26,13 @@ CREATE TABLE provider_envelopes (
 );
 
 CREATE UNIQUE INDEX provider_envelopes_provider_record_unique
-    ON provider_envelopes (operator_id, provider, feed, provider_record_id)
+    ON provider_envelopes (
+        operator_id,
+        provider,
+        feed,
+        provider_record_id,
+        raw_payload_sha256
+    )
     WHERE provider_record_id IS NOT NULL;
 CREATE INDEX provider_envelopes_received_at_idx
     ON provider_envelopes (operator_id, received_at DESC);
