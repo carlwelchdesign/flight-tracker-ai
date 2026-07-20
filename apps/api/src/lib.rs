@@ -1,15 +1,20 @@
 use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tower_http::trace::TraceLayer;
 
 pub mod domain;
+pub mod ingestion;
+pub mod replay;
+
+use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
 
 pub const SERVICE_NAME: &str = "flight-tracker-api";
 
 #[derive(Clone)]
 pub struct ApiState {
     database: PgPool,
+    replay: Option<ReplayHandle>,
 }
 
 #[derive(Debug, Serialize)]
@@ -32,11 +37,84 @@ struct ReadinessChecks {
 }
 
 pub fn build_router(database: PgPool) -> Router {
-    Router::new()
+    build_router_with_replay(database, None)
+}
+
+pub fn build_router_with_replay(database: PgPool, replay: Option<ReplayHandle>) -> Router {
+    let mut router = Router::new()
         .route("/health", get(health))
-        .route("/readiness", get(readiness))
-        .with_state(ApiState { database })
+        .route("/readiness", get(readiness));
+
+    if replay.is_some() {
+        router = router
+            .route("/api/dev/replay", get(replay_status))
+            .route("/api/dev/replay/pause", axum::routing::post(replay_pause))
+            .route("/api/dev/replay/resume", axum::routing::post(replay_resume))
+            .route("/api/dev/replay/reset", axum::routing::post(replay_reset))
+            .route("/api/dev/replay/speed", axum::routing::post(replay_speed));
+    }
+
+    router
+        .with_state(ApiState { database, replay })
         .layer(TraceLayer::new_for_http())
+}
+
+#[derive(Debug, Deserialize)]
+struct ReplaySpeedRequest {
+    speed: ReplaySpeed,
+}
+
+async fn replay_status(State(state): State<ApiState>) -> Json<ReplayStatus> {
+    Json(
+        state
+            .replay
+            .expect("replay route requires handle")
+            .status()
+            .await,
+    )
+}
+
+async fn replay_pause(State(state): State<ApiState>) -> Json<ReplayStatus> {
+    Json(
+        state
+            .replay
+            .expect("replay route requires handle")
+            .pause()
+            .await,
+    )
+}
+
+async fn replay_resume(State(state): State<ApiState>) -> Json<ReplayStatus> {
+    Json(
+        state
+            .replay
+            .expect("replay route requires handle")
+            .resume()
+            .await,
+    )
+}
+
+async fn replay_reset(State(state): State<ApiState>) -> Json<ReplayStatus> {
+    Json(
+        state
+            .replay
+            .expect("replay route requires handle")
+            .reset()
+            .await,
+    )
+}
+
+async fn replay_speed(
+    State(state): State<ApiState>,
+    Json(request): Json<ReplaySpeedRequest>,
+) -> Json<ReplayStatus> {
+    Json(
+        state
+            .replay
+            .expect("replay route requires handle")
+            .set_speed(request.speed)
+            .await,
+    )
 }
 
 async fn health() -> Json<HealthResponse> {
@@ -102,6 +180,7 @@ mod tests {
     use tower::ServiceExt;
 
     use super::*;
+    use crate::replay::ReplayScenario;
 
     fn unavailable_database() -> PgPool {
         PgPoolOptions::new()
@@ -136,5 +215,64 @@ mod tests {
         let payload: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(payload["status"], "not_ready");
         assert_eq!(payload["checks"]["database"], "unavailable");
+    }
+
+    #[tokio::test]
+    async fn replay_routes_do_not_exist_without_an_enabled_handle() {
+        let response = build_router(unavailable_database())
+            .oneshot(Request::get("/api/dev/replay").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn replay_routes_control_an_enabled_development_scenario() {
+        let scenario = ReplayScenario::from_json(include_str!(
+            "../../../fixtures/replay/m1-operations-v1.json"
+        ))
+        .unwrap();
+        let app = build_router_with_replay(
+            unavailable_database(),
+            Some(ReplayHandle::new(scenario, 16)),
+        );
+
+        let status = app
+            .clone()
+            .oneshot(Request::get("/api/dev/replay").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(status.status(), StatusCode::OK);
+        let body = status.into_body().collect().await.unwrap().to_bytes();
+        let payload: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(payload["phase"], "paused");
+        assert_eq!(payload["total_events"], 12);
+
+        let speed = app
+            .clone()
+            .oneshot(
+                Request::post("/api/dev/replay/speed")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"speed":"4x"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(speed.status(), StatusCode::OK);
+
+        let resume = app
+            .oneshot(
+                Request::post("/api/dev/replay/resume")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resume.status(), StatusCode::OK);
+        let body = resume.into_body().collect().await.unwrap().to_bytes();
+        let payload: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(payload["phase"], "running");
+        assert_eq!(payload["speed"], "4x");
     }
 }

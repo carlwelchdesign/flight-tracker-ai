@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "id": "m1-operations-v1",
+  "namespace_id": "c931c9ce-47e6-4d4c-b660-23616af4cc39",
+  "operator_id": "9c704a09-a62c-43d5-bac6-94ea2fd53b32",
+  "start_time": "2026-07-20T16:00:00Z",
+  "flights": [
+    {
+      "id": "2b08b30a-c903-4fc0-9b46-7bac4c705e66",
+      "role": "normal",
+      "callsign": "FT101",
+      "aircraft_registration": "N101FT",
+      "origin_airport_code": "SFO",
+      "destination_airport_code": "LAX",
+      "scheduled_departure_at": "2026-07-20T15:45:00Z",
+      "scheduled_arrival_at": "2026-07-20T17:15:00Z"
+    },
+    {
+      "id": "ce31b00c-08a1-46c2-935f-754cf95f2539",
+      "role": "delayed",
+      "callsign": "FT202",
+      "aircraft_registration": "N202FT",
+      "origin_airport_code": "SEA",
+      "destination_airport_code": "SFO",
+      "scheduled_departure_at": "2026-07-20T15:30:00Z",
+      "scheduled_arrival_at": "2026-07-20T17:20:00Z"
+    },
+    {
+      "id": "8c72e01b-a9da-49e4-a79a-5e0a40bd5b6f",
+      "role": "hazard_adjacent",
+      "callsign": "FT303",
+      "aircraft_registration": "N303FT",
+      "origin_airport_code": "LAS",
+      "destination_airport_code": "SFO",
+      "scheduled_departure_at": "2026-07-20T15:20:00Z",
+      "scheduled_arrival_at": "2026-07-20T16:50:00Z"
+    }
+  ],
+  "events": [
+    {
+      "sequence": 1,
+      "offset_ms": 0,
+      "provider_record_id": "hazard-1",
+      "event_type": "weather_hazard",
+      "hazard_id": "1954345b-7c50-4276-9538-c82b773f2ef8",
+      "hazard_type": "convective_cell",
+      "severity": "significant",
+      "valid_from_offset_ms": 0,
+      "valid_to_offset_ms": 900000,
+      "altitude_band": {
+        "lower": { "value": 10000, "unit": "feet", "reference": "mean_sea_level" },
+        "upper": { "value": 35000, "unit": "feet", "reference": "mean_sea_level" }
+      },
+      "footprint": {
+        "exterior": [
+          { "longitude_degrees": -121.9, "latitude_degrees": 37.1 },
+          { "longitude_degrees": -121.4, "latitude_degrees": 37.1 },
+          { "longitude_degrees": -121.4, "latitude_degrees": 37.5 },
+          { "longitude_degrees": -121.9, "latitude_degrees": 37.5 },
+          { "longitude_degrees": -121.9, "latitude_degrees": 37.1 }
+        ]
+      }
+    },
+    {
+      "sequence": 2,
+      "offset_ms": 0,
+      "provider_record_id": "flight-101-start",
+      "event_type": "flight_snapshot",
+      "flight_id": "2b08b30a-c903-4fc0-9b46-7bac4c705e66",
+      "status": "active"
+    },
+    {
+      "sequence": 3,
+      "offset_ms": 0,
+      "provider_record_id": "flight-202-delayed",
+      "event_type": "flight_snapshot",
+      "flight_id": "ce31b00c-08a1-46c2-935f-754cf95f2539",
+      "status": "scheduled"
+    },
+    {
+      "sequence": 4,
+      "offset_ms": 0,
+      "provider_record_id": "flight-303-start",
+      "event_type": "flight_snapshot",
+      "flight_id": "8c72e01b-a9da-49e4-a79a-5e0a40bd5b6f",
+      "status": "active"
+    },
+    {
+      "sequence": 5,
+      "offset_ms": 1000,
+      "provider_record_id": "position-101-1",
+      "event_type": "position",
+      "flight_id": "2b08b30a-c903-4fc0-9b46-7bac4c705e66",
+      "point": { "longitude_degrees": -122.05, "latitude_degrees": 37.42 },
+      "altitude": { "value": 22000, "unit": "feet", "reference": "mean_sea_level" },
+      "heading_true_degrees": 142.0,
+      "ground_speed": { "value": 430.0, "unit": "knots" },
+      "quality": "observed"
+    },
+    {
+      "sequence": 6,
+      "offset_ms": 1000,
+      "provider_record_id": "position-202-ground",
+      "event_type": "position",
+      "flight_id": "ce31b00c-08a1-46c2-935f-754cf95f2539",
+      "point": { "longitude_degrees": -122.3088, "latitude_degrees": 47.4502 },
+      "altitude": { "value": 433, "unit": "feet", "reference": "mean_sea_level" },
+      "heading_true_degrees": 160.0,
+      "ground_speed": { "value": 0.0, "unit": "knots" },
+      "quality": "observed"
+    },
+    {
+      "sequence": 7,
+      "offset_ms": 1000,
+      "provider_record_id": "position-303-1",
+      "event_type": "position",
+      "flight_id": "8c72e01b-a9da-49e4-a79a-5e0a40bd5b6f",
+      "point": { "longitude_degrees": -121.72, "latitude_degrees": 37.0 },
+      "altitude": { "value": 28000, "unit": "feet", "reference": "mean_sea_level" },
+      "heading_true_degrees": 315.0,
+      "ground_speed": { "value": 445.0, "unit": "knots" },
+      "quality": "observed"
+    },
+    {
+      "sequence": 8,
+      "offset_ms": 60000,
+      "provider_record_id": "position-101-2",
+      "event_type": "position",
+      "flight_id": "2b08b30a-c903-4fc0-9b46-7bac4c705e66",
+      "point": { "longitude_degrees": -121.95, "latitude_degrees": 37.25 },
+      "altitude": { "value": 24000, "unit": "feet", "reference": "mean_sea_level" },
+      "heading_true_degrees": 142.0,
+      "ground_speed": { "value": 435.0, "unit": "knots" },
+      "quality": "observed"
+    },
+    {
+      "sequence": 9,
+      "offset_ms": 60000,
+      "provider_record_id": "position-303-2",
+      "event_type": "position",
+      "flight_id": "8c72e01b-a9da-49e4-a79a-5e0a40bd5b6f",
+      "point": { "longitude_degrees": -121.62, "latitude_degrees": 37.18 },
+      "altitude": { "value": 27000, "unit": "feet", "reference": "mean_sea_level" },
+      "heading_true_degrees": 315.0,
+      "ground_speed": { "value": 438.0, "unit": "knots" },
+      "quality": "observed"
+    },
+    {
+      "sequence": 10,
+      "offset_ms": 120000,
+      "provider_record_id": "flight-202-active",
+      "event_type": "flight_snapshot",
+      "flight_id": "ce31b00c-08a1-46c2-935f-754cf95f2539",
+      "status": "active"
+    },
+    {
+      "sequence": 11,
+      "offset_ms": 121000,
+      "provider_record_id": "position-202-airborne",
+      "event_type": "position",
+      "flight_id": "ce31b00c-08a1-46c2-935f-754cf95f2539",
+      "point": { "longitude_degrees": -122.25, "latitude_degrees": 47.35 },
+      "altitude": { "value": 5200, "unit": "feet", "reference": "mean_sea_level" },
+      "heading_true_degrees": 164.0,
+      "ground_speed": { "value": 240.0, "unit": "knots" },
+      "quality": "observed"
+    },
+    {
+      "sequence": 12,
+      "offset_ms": 180000,
+      "provider_record_id": "position-303-3",
+      "event_type": "position",
+      "flight_id": "8c72e01b-a9da-49e4-a79a-5e0a40bd5b6f",
+      "point": { "longitude_degrees": -121.48, "latitude_degrees": 37.38 },
+      "altitude": { "value": 25000, "unit": "feet", "reference": "mean_sea_level" },
+      "heading_true_degrees": 318.0,
+      "ground_speed": { "value": 425.0, "unit": "knots" },
+      "quality": "observed"
+    }
+  ]
+}

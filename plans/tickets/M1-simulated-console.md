@@ -17,13 +17,13 @@ Dependencies: FT-001, FT-002
 
 Acceptance checklist:
 
-- [ ] At least one multi-flight scenario includes normal, delayed, and hazard-adjacent flights.
-- [ ] Pause, resume, speed, reset, and deterministic restart are supported in development.
-- [ ] Replaying identical fixtures produces identical normalized events.
-- [ ] Replay controls cannot be enabled accidentally in production.
-- [ ] Scenario schema and authoring instructions are documented.
+- [x] At least one multi-flight scenario includes normal, delayed, and hazard-adjacent flights.
+- [x] Pause, resume, speed, reset, and deterministic restart are supported in development.
+- [x] Replaying identical fixtures produces identical normalized events.
+- [x] Replay controls cannot be enabled accidentally in production.
+- [x] Scenario schema and authoring instructions are documented.
 
-Verification evidence: Pending.
+Verification evidence in progress: `fixtures/replay/m1-operations-v1.json`; `plans/REPLAY_SCENARIOS.md`; `cargo fmt --all --check`; strict workspace Clippy; 18 passing Rust tests; production Rust release build; web install, audit, lint, typecheck, and production build; Compose configuration validation; live Compose API sequence covering status, 8x speed, resume, pause, and reset; production startup rejected `ReplayControlsForbidden`. Final commit, PR, and required PR checks remain pending.
 
 ## FT-102 — Implement fleet API and live event stream
 

@@ -10,7 +10,7 @@ Last updated: 2026-07-20
 - Pull request: Pending
 - Owner: Full-stack engineering
 - Overall status: M0 is complete and merged; FT-101 replay infrastructure is in progress
-- Next action: Implement the versioned scenario contract, deterministic virtual clock, provider-path adapter, and development-only controls.
+- Next action: Open the FT-101 draft pull request, monitor required checks, and record final merge-ready evidence.
 
 ## Milestone checklist
 

@@ -12,12 +12,13 @@ Build an operations-intelligence console inspired by Flight Science: live fleet 
 2. [PRODUCT.md](PRODUCT.md) — users, MVP, non-goals, and success measures
 3. [ARCHITECTURE.md](ARCHITECTURE.md) — Rust-centered technical design and data flow
 4. [CANONICAL_EVENT_MODEL.md](CANONICAL_EVENT_MODEL.md) — provider-independent v1 domain and persistence contract
-5. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
-6. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
-7. [tickets/README.md](tickets/README.md) — ticket index and update rules
-8. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
-9. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
-10. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
+5. [REPLAY_SCENARIOS.md](REPLAY_SCENARIOS.md) — versioned simulation format, virtual clock, and development controls
+6. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
+7. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
+8. [tickets/README.md](tickets/README.md) — ticket index and update rules
+9. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
+10. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
+11. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
 
 ## Planning rules
 
