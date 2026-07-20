@@ -87,8 +87,10 @@ valid observations that must remain visible rather than be silently rewritten.
 ## Persistence behavior
 
 - Raw payloads are JSONB and normalized facts are relational/spatial rows.
-- Provider record IDs are optional, but when present are unique per
-  operator/provider/feed to support idempotent ingestion.
+- Provider record IDs are optional and may be reused by a provider for revised
+  messages. The same operator/provider/feed/record ID plus payload hash is
+  unique to make identical delivery retries idempotent without suppressing a
+  changed payload.
 - Source attribution is mandatory on external normalized facts.
 - Alert evidence is an ordered join to provider envelopes rather than an opaque
   JSON list, preserving tenant constraints and queryability.

@@ -61,7 +61,76 @@ async fn canonical_schema_migrates_with_spatial_and_tenant_invariants() {
         ]
     );
 
+    assert_provider_record_revisions_are_allowed_but_identical_retries_are_rejected(&pool).await;
     assert_cross_operator_source_reference_is_rejected(&pool).await;
+}
+
+async fn assert_provider_record_revisions_are_allowed_but_identical_retries_are_rejected(
+    pool: &PgPool,
+) {
+    let mut transaction = pool.begin().await.unwrap();
+
+    sqlx::query(
+        r#"
+        INSERT INTO operators (id, code, display_name)
+        VALUES ('00000000-0000-0000-0000-000000000101', 'REV', 'Revision Test')
+        "#,
+    )
+    .execute(&mut *transaction)
+    .await
+    .unwrap();
+
+    for (id, hash) in [
+        (
+            "00000000-0000-0000-0000-000000000110",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ),
+        (
+            "00000000-0000-0000-0000-000000000111",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO provider_envelopes (
+                id, operator_id, schema_version, provider, feed, provider_record_id,
+                received_at, raw_payload_sha256, raw_payload
+            ) VALUES (
+                $1::uuid, '00000000-0000-0000-0000-000000000101', 1,
+                'simulation', 'revision-check', 'shared-record', NOW(), $2, '{}'::jsonb
+            )
+            "#,
+        )
+        .bind(id)
+        .bind(hash)
+        .execute(&mut *transaction)
+        .await
+        .unwrap();
+    }
+
+    let identical_retry = sqlx::query(
+        r#"
+        INSERT INTO provider_envelopes (
+            id, operator_id, schema_version, provider, feed, provider_record_id,
+            received_at, raw_payload_sha256, raw_payload
+        ) VALUES (
+            '00000000-0000-0000-0000-000000000112',
+            '00000000-0000-0000-0000-000000000101', 1,
+            'simulation', 'revision-check', 'shared-record', NOW(),
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            '{}'::jsonb
+        )
+        "#,
+    )
+    .execute(&mut *transaction)
+    .await;
+
+    assert!(
+        identical_retry.is_err(),
+        "identical provider record retries must be idempotent"
+    );
+
+    transaction.rollback().await.unwrap();
 }
 
 async fn assert_cross_operator_source_reference_is_rejected(pool: &PgPool) {

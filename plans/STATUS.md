@@ -5,12 +5,12 @@ Last updated: 2026-07-20
 ## Current state
 
 - Current milestone: M0 — Foundation and feasibility
-- Active ticket: FT-002 — Define the canonical aviation event model
+- Active ticket: None — FT-002 is complete and its post-merge correction awaits human merge
 - Branch: `feat/ft-002-canonical-event-model`
-- Pull request: Pending
+- Pull requests: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/3` (merged), `https://github.com/carlwelchdesign/flight-tracker-ai/pull/4` (ready for review)
 - Owner: Engineering lead
-- Overall status: FT-001 merged; FT-002 domain and persistence design in progress; FT-003 complete on open PR #2
-- Next action: Implement versioned Rust domain types, a tenant-scoped PostGIS migration, and representative contract tests.
+- Overall status: FT-001 and FT-002 complete; FT-002 correction PR #4 is green; FT-003 is complete on conflicted PR #2
+- Next action: Review and merge PR #4, then refresh and verify PR #2 against the updated `main` branch.
 
 ## Milestone checklist
 
@@ -24,8 +24,8 @@ Last updated: 2026-07-20
 ## Ticket progress
 
 | Milestone | Complete | Total |
-|---|---:|---:|
-| M0 | 1 | 3 |
+| --- | ---: | ---: |
+| M0 | 2 | 3 |
 | M1 | 0 | 4 |
 | M2 | 0 | 4 |
 | M3 | 0 | 4 |
@@ -38,6 +38,8 @@ Last updated: 2026-07-20
 - `main` and `origin` are established; planning baseline commit: `8feb57d`.
 - FT-001 is merged through PR #1 at `c8e0bb4`.
 - The foundation includes the Rust health/readiness boundary, Next.js interface, PostgreSQL/PostGIS migration, production container targets, one-command startup, and green CI.
+- FT-002 implementation is merged through PR #3; correction PR #4 preserves provider revisions while deduplicating identical deliveries and records final evidence.
+- The canonical v1 contract separates raw envelopes from normalized facts, uses explicit UTC time/unit/geometry semantics, and enforces operator consistency through composite foreign keys.
 - FT-003 is complete on `docs/ft-003-provider-feasibility`; PR #2 remains open for human review and merge.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is the first live integration target.
