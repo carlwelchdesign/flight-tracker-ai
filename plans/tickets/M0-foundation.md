@@ -35,11 +35,11 @@ Verification evidence:
 
 ## FT-002 — Define the canonical aviation event model
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-002-canonical-event-model`
-Final commit: Pending
-Pull request: Pending
+Final commit: `2f01586` (`fix(ft-002): preserve provider record revisions`)
+Pull requests: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/3` (merged), `https://github.com/carlwelchdesign/flight-tracker-ai/pull/4` (post-merge correction; ready for review)
 Owner: Engineering lead
 
 Define versioned Rust types and database tables for provider envelopes, flights, positions, routes, hazards, alerts, actions, and source health.
@@ -48,14 +48,21 @@ Dependencies: FT-001
 
 Acceptance checklist:
 
-- [ ] Entity IDs, timestamps, units, nullability, and source attribution are explicit.
-- [ ] Raw provider envelopes are separated from normalized facts.
-- [ ] Event time, received time, and processed time are preserved.
-- [ ] Geometry coordinate order, altitude units, and time conventions are documented and tested.
-- [ ] Schema migration and representative serialization tests pass.
-- [ ] Tenant/operator boundary is represented before customer data is introduced.
+- [x] Entity IDs, timestamps, units, nullability, and source attribution are explicit.
+- [x] Raw provider envelopes are separated from normalized facts.
+- [x] Event time, received time, and processed time are preserved.
+- [x] Geometry coordinate order, altitude units, and time conventions are documented and tested.
+- [x] Schema migration and representative serialization tests pass.
+- [x] Tenant/operator boundary is represented before customer data is introduced.
 
-Verification evidence: Pending.
+Verification evidence:
+
+- Rust contract: `../../apps/api/src/domain/`; persisted contract: `../CANONICAL_EVENT_MODEL.md`
+- Additive PostGIS migration: `../../migrations/20260720000200_canonical_event_model.sql`
+- Unit/serialization gate: 9 Rust unit tests covering schema version, raw/normalized separation, time ordering, coordinates, heading, and representative JSON round trip
+- Real-database gate: `schema_contract` passed against a fresh PostGIS 17/3.5 database, including geometry metadata, cross-operator rejection, provider revisions, and duplicate-delivery rejection
+- Repository/runtime gate: `make verify`; isolated clean API/database startup with live `/health` and `/readiness`; production Rust image build
+- CI gates: PR #3 implementation run `https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29778540998`; PR #4 correction run `https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29782406127`
 
 ## FT-003 — Complete provider and API feasibility matrix
 
