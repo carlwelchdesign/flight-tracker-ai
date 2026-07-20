@@ -8,7 +8,7 @@ Status: Complete
 
 Branch: `feat/ft-001-repository-scaffold`
 Final commit: `2f9de16` (`style(ft-001): normalize file endings`)
-Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/1` (ready for review)
+Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/1` (merged)
 
 Create a local development environment for the Next.js interface, Rust backend, PostgreSQL/PostGIS, and shared commands.
 
@@ -35,11 +35,12 @@ Verification evidence:
 
 ## FT-002 — Define the canonical aviation event model
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-002-canonical-event-model`
 Final commit: Pending
 Pull request: Pending
+Owner: Engineering lead
 
 Define versioned Rust types and database tables for provider envelopes, flights, positions, routes, hazards, alerts, actions, and source health.
 
