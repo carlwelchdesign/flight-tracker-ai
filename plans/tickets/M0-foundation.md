@@ -8,7 +8,7 @@ Status: In progress
 
 Branch: `feat/ft-001-repository-scaffold`
 Final commit: Pending
-Pull request: Pending
+Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/1` (draft)
 
 Create a local development environment for the Next.js interface, Rust backend, PostgreSQL/PostGIS, and shared commands.
 
@@ -18,7 +18,7 @@ Acceptance checklist:
 
 - [ ] Repository structure for web, Rust application, migrations, and plans is documented.
 - [x] Git repository uses `main`, has a GitHub `origin`, and contains a baseline planning commit.
-- [ ] Ticket branch and PR conventions are documented and usable with the configured remote.
+- [x] Ticket branch and PR conventions are documented and usable with the configured remote.
 - [ ] Rust workspace builds and exposes `/health` and `/readiness`.
 - [ ] Next.js app loads and can reach the Rust health endpoint.
 - [ ] PostgreSQL/PostGIS starts locally and migrations run from a clean database.
@@ -29,6 +29,7 @@ Verification evidence:
 
 - Repository: `https://github.com/carlwelchdesign/flight-tracker-ai`
 - Baseline: `main` at `8feb57d` (`chore: establish project planning baseline`)
+- Delivery: `feat/ft-001-repository-scaffold` and draft PR #1
 
 ## FT-002 — Define the canonical aviation event model
 

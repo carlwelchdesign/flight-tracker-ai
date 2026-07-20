@@ -7,6 +7,7 @@ Last updated: 2026-07-20
 - Current milestone: M0 — Foundation and feasibility
 - Active ticket: FT-001 — Scaffold the repository
 - Branch: `feat/ft-001-repository-scaffold`
+- Pull request: `https://github.com/carlwelchdesign/flight-tracker-ai/pull/1` (draft)
 - Owner: Engineering lead
 - Overall status: FT-001 in progress; repository bootstrap complete
 - Next action: Scaffold the Rust service, Next.js interface, and PostgreSQL/PostGIS development environment.
@@ -35,7 +36,7 @@ Last updated: 2026-07-20
 
 - GitHub repository: `carlwelchdesign/flight-tracker-ai`.
 - `main` and `origin` are established; planning baseline commit: `8feb57d`.
-- FT-001 continues on `feat/ft-001-repository-scaffold`; its draft PR is opened after the first ticket commit is pushed.
+- FT-001 continues on `feat/ft-001-repository-scaffold` in draft PR #1.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is the first live integration target.
 - OpenSky may be useful for noncommercial prototyping, but commercial rights and infrastructure restrictions must be resolved before product use.
