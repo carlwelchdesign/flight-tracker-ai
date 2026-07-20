@@ -1,0 +1,7 @@
+.git
+.next
+node_modules
+.pnp*
+.yarn
+npm-debug.log*
+.env*

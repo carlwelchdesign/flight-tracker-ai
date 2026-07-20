@@ -19,5 +19,5 @@ Every ticket section has delivery fields. `Branch`, `Final commit`, and `Pull re
 - [M1 — Simulated operations console](M1-simulated-console.md): FT-101–FT-104
 - [M2 — Live weather and hazards](M2-weather-hazards.md): FT-201–FT-204
 - [M3 — Commercial data and workflow](M3-commercial-workflow.md): FT-301–FT-304
-- [M4 — Pilot readiness](M4-pilot-readiness.md): FT-401–FT-403
+- [M4 — Pilot readiness](M4-pilot-readiness.md): FT-401–FT-404
 - [M5 — Optimization research](M5-optimization.md): FT-501–FT-503
