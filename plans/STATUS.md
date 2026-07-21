@@ -4,18 +4,18 @@ Last updated: 2026-07-20
 
 ## Current state
 
-- Current milestone: M1 — Simulated operations console
-- Active ticket: FT-104 — Add source health and operational observability
+- Current milestone: M2 — Live weather and hazard intelligence
+- Active ticket: None
 - Branch: `feat/ft-104-source-health-observability`
-- Pull request: Pending
-- Owner: Full-stack engineering
-- Overall status: M0 and FT-101 through FT-103 are merged; FT-104 is in progress
-- Next action: Define the critical-worker health contract and correlation boundary, then expose source timing and simulated outage degradation in the console.
+- Pull request: [#8](https://github.com/carlwelchdesign/flight-tracker-ai/pull/8) (ready for human review)
+- Owner: Unassigned
+- Overall status: M0 and M1 implementation are complete; FT-104 is awaiting human review and merge
+- Next action: Review and merge PR #8, sync `main`, then start FT-201 on `feat/ft-201-noaa-weather-ingestion`.
 
 ## Milestone checklist
 
 - [x] M0 — Foundation and feasibility
-- [ ] M1 — Simulated operations console
+- [x] M1 — Simulated operations console
 - [ ] M2 — Live weather and hazard intelligence
 - [ ] M3 — Commercial flight data and operational workflow
 - [ ] M4 — Pilot readiness and operational hardening
@@ -26,7 +26,7 @@ Last updated: 2026-07-20
 | Milestone | Complete | Total |
 | --- | ---: | ---: |
 | M0 | 3 | 3 |
-| M1 | 3 | 4 |
+| M1 | 4 | 4 |
 | M2 | 0 | 4 |
 | M3 | 0 | 4 |
 | M4 | 0 | 4 |
@@ -44,6 +44,7 @@ Last updated: 2026-07-20
 - FT-101 is merged through PR #5 at `efc2cf6` with all required checks passing.
 - FT-102 is merged through PR #6 at `aed432d` with all required checks passing.
 - FT-103 is merged through PR #7 at `18a5a23` with all required checks passing.
+- FT-104 implementation is complete at `c03c4f0` through PR #8; Rust, web, and API/PostGIS smoke checks pass, and the PR awaits human review and merge.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
