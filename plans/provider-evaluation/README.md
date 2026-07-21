@@ -1,5 +1,7 @@
 # FT-301 Provider Evaluation Package
 
+> Optional future production track: this package is retained as commercial-provider research. It does not block the active non-commercial portfolio roadmap, and its incomplete procurement/trial records are not portfolio release failures. Do not contact providers or run `--require-complete` unless the project is explicitly re-scoped for commercial or operational use.
+
 This folder turns the commercial-provider gate into a repeatable procurement and trial workflow. It does not select a provider and it does not treat public marketing as contractual permission.
 
 Start with [the procurement handoff](PROCUREMENT_HANDOFF.md) when assigning owners or contacting providers.
@@ -9,7 +11,7 @@ Start with [the procurement handoff](PROCUREMENT_HANDOFF.md) when assigning owne
 - Finalists: Cirium Sky Stream and FlightAware Firehose.
 - Decision: pending.
 - Public claims last revalidated: 2026-07-21.
-- Blocking inputs: an operator-owned target-tail set, two comparable real-time trial accounts, Order-level rights responses including explicit AI/ML and upstream-data authorization, SLA schedules, retention/deletion terms, and priced proposals.
+- Future-production inputs: an operator-owned target-tail set, two comparable real-time trial accounts, Order-level rights responses including explicit AI/ML and upstream-data authorization, SLA schedules, retention/deletion terms, and priced proposals.
 - Decision authority: Product and Legal approve rights and commercial terms; Engineering approves technical fit; neither group can waive the other's pass/fail gate.
 
 ## Required workflow

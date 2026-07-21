@@ -15,9 +15,9 @@ Every ticket section has delivery fields. `Branch`, `Final commit`, and `Pull re
 
 ## Tickets
 
-- [M0 — Foundation and feasibility](M0-foundation.md): FT-001–FT-003
+- [M0 — Foundation, feasibility, and scope](M0-foundation.md): FT-001–FT-005
 - [M1 — Simulated operations console](M1-simulated-console.md): FT-101–FT-104
 - [M2 — Live weather and hazards](M2-weather-hazards.md): FT-201–FT-204
-- [M3 — Commercial data and workflow](M3-commercial-workflow.md): FT-301–FT-304
-- [M4 — Pilot readiness](M4-pilot-readiness.md): FT-401–FT-404
+- [M3 — Portfolio live data and workflow](M3-commercial-workflow.md): FT-301–FT-304
+- [M4 — Portfolio launch readiness](M4-pilot-readiness.md): FT-401–FT-404
 - [M5 — Optimization research](M5-optimization.md): FT-501–FT-503

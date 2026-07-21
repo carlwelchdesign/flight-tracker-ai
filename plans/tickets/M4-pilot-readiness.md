@@ -1,23 +1,23 @@
-# M4 — Pilot Readiness and Operational Hardening
+# M4 — Portfolio Launch and Demonstration Hardening
 
-Default owner: Product/operations lead, supported by engineering and security.
+Default owner: Product and engineering, supported by security.
 
 ## FT-401 — Complete security, privacy, and trust review
 
-Status: Blocked
+Status: In progress
 
 Branch: `docs/ft-401-security-trust-review`
-Latest implementation commit: `f3d3e08`
-Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; do not merge while completion gate fails)
-Owner: Security, legal/privacy, product, and engineering
-Blockers: FT-301 controlling provider evidence and selection; managed preview/database/secret infrastructure; hosted Clerk, credential-rotation, audit/retention, and backup/restore drills; shared-identity disposition; and Product/Legal/operator wording approval.
-Unblock action: Accountable Product/Legal/operator/Platform owners must supply the provider records, approvals, representative hosted environments, and controlled drill evidence described below. Engineering resumes on this branch when any required external input is available.
+Latest implementation commit: `4649408`
+Final commit: Pending
+Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; main merged and conflicts resolved)
+Owner: Product, engineering, and security
+Remaining evidence: reclassify the findings against a public portfolio deployment; verify any retained hosted preview, secret, identity, backup, and wording controls. Commercial-provider procurement and real-operator approval are not dependencies. A replay-only deployment remains valid.
 
-Review data handling, permissions, auditability, advisory language, and external-provider obligations before a real-operations evaluation.
+Review data handling, permissions, auditability, portfolio language, and source obligations before making the demonstration public.
 
-Dependencies: FT-301, FT-303, FT-304
+Dependencies: FT-303, FT-304
 
-Preparation scope: review the implemented FT-303/FT-304 boundaries now; keep provider-specific attribution, retention, deletion, and licensing controls open until FT-301 supplies the controlling contract.
+Preparation scope: review the implemented FT-303/FT-304 boundaries for a public portfolio. Any future free-feed attribution, retention, and acceptable-use controls belong to FT-301/FT-302 and apply only when that feed is enabled.
 
 Preparation checklist:
 
@@ -26,17 +26,17 @@ Preparation checklist:
 - [x] Record severity, owner, deadline gate, treatment, and verification for every finding.
 - [x] Bound and scan sensitive user-written operational fields without returning their content.
 - [x] Provide a fail-closed hosted audit/retention drill verifier with sanitized evidence output.
-- [ ] Resolve FT-301 and implement the selected provider's controlling obligations.
+- [x] Remove commercial-provider procurement and real-operator approval from the portfolio completion gate while preserving an explicit activation gate for any future free feed.
 
 Acceptance checklist:
 
 - [x] Threat model covers credentials, tenant isolation, ingestion abuse, and privileged actions.
 - [x] Retention, deletion, backup, and incident-response policies are documented.
-- [ ] Advisory-only product language is reviewed and consistent.
-- [ ] Provider attribution and licensing obligations are implemented.
+- [ ] Portfolio-only and not-for-operational-use language is consistent across normal, loading, empty, degraded, and error states.
+- [x] No unsupported external flight-position source is enabled; future free-feed attribution, rate-limit, caching, and retention obligations remain an FT-301/FT-302 activation gate, and replay-only deployment is valid.
 - [x] Security findings have owners and deadlines.
 
-Verification evidence: [`SECURITY_PRIVACY_TRUST_REVIEW.md`](../SECURITY_PRIVACY_TRUST_REVIEW.md), [`DATA_LIFECYCLE_INCIDENT_POLICY.md`](../DATA_LIFECYCLE_INCIDENT_POLICY.md), [`CREDENTIAL_ROTATION_RUNBOOK.md`](../CREDENTIAL_ROTATION_RUNBOOK.md), [`AUDIT_REVIEW_RUNBOOK.md`](../AUDIT_REVIEW_RUNBOOK.md), [`RETENTION_DELETION_RUNBOOK.md`](../RETENTION_DELETION_RUNBOOK.md), [`BACKUP_RESTORE_RUNBOOK.md`](../BACKUP_RESTORE_RUNBOOK.md), [`SECURITY_FINDINGS.csv`](../SECURITY_FINDINGS.csv), and `python3 scripts/validate_ft401_review.py`. Structural validation passes; `--require-complete` intentionally fails while critical/high findings and the FT-301 provider gate remain open. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) closes F401-004 through operator-scoped assignment constraints. CI run [29834083229](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834083229) closes F401-010 through exact minimal public probes and authenticated diagnostics against PostGIS. CI run [29834813131](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834813131) verifies the named assertion rotation protocol and browser-asset secret scan; F401-001 remains open for managed hosted secrets and completed drills. Commit `54db2b1` adds a root-level, mode-aware advisory/source-authority banner that remains present across operational states; 36 web tests, lint, typecheck, and a production build pass locally. Commit `b022142` adds administrator-only tenant audit review, bounded redacted CSV export, and deterministic high-risk/burst signals; CI run [29836717456](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29836717456) passes Rust, web, and PostGIS contracts. Commit `f5ba6c1` adds approved raw-payload retention and tombstone suppression; CI run [29837700053](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29837700053) proves the migration, two-person workflow, scope preservation, deletion audit, and simulated restore suppression. Commit `fdf75af` extends the same workflow to authorization audit, expired session revocations, and exclusive inactive identity minimization; CI run [29838690551](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29838690551) proves tenant scope, second-person approval, safe shared/current identity preservation, deletion/minimization, and restore suppression. Commit `b937f8a` adds whole-terminal-alert-series retention, dependency-ordered action/evidence deletion, logical replay tombstones, and safe next-revision continuation; CI run [29839592816](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29839592816) passes Rust, web, and PostGIS contracts. Commit `420f145` adds provider-scoped normalized-fact retention for old observations, whole terminal flights, and whole expired hazard series; CI run [29840281133](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29840281133) proves dependency ordering, provider/tenant isolation, active/reference preservation, and restore suppression. Commit `5c320b8` adds separately approved exact-policy schedules, durable attempts/failures, drift-free idempotent cadence, and a supervised Rust worker; CI run [29841291067](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29841291067) proves automatic deletion, duplicate-slot suppression, tenant scope, inactive-actor fail-closed behavior, and API/BFF contracts. Commit `ec9ea2a` adds administrator-only tenant resurrection diagnostics and the controlled restore procedure; CI run [29841960517](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29841960517) proves healthy post-lifecycle state, deliberate tombstone-conflict detection, tenant isolation, and all Rust/web/PostGIS contracts. F401-002 remains open for FT-301 provider values, shared-identity disposition, and managed execution; F401-007 remains open for the hosted retention/integrity incident drill; F401-008 remains open for managed backup configuration and the recorded restore drill. F401-009 remains open for exact Product/Legal/operator wording approval and a real preview state review. F401-005 remains open for a real Clerk preview browser smoke.
+Verification evidence: [`SECURITY_PRIVACY_TRUST_REVIEW.md`](../SECURITY_PRIVACY_TRUST_REVIEW.md), [`DATA_LIFECYCLE_INCIDENT_POLICY.md`](../DATA_LIFECYCLE_INCIDENT_POLICY.md), [`CREDENTIAL_ROTATION_RUNBOOK.md`](../CREDENTIAL_ROTATION_RUNBOOK.md), [`AUDIT_REVIEW_RUNBOOK.md`](../AUDIT_REVIEW_RUNBOOK.md), [`RETENTION_DELETION_RUNBOOK.md`](../RETENTION_DELETION_RUNBOOK.md), [`BACKUP_RESTORE_RUNBOOK.md`](../BACKUP_RESTORE_RUNBOOK.md), [`SECURITY_FINDINGS.csv`](../SECURITY_FINDINGS.csv), and `python3 scripts/validate_ft401_review.py`. Structural validation passes; `--require-complete` remains a portfolio-hosting review rather than a commercial-provider gate. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) closes F401-004 through operator-scoped assignment constraints. CI run [29834083229](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834083229) closes F401-010 through exact minimal public probes and authenticated diagnostics against PostGIS. CI run [29834813131](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834813131) verifies the named assertion rotation protocol and browser-asset secret scan; F401-001 remains open for proportionate hosted-secret evidence. Commit `54db2b1` adds a root-level, mode-aware advisory/source-authority banner that remains present across operational states; 36 web tests, lint, typecheck, and a production build pass locally. Commit `b022142` adds administrator-only tenant audit review, bounded redacted CSV export, and deterministic high-risk/burst signals; CI run [29836717456](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29836717456) passes Rust, web, and PostGIS contracts. Commit `f5ba6c1` adds approved raw-payload retention and tombstone suppression; CI run [29837700053](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29837700053) proves the migration, two-person workflow, scope preservation, deletion audit, and simulated restore suppression. Commit `fdf75af` extends the same workflow to authorization audit, expired session revocations, and exclusive inactive identity minimization; CI run [29838690551](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29838690551) proves tenant scope, second-person approval, safe shared/current identity preservation, deletion/minimization, and restore suppression. Commit `b937f8a` adds whole-terminal-alert-series retention, dependency-ordered action/evidence deletion, logical replay tombstones, and safe next-revision continuation; CI run [29839592816](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29839592816) passes Rust, web, and PostGIS contracts. Commit `420f145` adds provider-scoped normalized-fact retention for old observations, whole terminal flights, and whole expired hazard series; CI run [29840281133](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29840281133) proves dependency ordering, provider/tenant isolation, active/reference preservation, and restore suppression. Commit `5c320b8` adds separately approved exact-policy schedules, durable attempts/failures, drift-free idempotent slots, and a supervised Rust worker; CI run [29841291067](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29841291067) proves automatic deletion, duplicate-slot suppression, tenant scope, inactive-actor fail-closed behavior, and API/BFF contracts. Commit `ec9ea2a` adds administrator-only tenant resurrection diagnostics and the controlled restore procedure; CI run [29841960517](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29841960517) proves healthy lifecycle state, deliberate conflict detection, tenant isolation, and all Rust/web/PostGIS contracts. F401-002, F401-005, F401-007, F401-008, and F401-009 require portfolio-scope reclassification or hosted-preview evidence; commercial contract values and real-operator approvals are excluded.
 
 Exact-inventory evidence: commit `a521e91` binds every new retention run to a SHA-256 fingerprint of its eligible record keys under repeatable-read execution. CI run [29843308802](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29843308802) proves a same-count record substitution is rejected without deletion and that restoring the original inventory reproduces its fingerprint.
 
@@ -46,7 +46,7 @@ Sensitive-write monitoring evidence: commit `d975ac3` adds a deterministic Rust 
 
 Hosted-drill verifier evidence: commits `943bb65` and `f3d3e08` add a bounded HTTPS verifier for administrator audit/export/monitoring/integrity access, viewer/operator denial, expected critical/warning sensitive-write records, cross-tenant exclusion, controlled-marker redaction, and exact retention disposition counts. Its sanitized evidence allowlists output fields and never includes tokens, response bodies, markers, or event IDs. CI run [29846123252](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29846123252) passes the ten-case regression suite plus all Rust, web, and PostGIS jobs; the suite covers successful evidence, leakage, unknown signal content, role/tenant boundary failures, signal severity, unhealthy and dispositioned retention states, unsafe configuration, redirect refusal, and response-size refusal. Representative hosted execution remains required before F401-007 can close.
 
-Blocked-state audit (2026-07-21): `python3 scripts/validate_ft301_evidence.py --require-complete` fails because both providers still lack terminal rights/SLA/price/trial evidence, all comparison scores and trial/cost observations are pending, and OD-002 has no final decision. `python3 scripts/validate_ft401_review.py --require-complete` fails on F401-001/002/003/005/006/007/008/009. GitHub shows no deployment check or recorded hosted drill on draft PR #18. FT-302 remains dependent on FT-301; FT-402 remains dependent on FT-302; FT-403 and FT-404 remain dependent on FT-401/FT-402. No downstream implementation ticket is currently eligible to start without bypassing a recorded gate.
+Scope-reconciliation evidence (2026-07-21): FT-005 and ADR-010 remove commercial contract evidence, paid trials, pricing, SLA, and real-operator approval from this ticket. The implemented controls remain intact. `python3 scripts/validate_ft401_review.py --require-complete` is expected to fail until the findings register is reclassified and any proportionate public-hosting evidence is recorded; `validate_ft301_evidence.py --require-complete` is no longer an FT-401 completion condition.
 
 ## FT-402 — Run resilience and failure drills
 
@@ -56,44 +56,44 @@ Branch: `feat/ft-402-resilience-drills`
 Final commit: Pending
 Pull request: Pending
 
-Demonstrate safe behavior under provider, database, worker, network, and malformed-data failures.
+Demonstrate a reliable recruiter-facing experience under feed, database, worker, network, and malformed-data failures.
 
 Dependencies: FT-302, FT-304
 
 Acceptance checklist:
 
-- [ ] Provider outage and high-latency drills produce visible degraded states.
+- [ ] Free-feed outage and high-latency checks produce visible degraded states and leave replay available.
 - [ ] Worker restart does not duplicate or lose lifecycle history beyond documented guarantees.
 - [ ] Database recovery procedure is tested.
 - [ ] Malformed and adversarial provider payloads are rejected or quarantined.
 - [ ] Alert backlog recovery behavior is measured.
-- [ ] Operator and developer runbooks are updated from drill findings.
+- [ ] Demo and developer runbooks are updated from the findings.
 
 Verification evidence: Pending.
 
-## FT-403 — Validate a limited advisory pilot
+## FT-403 — Validate the recruiter and hiring-manager demo
 
 Status: Not started
 
-Branch: `docs/ft-403-advisory-pilot-validation`
+Branch: `docs/ft-403-portfolio-demo-validation`
 Final commit: Pending
 Pull request: Pending
 
-Run a controlled evaluation with representative users and explicit success/failure criteria.
+Run a focused usability evaluation with representative recruiters, hiring managers, or neutral reviewers and explicit success/failure criteria.
 
 Dependencies: FT-401, FT-402
 
 Acceptance checklist:
 
-- [ ] Pilot scope, users, duration, data, and prohibited uses are written and approved.
-- [ ] Baseline measures include detection time, response time, duplicate rate, dismissal rate, and data availability.
+- [ ] Demo scope, viewers, tasks, data modes, and prohibited operational uses are written.
+- [ ] Measures include time to understand the product, task completion, source-mode comprehension, and data availability.
 - [ ] Users complete core workflows without facilitator intervention.
-- [ ] False positives, false negatives, and confusing evidence are reviewed.
-- [ ] Go, revise, or stop decision is recorded with supporting data.
+- [ ] Confusing copy, evidence, controls, and source labeling are reviewed.
+- [ ] Publish, revise, or stop decision is recorded with supporting observations.
 
 Verification evidence: Pending.
 
-## FT-404 — Deploy the production system and preview environments
+## FT-404 — Deploy the public portfolio and preview environments
 
 Status: Not started
 
@@ -101,7 +101,7 @@ Branch: `feat/ft-404-production-deployment`
 Final commit: Pending
 Pull request: Pending
 
-Deploy the public Next.js interface on Vercel while placing persistent Rust ingestion and API workloads on appropriate container infrastructure with managed PostgreSQL/PostGIS.
+Deploy the public Next.js interface on Vercel while placing the Rust API, optional continuous ingestion, and PostgreSQL/PostGIS on infrastructure suited to those persistent workloads.
 
 Dependencies: FT-401, FT-402
 
@@ -112,8 +112,9 @@ Acceptance checklist:
 - [ ] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
 - [ ] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
 - [ ] Secrets and environment variables are separated across development, preview, and production.
-- [ ] Production domain, TLS, security headers, logging, tracing, and alerting are verified.
+- [ ] Public domain, TLS, security headers, bounded logging, and basic availability monitoring are verified.
 - [ ] Deployment, migration, rollback, and incident runbooks are tested.
-- [ ] End-to-end smoke checks prove browser, API, database, and degraded-state behavior.
+- [ ] End-to-end smoke checks prove browser, API, database, replay fallback, source labeling, and degraded-state behavior.
+- [ ] The public deployment contains no claim of certification, operational authority, commercial SLA, or real-operator endorsement.
 
 Verification evidence: Pending.

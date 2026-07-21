@@ -1,5 +1,7 @@
 # FT-301 Procurement Handoff
 
+> Archived for an optional future commercial or operational re-scope. The active FT-301 portfolio ticket does not require this handoff, provider outreach, pricing, an SLA, or a 14-day trial.
+
 This is the human-action boundary for selecting a commercial flight-data provider. The engineering package is ready; the remaining inputs must come from accountable people and the providers. Do not invent names, approvals, contract answers, prices, tails, or trial results to advance the checklists.
 
 ## Outcome required

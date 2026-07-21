@@ -4,29 +4,28 @@ Last updated: 2026-07-21
 
 ## Current state
 
-- Current milestone: M3 — Commercial flight data and operational workflow
-- External gate: FT-301 — provider procurement evidence pending after handoff PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
-- Active engineering ticket: FT-401 — Blocked on provider, hosted-environment, drill, and owner-approval evidence
+- Current milestone: M3 — Portfolio live data and operational workflow
+- Active ticket: FT-401 — Reconcile the trust review with the portfolio scope
 - Branch: `docs/ft-401-security-trust-review`
-- Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; completion gate remains open)
-- Owner: Security, legal/privacy, product, and engineering
-- Overall status: M0, M1, and M2 are complete; M3 and the remaining delivery path are externally blocked after dependency-safe FT-401 controls and verifier preparation
-- Next action: Accountable Product/Legal/operator/Platform owners provide terminal FT-301 provider evidence, managed preview/database/secret infrastructure, shared-identity and wording decisions, and controlled hosted drill results. Resume FT-401/FT-302 only when their recorded dependencies are satisfied.
+- Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; main merged and conflicts resolved)
+- Owner: Product, engineering, and security
+- Overall status: M0, M1, and M2 are complete; FT-301 and FT-302 are no longer blocked by commercial procurement, while FT-401 retains substantial implemented hardening and is being re-evaluated against the public portfolio goal
+- Next action: Validate the merged FT-401 branch, remove commercial-provider and real-operator completion gates from its review package, and retain only security and deployment evidence appropriate for a public portfolio. Then run FT-301 on its own branch.
 
 ## Milestone checklist
 
-- [x] M0 — Foundation and feasibility
+- [x] M0 — Foundation, feasibility, and portfolio rebaseline
 - [x] M1 — Simulated operations console
 - [x] M2 — Live weather and hazard intelligence
-- [ ] M3 — Commercial flight data and operational workflow
-- [ ] M4 — Pilot readiness and operational hardening
+- [ ] M3 — Portfolio live data and operational workflow
+- [ ] M4 — Portfolio launch and demonstration hardening
 - [ ] M5 — Optimization research and controlled recommendations
 
 ## Ticket progress
 
 | Milestone | Complete | Total |
 | --- | ---: | ---: |
-| M0 | 4 | 4 |
+| M0 | 5 | 5 |
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
 | M3 | 2 | 4 |
@@ -54,12 +53,12 @@ Last updated: 2026-07-21
 - FT-203 is merged through PR #11 at `848af8f`; local `main` was synchronized before FT-204 began.
 - FT-204 is active on `feat/ft-204-alert-lifecycle`; deterministic Rust policy will own ranking, dedupe, transitions, and audit evidence while the web app exposes human-controlled actions.
 - FT-204 is delivered through PR #12. CI run `29811831163` verifies live replay persistence, route-hazard alert creation, score evidence, API acknowledgement, schema invariants, and the independent PostGIS rule oracle; M2 is complete.
-- FT-301 is externally gated on written commercial rights and a common 14-day provider trial. FT-303 and FT-304 are complete, so this is now the critical path for live flight integration and pilot readiness.
+- FT-301 is re-scoped to choose an officially eligible free, best-effort aircraft-position source or record replay-only as the outcome. Commercial rights, price, SLA, operator contacts, and a 14-day trial no longer block the portfolio roadmap.
 - FT-303 is delivered through PR #13 at implementation commit `1430ce8`. CI run `29814499315` verifies Rust, web, live authenticated replay, the identity migration, PostGIS cross-tenant route isolation, session revocation, and actor/tenant audit behavior. Hosted identity remains behind a provider-neutral boundary; tenant membership and operational authorization are app-owned and enforced by Rust.
 - FT-304 is delivered through PR #14 at implementation and CI contract commit `11bdc0d`. CI run `29816346733` verifies the additive migration, authenticated replay, workflow-version acknowledgement, tenant-safe assignment, all queue filters, structured dismissal, conflict rejection, bounded persistence volume, Rust and web quality gates, and production builds.
-- FT-301 preparation package is merged through PR #15 at `c8d8a78`; PR #16 records the corrected external procurement handoff. Selection remains gated on named accountable owners, written Order-level rights (including explicit AI/ML, retention, and upstream-data SaaS authorization), a matched real-time 14-day trial, operator-owned target tails, and priced proposals.
+- FT-301 commercial preparation package is merged through PR #15 at `c8d8a78`; PR #16 records the corrected procurement handoff. This research is retained for an optional future production track and is not an active portfolio-release gate.
 - FT-004 upgrades checkout and setup-node to their official Node 24 action-runtime releases through PR #17 at implementation commit `715d7d6`; CI run `29832129375` passed all three jobs with zero check annotations while preserving application Node.js `20.20.1`.
-- FT-401 review preparation is in draft PR [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18), with latest implementation commit `f3d3e08`. It documents and enforces the implemented trust boundaries, threat model, data lifecycle/backup/incident baseline, and ten owned findings. The package is structurally validated in CI; pilot authorization remains withheld while critical/high findings and FT-301 provider obligations are open.
+- FT-401 review preparation is in draft PR [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18), with latest pre-rebaseline implementation commit `f3d3e08`. It documents and enforces implemented trust boundaries, threat modeling, data lifecycle/backup/incident controls, and ten owned findings. The package is structurally validated; portfolio publication remains pending on proportionate hosted-environment evidence, not commercial-provider procurement.
 - F401-004 is closed at implementation commit `e9e5f76`: operator-scoped membership foreign keys now protect both current alert assignments and assignment audit rows. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) proves direct-database and authenticated-API cross-tenant rejection plus valid same-tenant assignment.
 - Browser policy implementation commit `dc08690` adds strict nonce-aware Clerk CSP and production response hardening. CI run [29833848250](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833848250), the standalone header smoke, and all 30 web tests pass; F401-005 remains open only for a real hosted-Clerk preview browser smoke.
 - F401-010 is closed at implementation commit `38cf7b7`: public health/readiness probes now expose one status field, while detailed worker/database/PostGIS diagnostics require authorization. CI run [29834083229](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834083229) verifies the public, unauthorized, authenticated, PostGIS, BFF, and console contracts.
@@ -73,11 +72,12 @@ Last updated: 2026-07-21
 - Bounded-write commit `cd08649` enforces matching Rust/PostgreSQL limits for dispatcher notes, action identifiers, and session-revocation reasons, normalizes idempotency, and surfaces the note limit in the console. CI run [29844162906](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29844162906) passes all three jobs including API and direct-database rejection.
 - Sensitive-write monitoring commit `d975ac3` detects controlled credential/email patterns in dispatcher comments and session-revocation reasons while returning only redacted tenant-scoped signals. CI run [29845085036](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29845085036) passes all three jobs and proves detection, non-leakage, ordinary-text rejection, and cross-tenant isolation against fresh PostGIS. F401-007 remains open only for the representative hosted audit/retention incident drill.
 - Hosted-drill verifier commits `943bb65` and `f3d3e08` add sanitized fail-closed checks for administrator audit/export/monitoring/integrity access, viewer/operator denial, marker redaction, expected signal severities, cross-tenant exclusion, and exact retention disposition counts. CI run [29846123252](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29846123252) passes the ten-case verifier suite and all Rust, web, and PostGIS jobs. The hosted execution itself remains open under F401-007.
-- The 2026-07-21 dependency audit leaves FT-401 blocked: the complete FT-301 validator still fails on all provider rights/SLA/price/trial evidence and the final decision; the complete FT-401 validator still fails on F401-001/002/003/005/006/007/008/009; draft PR #18 has green code checks but no deployment/drill evidence; and FT-302, FT-402, FT-403, and FT-404 remain chained behind those gates. Do not start a downstream feature branch or merge PR #18 until the corresponding external evidence exists.
+- FT-005 is delivered through PR [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19) at scope commit `7b052f9` and delivery-record commit `d1b9f46`. CI run [29847937301](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29847937301) passes Rust, web, and API/PostGIS checks. The active roadmap now targets a non-commercial recruiter/hiring-manager portfolio, with free best-effort positions or replay instead of paid-provider procurement.
+- The FT-005 rebaseline makes `validate_ft301_evidence.py --require-complete`, commercial contract evidence, priced trials, an SLA, and real-operator approval irrelevant to FT-401 completion. The remaining FT-401 findings must be reviewed against a public portfolio deployment before PR #18 can be completed.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
-- Cirium Sky Stream and FlightAware Firehose are the commercial flight-data finalists; final selection is blocked on written rights, a common 14-day target-fleet trial, SLA, retention, and price.
+- Cirium Sky Stream and FlightAware Firehose remain optional future commercial candidates; no paid provider is required for the portfolio release.
 - FlightAware AeroAPI must not be used for the dispatcher display under its published self-service license because that license excludes commercial aircraft situational displays.
 - FAA SCDS/SWIFT and NMS remain separately access-gated and must not be treated as sole operational sources.
 - Do not begin ACARS integration or flight optimization until the gates in M5 are satisfied.

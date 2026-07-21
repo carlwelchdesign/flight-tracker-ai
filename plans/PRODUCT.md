@@ -4,9 +4,11 @@
 
 Dispatchers lose time and attention by switching between flight tracking, weather, airport, airspace, and communication systems. This product should create one explainable operational picture and surface only the events that materially affect monitored flights.
 
-## Beachhead user
+The repository is a non-commercial portfolio project. Its purpose is to demonstrate product design, full-stack engineering, Rust backend architecture, geospatial reasoning, data provenance, and operational UX to recruiters and hiring managers. It must never imply that it is approved for real flight operations.
 
-The first user is an airline or charter-operation dispatcher monitoring a modest fleet during day-of-operations. A demo user may be an operations manager evaluating whether the product can reduce alert fatigue and improve response time.
+## Primary audience
+
+The first viewer is a recruiter or hiring manager exploring a convincing dispatcher-style workflow. The interface models an airline or charter dispatcher monitoring a modest fleet, but no real operator, contract, or operational deployment is required for the portfolio release.
 
 ## Primary job to be done
 
@@ -36,6 +38,8 @@ The first user is an airline or charter-operation dispatcher monitoring a modest
 
 ## Hard non-goals for the MVP
 
+- Real operational use or safety certification
+- Commercial flight-data procurement or contractual uptime guarantees
 - Autonomous dispatch decisions
 - Certified flight planning
 - Pilot-facing route or altitude commands
@@ -58,6 +62,10 @@ The first user is an airline or charter-operation dispatcher monitoring a modest
 
 ## Product gates
 
-- A commercial flight-data provider is not selected until licensing, coverage, latency, and cost are documented.
+- Any free live-data source must have documented official terms permitting the exact public, non-commercial portfolio use, including hosting, display, storage, and attribution.
+- Live aircraft data is optional and best-effort. Deterministic replay remains the guaranteed demo path.
+- Simulated, live, stale, and unavailable data must be labeled clearly; scenario metadata must never be presented as provider-supplied fact.
 - Real dispatcher or pilot messages remain draft-only until identity, permissions, audit, and human approval are implemented.
 - Optimization work requires historical truth data and an agreed validation method.
+
+Commercial provider rights, pricing, trials, SLAs, and real-operator validation are preserved as an optional production track. They do not block the portfolio MVP.
