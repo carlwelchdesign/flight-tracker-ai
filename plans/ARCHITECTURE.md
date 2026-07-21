@@ -77,9 +77,8 @@ Every envelope should carry:
 - `GET /api/flights/{id}/timeline`
 - `GET /api/hazards`
 - `GET /api/alerts`
-- `POST /api/alerts/{id}/acknowledge`
-- `POST /api/alerts/{id}/dismiss`
-- `POST /api/alerts/{id}/resolve`
+- `GET /api/alerts/{id}`
+- `POST /api/alerts/{id}/actions`
 - `GET /api/source-health`
 - `GET /api/events/stream`
 - Development-only replay controls protected by environment and authorization

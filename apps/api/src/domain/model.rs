@@ -337,6 +337,12 @@ pub struct Alert {
     pub rule_id: String,
     pub rule_version: u32,
     pub dedupe_key: String,
+    pub series_key: String,
+    pub alert_revision: u32,
+    pub supersedes_alert_id: Option<AlertId>,
+    pub attention_score: u8,
+    pub score_version: u32,
+    pub evidence: Value,
     pub evidence_envelope_ids: Vec<ProviderEnvelopeId>,
 }
 
@@ -357,6 +363,7 @@ pub struct AlertAction {
     pub alert_id: AlertId,
     pub action: AlertActionKind,
     pub actor_id: String,
+    pub idempotency_key: String,
     pub occurred_at: DateTime<Utc>,
     pub comment: Option<String>,
 }

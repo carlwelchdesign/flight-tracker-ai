@@ -19,12 +19,13 @@ Build an operations-intelligence console inspired by Flight Science: live fleet 
 9. [NOAA_INGESTION.md](NOAA_INGESTION.md) — live METAR/SIGMET ingestion, persistence, freshness, and recovery
 10. [WEATHER_LAYERS.md](WEATHER_LAYERS.md) — typed weather reads, layer states, evidence access, and performance
 11. [ROUTE_HAZARD_RULES.md](ROUTE_HAZARD_RULES.md) — versioned correlation policy, evidence, precision, and golden cases
-12. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
-13. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
-14. [tickets/README.md](tickets/README.md) — ticket index and update rules
-15. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
-16. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
-17. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
+12. [ALERT_LIFECYCLE.md](ALERT_LIFECYCLE.md) — explainable ranking, dedupe, supersession, human actions, and audit behavior
+13. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
+14. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
+15. [tickets/README.md](tickets/README.md) — ticket index and update rules
+16. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
+17. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
+18. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
 
 ## Planning rules
 

@@ -388,9 +388,9 @@ mod tests {
         store.apply(&flight_batch).await.unwrap();
         assert!(store.apply(&flight_batch).await.unwrap().duplicate_batch);
 
-        let later = scenario.batch_for(&scenario.events[7]).unwrap();
+        let later = scenario.batch_for(&scenario.events[8]).unwrap();
         store.apply(&later).await.unwrap();
-        let earlier = scenario.batch_for(&scenario.events[4]).unwrap();
+        let earlier = scenario.batch_for(&scenario.events[5]).unwrap();
         let report = store.apply(&earlier).await.unwrap();
         assert_eq!(report.ignored_events, 1);
 

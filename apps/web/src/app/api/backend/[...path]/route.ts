@@ -10,6 +10,7 @@ const ALLOWED_PATHS = [
   /^api\/(?:hazards|airport-observations)$/,
   /^api\/source-records\/[^/]+$/,
   /^api\/flights(?:\/[^/]+(?:\/timeline)?)?$/,
+  /^api\/alerts(?:\/[^/]+(?:\/actions)?)?$/,
   /^api\/events\/stream$/,
   /^api\/dev\/replay(?:\/(?:pause|resume|reset|speed|outage))?$/,
 ];

@@ -87,6 +87,24 @@
     },
     {
       "sequence": 5,
+      "offset_ms": 500,
+      "provider_record_id": "route-303-v1",
+      "event_type": "planned_route",
+      "route_id": "95f44530-b8a6-4ff0-b3de-b49db16a68b1",
+      "flight_id": "8c72e01b-a9da-49e4-a79a-5e0a40bd5b6f",
+      "route_version": 1,
+      "effective_from_offset_ms": 0,
+      "effective_to_offset_ms": 900000,
+      "path": {
+        "coordinates": [
+          { "longitude_degrees": -122.15, "latitude_degrees": 36.95 },
+          { "longitude_degrees": -121.65, "latitude_degrees": 37.25 },
+          { "longitude_degrees": -122.38, "latitude_degrees": 37.62 }
+        ]
+      }
+    },
+    {
+      "sequence": 6,
       "offset_ms": 1000,
       "provider_record_id": "position-101-1",
       "event_type": "position",
@@ -98,7 +116,7 @@
       "quality": "observed"
     },
     {
-      "sequence": 6,
+      "sequence": 7,
       "offset_ms": 1000,
       "provider_record_id": "position-202-ground",
       "event_type": "position",
@@ -110,7 +128,7 @@
       "quality": "observed"
     },
     {
-      "sequence": 7,
+      "sequence": 8,
       "offset_ms": 1000,
       "provider_record_id": "position-303-1",
       "event_type": "position",
@@ -122,7 +140,7 @@
       "quality": "observed"
     },
     {
-      "sequence": 8,
+      "sequence": 9,
       "offset_ms": 60000,
       "provider_record_id": "position-101-2",
       "event_type": "position",
@@ -134,7 +152,7 @@
       "quality": "observed"
     },
     {
-      "sequence": 9,
+      "sequence": 10,
       "offset_ms": 60000,
       "provider_record_id": "position-303-2",
       "event_type": "position",
@@ -146,7 +164,7 @@
       "quality": "observed"
     },
     {
-      "sequence": 10,
+      "sequence": 11,
       "offset_ms": 120000,
       "provider_record_id": "flight-202-active",
       "event_type": "flight_snapshot",
@@ -154,7 +172,7 @@
       "status": "active"
     },
     {
-      "sequence": 11,
+      "sequence": 12,
       "offset_ms": 121000,
       "provider_record_id": "position-202-airborne",
       "event_type": "position",
@@ -166,7 +184,7 @@
       "quality": "observed"
     },
     {
-      "sequence": 12,
+      "sequence": 13,
       "offset_ms": 180000,
       "provider_record_id": "position-303-3",
       "event_type": "position",

@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use config::Config;
 use flight_tracker_api::{
+    alerting::spawn_alert_worker,
     build_router_with_runtime_and_ingestion,
     health::CriticalWorkerRegistry,
     ingestion::{IngestionHub, IngestionSubscription},
@@ -71,6 +72,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         let ingestion = IngestionHub::new(256);
         ingestion_subscriptions.push(ingestion.subscription("noaa_projection"));
+        spawn_alert_worker(
+            database.clone(),
+            ingestion.subscribe(),
+            workers.register("noaa_alert_projection"),
+        );
         let client = NoaaClient::new(NoaaClientConfig {
             base_url: noaa_config.base_url,
             user_agent: noaa_config.user_agent,
