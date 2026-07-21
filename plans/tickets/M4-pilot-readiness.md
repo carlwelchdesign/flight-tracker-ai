@@ -91,11 +91,12 @@ recovery gate.
 
 ## FT-403 — Validate the recruiter and hiring-manager demo
 
-Status: Not started
+Status: In progress
 
 Branch: `docs/ft-403-portfolio-demo-validation`
 Final commit: Pending
 Pull request: Pending
+Owner: Product design, user research, and engineering
 
 Run a focused usability evaluation with representative recruiters, hiring managers, or neutral reviewers and explicit success/failure criteria.
 
@@ -103,13 +104,20 @@ Dependencies: FT-401, FT-402
 
 Acceptance checklist:
 
-- [ ] Demo scope, viewers, tasks, data modes, and prohibited operational uses are written.
-- [ ] Measures include time to understand the product, task completion, source-mode comprehension, and data availability.
+- [x] Demo scope, viewers, tasks, data modes, and prohibited operational uses are written.
+- [x] Measures include time to understand the product, task completion, source-mode comprehension, and data availability.
 - [ ] Users complete core workflows without facilitator intervention.
-- [ ] Confusing copy, evidence, controls, and source labeling are reviewed.
-- [ ] Publish, revise, or stop decision is recorded with supporting observations.
+- [x] Confusing copy, evidence, controls, and source labeling are reviewed.
+- [x] Publish, revise, or stop decision is recorded with supporting observations.
 
-Verification evidence: Pending.
+Verification evidence: [`PORTFOLIO_DEMO_VALIDATION.md`](../PORTFOLIO_DEMO_VALIDATION.md)
+defines the unfacilitated protocol and records the current **Revise** decision.
+The sequential expert simulation identified and corrected the missing H1 and
+walkthrough, dispersed source-mode explanation, ambiguous outage control, and
+missing alert fragment target. Focused component tests verify the orientation
+contract. This evidence is explicitly not an independent human session; the
+remaining participant checkbox and public **Publish** decision require a
+neutral reviewer on the candidate preview produced by FT-404.
 
 ## FT-404 — Deploy the public portfolio and preview environments
 

@@ -16,7 +16,7 @@ visible source and freshness limits.
    map, board, detail, timeline, and evidence agree.
 3. Open the dispatcher queue, review the score breakdown, and perform one
    explicit human action. Explain that the system does not send instructions.
-4. Use the development **Outage** control. Point out that the source-outage
+4. Use the development **Test outage** control. Point out that the source-outage
    banner appears while the last picture, service state, and stream state remain
    distinct. Restore the feed or reset replay.
 5. If the optional position layer is enabled, show its coverage, freshness,

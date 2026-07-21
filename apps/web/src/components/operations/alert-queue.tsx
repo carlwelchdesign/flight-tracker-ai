@@ -214,7 +214,7 @@ export function AlertQueue({ canManage, refreshRevision }: AlertQueueProps) {
   const hasFilters = Object.values(filters).some(Boolean);
 
   return (
-    <section className="ops-panel alert-queue-panel" aria-labelledby="alert-queue-title">
+    <section id="alert-review" className="ops-panel alert-queue-panel" aria-labelledby="alert-queue-title">
       <div className="ops-panel-heading">
         <div><p className="section-kicker">Decision support</p><h2 id="alert-queue-title">Dispatcher review queue</h2></div>
         <span className="panel-count">{alerts.length} shown</span>
