@@ -30,6 +30,7 @@ pub enum RetentionDataClass {
     SessionRevocation,
     IdentityMapping,
     TerminalAlertHistory,
+    NormalizedOperationalFact,
 }
 
 impl RetentionDataClass {
@@ -40,6 +41,7 @@ impl RetentionDataClass {
             Self::SessionRevocation => "session_revocation",
             Self::IdentityMapping => "identity_mapping",
             Self::TerminalAlertHistory => "terminal_alert_history",
+            Self::NormalizedOperationalFact => "normalized_operational_fact",
         }
     }
 
@@ -50,6 +52,7 @@ impl RetentionDataClass {
             Self::SessionRevocation => "auth_session_revocations",
             Self::IdentityMapping => "auth_identities_minimized",
             Self::TerminalAlertHistory => "alerts",
+            Self::NormalizedOperationalFact => "normalized_operational_facts",
         }
     }
 }
@@ -64,6 +67,7 @@ impl TryFrom<&str> for RetentionDataClass {
             "session_revocation" => Ok(Self::SessionRevocation),
             "identity_mapping" => Ok(Self::IdentityMapping),
             "terminal_alert_history" => Ok(Self::TerminalAlertHistory),
+            "normalized_operational_fact" => Ok(Self::NormalizedOperationalFact),
             _ => Err(RetentionError::InvalidConfiguration),
         }
     }
@@ -168,6 +172,31 @@ struct EligibleAlert {
     alert_revision: i32,
 }
 
+#[derive(sqlx::FromRow)]
+struct OperationalFactInventory {
+    airport_observations: i64,
+    flights: i64,
+    aircraft_positions: i64,
+    planned_routes: i64,
+    weather_hazards: i64,
+}
+
+#[derive(sqlx::FromRow)]
+struct EligibleOperationalFact {
+    fact_type: String,
+    record_id: Uuid,
+}
+
+const OPERATIONAL_FACT_INVENTORY_SQL: &str = r#"
+    SELECT
+        COUNT(*) FILTER (WHERE fact_type = 'airport_observations') AS airport_observations,
+        COUNT(*) FILTER (WHERE fact_type = 'flights') AS flights,
+        COUNT(*) FILTER (WHERE fact_type = 'aircraft_positions') AS aircraft_positions,
+        COUNT(*) FILTER (WHERE fact_type = 'planned_routes') AS planned_routes,
+        COUNT(*) FILTER (WHERE fact_type = 'weather_hazards') AS weather_hazards
+    FROM eligible_normalized_fact_ids($1, $2, $3)
+    "#;
+
 const ALERT_HISTORY_INVENTORY_SQL: &str = r#"
     WITH eligible_series AS (
         SELECT alert.series_key
@@ -230,7 +259,10 @@ impl RetentionStore {
         now: DateTime<Utc>,
     ) -> Result<RetentionPolicyView, RetentionError> {
         let provider = bounded_name(&request.provider)?;
-        if request.data_class != RetentionDataClass::ProviderRawPayload && provider != "application"
+        if !matches!(
+            request.data_class,
+            RetentionDataClass::ProviderRawPayload | RetentionDataClass::NormalizedOperationalFact
+        ) && provider != "application"
         {
             return Err(RetentionError::InvalidConfiguration);
         }
@@ -675,6 +707,16 @@ async fn inventory_counts(
     provider: &str,
     cutoff_at: DateTime<Utc>,
 ) -> Result<Value, sqlx::Error> {
+    if data_class == RetentionDataClass::NormalizedOperationalFact {
+        let inventory =
+            sqlx::query_as::<_, OperationalFactInventory>(OPERATIONAL_FACT_INVENTORY_SQL)
+                .bind(operator_id.as_uuid())
+                .bind(provider)
+                .bind(cutoff_at)
+                .fetch_one(database)
+                .await?;
+        return Ok(operational_fact_inventory_json(inventory));
+    }
     if data_class == RetentionDataClass::TerminalAlertHistory {
         let inventory = sqlx::query_as::<_, AlertHistoryInventory>(ALERT_HISTORY_INVENTORY_SQL)
             .bind(operator_id.as_uuid())
@@ -728,6 +770,7 @@ async fn inventory_counts(
                 .await?
         }
         RetentionDataClass::TerminalAlertHistory => unreachable!(),
+        RetentionDataClass::NormalizedOperationalFact => unreachable!(),
     };
     Ok(json!({ data_class.inventory_key(): count }))
 }
@@ -739,6 +782,16 @@ async fn inventory_counts_transaction(
     provider: &str,
     cutoff_at: DateTime<Utc>,
 ) -> Result<Value, sqlx::Error> {
+    if data_class == RetentionDataClass::NormalizedOperationalFact {
+        let inventory =
+            sqlx::query_as::<_, OperationalFactInventory>(OPERATIONAL_FACT_INVENTORY_SQL)
+                .bind(operator_id.as_uuid())
+                .bind(provider)
+                .bind(cutoff_at)
+                .fetch_one(&mut **transaction)
+                .await?;
+        return Ok(operational_fact_inventory_json(inventory));
+    }
     if data_class == RetentionDataClass::TerminalAlertHistory {
         let inventory = sqlx::query_as::<_, AlertHistoryInventory>(ALERT_HISTORY_INVENTORY_SQL)
             .bind(operator_id.as_uuid())
@@ -792,8 +845,19 @@ async fn inventory_counts_transaction(
                 .await?
         }
         RetentionDataClass::TerminalAlertHistory => unreachable!(),
+        RetentionDataClass::NormalizedOperationalFact => unreachable!(),
     };
     Ok(json!({ data_class.inventory_key(): count }))
+}
+
+fn operational_fact_inventory_json(inventory: OperationalFactInventory) -> Value {
+    json!({
+        "airport_observations": inventory.airport_observations,
+        "flights": inventory.flights,
+        "aircraft_positions": inventory.aircraft_positions,
+        "planned_routes": inventory.planned_routes,
+        "weather_hazards": inventory.weather_hazards,
+    })
 }
 
 fn identity_candidate_count_sql() -> &'static str {
@@ -862,7 +926,104 @@ async fn execute_data_class(
         RetentionDataClass::TerminalAlertHistory => {
             execute_terminal_alert_history(transaction, operator_id, run, now).await
         }
+        RetentionDataClass::NormalizedOperationalFact => {
+            execute_normalized_operational_facts(transaction, operator_id, run, now).await
+        }
     }
+}
+
+async fn execute_normalized_operational_facts(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    run: &RetentionRunView,
+    now: DateTime<Utc>,
+) -> Result<u64, RetentionError> {
+    let facts = sqlx::query_as::<_, EligibleOperationalFact>(
+        r#"
+        SELECT fact_type, record_id
+        FROM eligible_normalized_fact_ids($1, $2, $3)
+        ORDER BY fact_type, record_id
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(&run.provider)
+    .bind(run.cutoff_at)
+    .fetch_all(&mut **transaction)
+    .await?;
+
+    for fact in &facts {
+        sqlx::query(
+            r#"
+            INSERT INTO operational_fact_tombstones (
+                id, operator_id, retention_run_id, provider,
+                fact_type, record_id, deleted_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+            "#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(operator_id.as_uuid())
+        .bind(run.id)
+        .bind(&run.provider)
+        .bind(&fact.fact_type)
+        .bind(fact.record_id)
+        .bind(now)
+        .execute(&mut **transaction)
+        .await?;
+    }
+
+    let ids_for = |fact_type: &str| {
+        facts
+            .iter()
+            .filter(|fact| fact.fact_type == fact_type)
+            .map(|fact| fact.record_id)
+            .collect::<Vec<_>>()
+    };
+    let positions = delete_operational_facts(
+        transaction,
+        operator_id,
+        "aircraft_positions",
+        &ids_for("aircraft_positions"),
+    )
+    .await?;
+    let routes = delete_operational_facts(
+        transaction,
+        operator_id,
+        "planned_routes",
+        &ids_for("planned_routes"),
+    )
+    .await?;
+    let observations = delete_operational_facts(
+        transaction,
+        operator_id,
+        "airport_observations",
+        &ids_for("airport_observations"),
+    )
+    .await?;
+    let hazards = delete_operational_facts(
+        transaction,
+        operator_id,
+        "weather_hazards",
+        &ids_for("weather_hazards"),
+    )
+    .await?;
+    let flights =
+        delete_operational_facts(transaction, operator_id, "flights", &ids_for("flights")).await?;
+    Ok(positions + routes + observations + hazards + flights)
+}
+
+async fn delete_operational_facts(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    table: &str,
+    ids: &[Uuid],
+) -> Result<u64, sqlx::Error> {
+    let query = format!("DELETE FROM {table} WHERE operator_id = $1 AND id = ANY($2)");
+    Ok(sqlx::query(&query)
+        .bind(operator_id.as_uuid())
+        .bind(ids)
+        .execute(&mut **transaction)
+        .await?
+        .rows_affected())
 }
 
 async fn execute_terminal_alert_history(
@@ -1258,6 +1419,10 @@ mod tests {
         assert_eq!(
             RetentionDataClass::try_from("terminal_alert_history").unwrap(),
             RetentionDataClass::TerminalAlertHistory
+        );
+        assert_eq!(
+            RetentionDataClass::try_from("normalized_operational_fact").unwrap(),
+            RetentionDataClass::NormalizedOperationalFact
         );
         assert!(RetentionDataClass::try_from("passenger_records").is_err());
     }

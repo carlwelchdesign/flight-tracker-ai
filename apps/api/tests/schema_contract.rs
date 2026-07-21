@@ -56,6 +56,7 @@ const REQUIRED_TABLES: &[&str] = &[
     "data_deletion_tombstones",
     "lifecycle_deletion_tombstones",
     "alert_history_tombstones",
+    "operational_fact_tombstones",
 ];
 
 async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthService, String) {
@@ -221,13 +222,24 @@ async fn complete_retention_run(
     data_class: RetentionDataClass,
     now: chrono::DateTime<Utc>,
 ) -> flight_tracker_api::retention::RetentionRunView {
+    complete_scoped_retention_run(store, requester, approver, data_class, "application", now).await
+}
+
+async fn complete_scoped_retention_run(
+    store: &RetentionStore,
+    requester: &flight_tracker_api::auth::AuthContext,
+    approver: &flight_tracker_api::auth::AuthContext,
+    data_class: RetentionDataClass,
+    provider: &str,
+    now: chrono::DateTime<Utc>,
+) -> flight_tracker_api::retention::RetentionRunView {
     let scope = data_class.as_str();
     let policy = store
         .create_policy(
             requester,
             &CreateRetentionPolicy {
                 data_class,
-                provider: "application".into(),
+                provider: provider.into(),
                 retention_seconds: 3_600,
                 approval_reference: format!("legal:FT-401/{scope}-v1"),
             },
@@ -888,6 +900,304 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
     .await
     .unwrap();
     assert_eq!(new_material_alert.rows_affected(), 1);
+
+    let fact_provider = "fact-retention";
+    let fact_old_envelope = Uuid::new_v4();
+    let fact_current_envelope = Uuid::new_v4();
+    let other_provider_envelope = Uuid::new_v4();
+    let other_tenant_envelope = Uuid::new_v4();
+    for (id, tenant, provider, received_at, hash) in [
+        (
+            fact_old_envelope,
+            operator_id,
+            fact_provider,
+            now - Duration::hours(2),
+            "1".repeat(64),
+        ),
+        (
+            fact_current_envelope,
+            operator_id,
+            fact_provider,
+            now,
+            "2".repeat(64),
+        ),
+        (
+            other_provider_envelope,
+            operator_id,
+            "other-fact-provider",
+            now - Duration::hours(2),
+            "3".repeat(64),
+        ),
+        (
+            other_tenant_envelope,
+            other_operator_id,
+            fact_provider,
+            now - Duration::hours(2),
+            "4".repeat(64),
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO provider_envelopes (
+                id, operator_id, schema_version, provider, feed,
+                provider_record_id, event_time, received_at, processed_at,
+                raw_payload_sha256, raw_payload
+            ) VALUES ($1,$2,1,$3,'normalized-facts',$4,$5,$5,$5,$6,'{}')
+            "#,
+        )
+        .bind(id)
+        .bind(tenant.as_uuid())
+        .bind(provider)
+        .bind(id.to_string())
+        .bind(received_at)
+        .bind(hash)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    let eligible_flight = Uuid::new_v4();
+    let active_flight = Uuid::new_v4();
+    let referenced_flight = Uuid::new_v4();
+    for (id, status) in [
+        (eligible_flight, "landed"),
+        (active_flight, "active"),
+        (referenced_flight, "landed"),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO flights (
+                id, operator_id, source_envelope_id, schema_version,
+                event_time, received_at, processed_at, callsign, status
+            ) VALUES ($1,$2,$3,1,$4,$4,$4,$5,$6)
+            "#,
+        )
+        .bind(id)
+        .bind(operator_id.as_uuid())
+        .bind(fact_old_envelope)
+        .bind(now - Duration::hours(2))
+        .bind(format!("RET{}", &id.simple().to_string()[..5]))
+        .bind(status)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    let eligible_position = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO aircraft_positions (
+            id, operator_id, flight_id, source_envelope_id, schema_version,
+            event_time, received_at, processed_at, position, source_quality
+        ) VALUES ($1,$2,$3,$4,1,$5,$5,$5,ST_SetSRID(ST_Point(-122.0,37.0),4326),'observed')
+        "#,
+    )
+    .bind(eligible_position)
+    .bind(operator_id.as_uuid())
+    .bind(eligible_flight)
+    .bind(fact_old_envelope)
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    let eligible_route = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO planned_routes (
+            id, operator_id, flight_id, source_envelope_id, schema_version,
+            event_time, received_at, processed_at, route_version,
+            effective_from, effective_to, path
+        ) VALUES ($1,$2,$3,$4,1,$5,$5,$5,1,$5,$5,
+                  ST_SetSRID(ST_GeomFromText('LINESTRING(-122 37,-121 38)'),4326))
+        "#,
+    )
+    .bind(eligible_route)
+    .bind(operator_id.as_uuid())
+    .bind(eligible_flight)
+    .bind(fact_old_envelope)
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let eligible_observation = Uuid::new_v4();
+    let current_observation = Uuid::new_v4();
+    let other_provider_observation = Uuid::new_v4();
+    let other_tenant_observation = Uuid::new_v4();
+    for (id, tenant, envelope, observed_at, station) in [
+        (
+            eligible_observation,
+            operator_id,
+            fact_old_envelope,
+            now - Duration::hours(2),
+            "KOLD",
+        ),
+        (
+            current_observation,
+            operator_id,
+            fact_current_envelope,
+            now,
+            "KCUR",
+        ),
+        (
+            other_provider_observation,
+            operator_id,
+            other_provider_envelope,
+            now - Duration::hours(2),
+            "KOTH",
+        ),
+        (
+            other_tenant_observation,
+            other_operator_id,
+            other_tenant_envelope,
+            now - Duration::hours(2),
+            "KXTN",
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO airport_observations (
+                id, operator_id, source_envelope_id, schema_version,
+                event_time, received_at, processed_at, station_code,
+                report_type, raw_text, provider_received_at, position,
+                visibility_greater_than, flight_category
+            ) VALUES ($1,$2,$3,1,$4,$4,$4,$5,'METAR','retention fixture',$4,
+                      ST_SetSRID(ST_Point(-122.0,37.0),4326),false,'visual')
+            "#,
+        )
+        .bind(id)
+        .bind(tenant.as_uuid())
+        .bind(envelope)
+        .bind(observed_at)
+        .bind(station)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    let eligible_hazard_first = Uuid::new_v4();
+    let eligible_hazard_second = Uuid::new_v4();
+    let hazard_series = format!("retention-hazard-{}", Uuid::new_v4());
+    for (id, revision, supersedes) in [
+        (eligible_hazard_first, 1, None),
+        (eligible_hazard_second, 2, Some(eligible_hazard_first)),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO weather_hazards (
+                id, operator_id, source_envelope_id, schema_version,
+                event_time, received_at, processed_at, hazard_type, severity,
+                valid_from, valid_to, footprint, external_series_id, revision,
+                supersedes_id, status, issued_at, provider_received_at
+            ) VALUES ($1,$2,$3,1,$4,$4,$4,'retention_test','advisory',$4,$4,
+                      ST_SetSRID(ST_GeomFromText('POLYGON((-123 36,-121 36,-121 38,-123 36))'),4326),
+                      $5,$6,$7,'cancelled',$4,$4)
+            "#,
+        )
+        .bind(id)
+        .bind(operator_id.as_uuid())
+        .bind(fact_old_envelope)
+        .bind(now - Duration::hours(2))
+        .bind(&hazard_series)
+        .bind(revision)
+        .bind(supersedes)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    let referenced_alert = Uuid::new_v4();
+    let referenced_series = format!("retention-referenced-{}", Uuid::new_v4());
+    sqlx::query(
+        r#"
+        INSERT INTO alerts (
+            id, operator_id, schema_version, event_time, received_at, processed_at,
+            flight_id, alert_type, severity, lifecycle, rule_id, rule_version,
+            dedupe_key, series_key, alert_revision, attention_score,
+            score_version, evidence
+        ) VALUES ($1,$2,1,$3,$3,$3,$4,'retention_test','information','open',
+                  'retention_rule',1,$5,$5,1,5,1,'{}')
+        "#,
+    )
+    .bind(referenced_alert)
+    .bind(operator_id.as_uuid())
+    .bind(now - Duration::hours(2))
+    .bind(referenced_flight)
+    .bind(&referenced_series)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let fact_run = complete_scoped_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::NormalizedOperationalFact,
+        fact_provider,
+        now,
+    )
+    .await;
+    let fact_counts = fact_run.deletion_counts.unwrap();
+    assert_eq!(fact_counts["airport_observations"], 1);
+    assert_eq!(fact_counts["flights"], 1);
+    assert_eq!(fact_counts["aircraft_positions"], 1);
+    assert_eq!(fact_counts["planned_routes"], 1);
+    assert_eq!(fact_counts["weather_hazards"], 2);
+    for (table, id) in [
+        ("airport_observations", eligible_observation),
+        ("flights", eligible_flight),
+        ("aircraft_positions", eligible_position),
+        ("planned_routes", eligible_route),
+        ("weather_hazards", eligible_hazard_first),
+        ("weather_hazards", eligible_hazard_second),
+    ] {
+        let count =
+            sqlx::query_scalar::<_, i64>(&format!("SELECT COUNT(*) FROM {table} WHERE id = $1"))
+                .bind(id)
+                .fetch_one(pool)
+                .await
+                .unwrap();
+        assert_eq!(count, 0, "{table} fact should be deleted");
+    }
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM flights WHERE id = ANY($1)",)
+            .bind(vec![active_flight, referenced_flight])
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM airport_observations WHERE id = ANY($1)",
+        )
+        .bind(vec![
+            current_observation,
+            other_provider_observation,
+            other_tenant_observation
+        ])
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        3
+    );
+    let restored_observation = sqlx::query(
+        r#"
+        INSERT INTO airport_observations (
+            id, operator_id, source_envelope_id, schema_version, event_time,
+            received_at, processed_at, station_code, report_type, raw_text,
+            provider_received_at, position, visibility_greater_than, flight_category
+        ) VALUES ($1,$2,$3,1,$4,$4,$4,'KOLD','METAR','restored fixture',$4,
+                  ST_SetSRID(ST_Point(-122.0,37.0),4326),false,'visual')
+        "#,
+    )
+    .bind(eligible_observation)
+    .bind(operator_id.as_uuid())
+    .bind(fact_old_envelope)
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(restored_observation.rows_affected(), 0);
 }
 
 async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool) {
