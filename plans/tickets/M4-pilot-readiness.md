@@ -125,7 +125,7 @@ neutral reviewer on the candidate preview produced by FT-404.
 Status: In progress
 
 Branch: `feat/ft-404-production-deployment`
-Latest implementation commit: `03cbd31`
+Latest implementation commit: `a2da158`
 Final commit: Pending
 Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
 Owner: Platform, backend, security, and full-stack engineering
@@ -136,7 +136,7 @@ Dependencies: FT-401, FT-402
 
 Acceptance checklist:
 
-- [ ] Vercel project is connected to GitHub and creates isolated preview deployments for pull requests. (Git connection complete; preview evidence pending this branch PR.)
+- [x] Vercel project is connected to GitHub and creates isolated preview deployments for pull requests.
 - [ ] Production Next.js environment calls the Rust API through a server-only configured URL.
 - [ ] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
 - [ ] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
@@ -150,6 +150,11 @@ Verification evidence: The Vercel project `flight-tracker-ai` is Git-connected
 to this repository with `apps/web` as its Next.js root and Node.js 20.x. The
 first protected candidate deployment `dpl_BhRvwF9Bi5y67XW7w7qiQREaPrpj`
 successfully built commit `03cbd31` and is not public: unauthenticated requests
-are redirected to Vercel deployment protection. [`HOSTED_DEPLOYMENT_RUNBOOK.md`](../HOSTED_DEPLOYMENT_RUNBOOK.md)
+are redirected to Vercel deployment protection. Preview deployment
+`dpl_CHpF3CQacHMBJTnGhnpgsJtYLFfJ` independently built PR #24 commit `a2da158`
+with the preview target and branch alias. CI run
+[29858652637](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29858652637)
+passes Rust, web, PostGIS, hosted-bootstrap, and sanitized FT-404 verifier tests.
+[`HOSTED_DEPLOYMENT_RUNBOOK.md`](../HOSTED_DEPLOYMENT_RUNBOOK.md)
 and [`render.yaml`](../../render.yaml) define the remaining Render, Neon, Clerk,
 secret, restore, browser, and promotion gates. Hosted smoke evidence is pending.
