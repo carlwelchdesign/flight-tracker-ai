@@ -1,0 +1,100 @@
+# FT-405 — Live navigable flight tracker
+
+Status: In progress
+
+Branch: `feat/ft-405-live-navigable-tracker`
+Latest implementation commit: Pending
+Final commit: Pending
+Pull request: Pending
+Owner: Full-stack product engineering
+
+## Outcome
+
+Replace the fixed public SVG/replay presentation with the product users expect
+from a flight tracker: a pannable, zoomable, rotatable geographic map showing a
+bounded region of best-effort aircraft positions from ADSB.lol. Aircraft move
+smoothly between provider snapshots, can be selected for live position and
+motion details, and visibly fall back to the deterministic replay when the free
+source is unavailable.
+
+"Live" means the latest best-effort ADSB.lol regional snapshot, polled no more
+frequently than once every 30 seconds under the existing provider policy. The UI
+may interpolate marker motion between accepted snapshots, but must never imply
+that interpolation is a new source observation. ADSB.lol does not provide
+authoritative routes, schedules, delays, or complete coverage.
+
+## Acceptance checklist
+
+### Public data boundary
+
+- [ ] Rust exposes a public, operator-bound, sanitized live-position snapshot
+      containing only aircraft identity, position, motion, observation time,
+      freshness, source state, region, and required attribution.
+- [ ] The endpoint is fixed to the configured portfolio operator and cannot be
+      used to enumerate tenants, choose arbitrary regions, or request individual
+      aircraft.
+- [ ] Raw and normalized ADSB.lol records remain ephemeral and are never written
+      to PostgreSQL, logs, analytics, browser storage, exports, or backups.
+- [ ] Rust and Next.js preserve `Cache-Control: no-store`, bounded response size,
+      provider attribution, and fail-closed configuration.
+- [ ] Production enables one bounded ADSB.lol region with a 30-second-or-slower
+      poll interval and a project-identifying user agent.
+
+### Navigable map
+
+- [ ] MapLibre GL JS replaces the fixed SVG as the primary public map.
+- [ ] Users can pan, zoom, rotate, use keyboard controls, reset north, and fit
+      the camera to currently visible traffic.
+- [ ] The basemap uses a keyless provider approved for this portfolio demo and
+      shows required OpenStreetMap/OpenFreeMap attribution.
+- [ ] Aircraft, weather hazards, airports, and selected state remain legible
+      against the dark basemap across desktop and mobile layouts.
+- [ ] The flight list and map selection stay synchronized.
+
+### Realtime motion and truthfulness
+
+- [ ] The browser refreshes the sanitized snapshot at the provider cadence and
+      updates aircraft without a page reload.
+- [ ] Aircraft position and heading animate smoothly between accepted snapshots;
+      reduced-motion users receive immediate non-animated updates.
+- [ ] The UI distinguishes observed time, received time, snapshot age, stale
+      aircraft, provider state, and interpolated presentation.
+- [ ] Callsign, altitude, speed, heading, vertical rate, squawk, and source
+      quality are shown only when supplied by the live position source.
+- [ ] No live aircraft is assigned a fabricated origin, destination, route,
+      schedule, delay, airline, or operational status.
+
+### Failure and fallback
+
+- [ ] Connecting, current, stale, degraded, unavailable, and disabled states are
+      visible without clearing the last accepted picture.
+- [ ] If live data is unavailable, the public map offers and automatically
+      preserves a clearly labeled deterministic replay demonstration.
+- [ ] Retrying live data does not restart the page or discard the selected
+      aircraft unnecessarily.
+
+### Verification and release
+
+- [ ] Rust contract, tenant-boundary, no-store, payload-limit, stale-data, and
+      provider-failure tests pass.
+- [ ] Web parser, polling, interpolation, reduced-motion, selection, fallback,
+      accessibility, and MapLibre lifecycle tests pass.
+- [ ] Lint, typecheck, unit tests, production build, Rust formatting, Clippy,
+      and API/PostGIS smoke pass.
+- [ ] Browser verification proves pan, zoom, aircraft selection, live refresh,
+      animation, attribution, degraded fallback, and responsive behavior on the
+      deployed candidate.
+- [ ] The feature branch has intentional commits, a pull request, passing CI,
+      production deployment evidence, and an updated checklist before merge.
+
+## Implementation notes
+
+- Reuse the existing Rust ADSB.lol normalizer, status store, fleet projection,
+  one-request-in-flight policy, retry/backoff, and ODbL attribution contract.
+- Prefer a small public read model over exposing authenticated operational APIs.
+- Use a MapLibre GeoJSON source/layer for aircraft so selection and bulk updates
+  remain efficient. Interpolation belongs in the presentation layer and must
+  not alter stored or source timestamps.
+- Keep deterministic replay as a product-quality fallback, not as the default
+  impression when current live data is available.
+

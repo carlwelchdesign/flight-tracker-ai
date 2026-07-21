@@ -22,6 +22,16 @@ Last updated: 2026-07-21
 - [ ] M4 — Portfolio launch and demonstration hardening
 - [ ] M5 — Optimization research and controlled recommendations
 
+## Current product correction
+
+- FT-405 is active on `feat/ft-405-live-navigable-tracker`. The existing public
+  SVG/replay surface is an interim prototype, not the intended end state. The
+  next release must expose the existing bounded ADSB.lol Rust adapter through a
+  sanitized public no-store read model, replace the fixed SVG with MapLibre,
+  animate aircraft between 30-second best-effort snapshots, and retain replay
+  only as an explicit degraded-source fallback. See
+  [`FT-405-live-navigable-tracker.md`](tickets/FT-405-live-navigable-tracker.md).
+
 ## Ticket progress
 
 | Milestone | Complete | Total |
