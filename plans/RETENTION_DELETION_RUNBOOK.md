@@ -13,7 +13,7 @@ The current engine supports six data classes:
 - `terminal_alert_history` deletes an entire alert series only when every revision is dismissed or resolved and the latest alert/action activity is older than the cutoff. Actions and evidence are deleted before their parent alerts; open, acknowledged, recent, mixed-state, and cross-tenant series remain untouched.
 - `normalized_operational_fact` is provider-scoped. It deletes old airport observations independently; deletes a terminal landed/cancelled flight only with all same-provider old routes/positions and no alert reference; and deletes a whole expired hazard series only when every revision is from the scoped provider and no alert references the series.
 
-Application-owned classes use provider scope `application`; raw payloads and normalized operational facts retain their actual provider scope. The engine does not yet enforce retention for logs, exports, or backups, and approved policies still require scheduled execution and provider-contract overrides before commercial use.
+Application-owned classes use provider scope `application`; raw payloads and normalized operational facts retain their actual provider scope. The engine does not yet enforce retention for logs, exports, or backups. Commercial policies remain blocked until FT-301 supplies the provider-contract period and approval reference.
 
 No commercial provider policy may be approved until FT-301 supplies the controlling retention right and approval reference. The shortest applicable provider, operator, legal, or security period must be used.
 
@@ -29,6 +29,12 @@ All routes require the named administrator-only `ManageRetention` permission and
 6. Verify the completed run counts, tombstone count, and `retention.run.completed` authorization audit event.
 
 Policy and evidence references accept only bounded identifier characters; they are not free-form note channels.
+
+## Scheduled execution
+
+An administrator may create a schedule for one exact approved policy version with a cadence between one hour and 31 days. A different administrator must activate it. The Rust retention scheduler is a supervised critical worker and turns each due slot into one bounded approved run, using the schedule creator as requester/executor and the schedule approver as the standing second-person approval.
+
+Each attempt records its scheduled slot, preview counts, resulting retention run, completion time, or bounded failure code. Cadence advances from the original slot without drift and a slot cannot execute twice. A new policy version retires the prior active schedule. Inactive/disabled administrators, a retired policy, an oversized scope, or an inventory mismatch pause the schedule and require a new reviewed schedule rather than silently retrying deletion.
 
 ## Tombstones and restoration
 
@@ -48,5 +54,7 @@ After any backup restore, restore the current tombstone set from the isolated co
 - `retention_inventory_changed`: abandon the stale run and create a new preview. Do not bypass the recount.
 - `retention_scope_too_large`: split the approved scope through a shorter operational batch procedure before code support is expanded; do not raise the bound ad hoc.
 - `retention_unavailable`: stop. Confirm database health and preserve the approved preview; do not claim deletion.
+- `schedule_authorization_inactive` or `policy_not_approved`: the schedule pauses automatically. Re-establish accountable administrators or approve the replacement policy, then create and separately approve a new schedule.
+- `retention_scope_too_large` or `retention_inventory_changed` on a scheduled attempt: investigate the recorded preview, split/remediate the scope, and create a newly approved schedule. Do not resume by editing database state.
 
 Treat partial or unexpected deletion as SEV-2 until scope and recoverability are known. Do not paste payloads, session identifiers, or unrestricted exports into Git or chat evidence.
