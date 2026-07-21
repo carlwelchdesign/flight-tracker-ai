@@ -142,6 +142,21 @@ jobs:
           print(f'{unsigned}.{signature}')
           PY
           )"
+          curl --fail --silent --dump-header /tmp/live-position-headers \
+            --header "authorization: Bearer ${assertion}" \
+            http://127.0.0.1:8080/api/live-positions/status \
+            > /tmp/live-position-status.json
+          grep --ignore-case --quiet '^cache-control: no-store' /tmp/live-position-headers
+          python3 - <<'PY'
+          import json
+          with open('/tmp/live-position-status.json', encoding='utf-8') as source:
+              assert json.load(source)['state'] == 'disabled'
+          PY
+          curl --fail --silent --dump-header /tmp/fleet-headers \
+            --header "authorization: Bearer ${assertion}" \
+            'http://127.0.0.1:8080/api/flights?page_size=100' \
+            > /tmp/fleet-before-replay.json
+          grep --ignore-case --quiet '^cache-control: no-store' /tmp/fleet-headers
           curl --fail --silent --request POST \
             --header "authorization: Bearer ${assertion}" \
             --header 'content-type: application/json' \

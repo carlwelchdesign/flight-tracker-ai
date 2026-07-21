@@ -35,6 +35,7 @@ describe("representative western-region weather layers", () => {
       onSelect: noop,
       onSelectHazard: noop,
       onRetryWeather: noop,
+      liveReferenceTime: null,
     }));
   });
 });

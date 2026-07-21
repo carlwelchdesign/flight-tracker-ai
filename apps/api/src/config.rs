@@ -3,6 +3,7 @@ use std::{env, net::SocketAddr, path::PathBuf, time::Duration};
 use flight_tracker_api::{
     auth::{AssertionConfig, AssertionKey, AuthRole, DevelopmentIdentity},
     domain::OperatorId,
+    live_positions::LivePositionRegion,
 };
 use reqwest::Url;
 use thiserror::Error;
@@ -11,6 +12,9 @@ use uuid::Uuid;
 const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0:8080";
 const DEFAULT_NOAA_BASE_URL: &str = "https://aviationweather.gov/";
 const DEFAULT_NOAA_USER_AGENT: &str =
+    "flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)";
+const DEFAULT_ADSB_LOL_BASE_URL: &str = "https://api.adsb.lol/";
+const DEFAULT_ADSB_LOL_USER_AGENT: &str =
     "flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +39,15 @@ pub struct NoaaConfig {
     pub air_sigmet_stale_after: Duration,
 }
 
+#[derive(Debug, Clone)]
+pub struct AdsbLolConfig {
+    pub operator_id: OperatorId,
+    pub region: LivePositionRegion,
+    pub base_url: Url,
+    pub user_agent: String,
+    pub poll_interval: Duration,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthMode {
     Development,
@@ -54,6 +67,7 @@ pub struct Config {
     pub database_url: String,
     pub replay: Option<ReplayConfig>,
     pub noaa: Option<NoaaConfig>,
+    pub adsb_lol: Option<AdsbLolConfig>,
     pub auth: AuthConfig,
 }
 
@@ -83,6 +97,20 @@ pub enum ConfigError {
     MissingNoaaUserAgent,
     #[error("NOAA_POLL_INTERVAL_SECONDS must be an integer of at least 60")]
     InvalidNoaaPollInterval,
+    #[error("ENABLE_ADSB_LOL_POSITIONS must be true or false")]
+    InvalidAdsbLolToggle,
+    #[error("ADSB_LOL_OPERATOR_ID must be a UUID when ADSB.lol ingestion is enabled")]
+    InvalidAdsbLolOperator,
+    #[error("ADSB_LOL_LATITUDE and ADSB_LOL_LONGITUDE must be finite WGS84 coordinates")]
+    InvalidAdsbLolCenter,
+    #[error("ADSB_LOL_RADIUS_NM must be an integer from 1 through 100")]
+    InvalidAdsbLolRadius,
+    #[error("ADSB_LOL_POLL_INTERVAL_SECONDS must be an integer of at least 30")]
+    InvalidAdsbLolPollInterval,
+    #[error("ADSB_LOL_API_BASE_URL must be a valid HTTP or HTTPS URL")]
+    InvalidAdsbLolBaseUrl,
+    #[error("ADSB_LOL_USER_AGENT must identify the application")]
+    MissingAdsbLolUserAgent,
     #[error("AUTH_MODE must be development or clerk")]
     InvalidAuthMode,
     #[error("AUTH_MODE=development is forbidden unless APP_ENV=development")]
@@ -190,6 +218,66 @@ impl Config {
         } else {
             None
         };
+        let adsb_lol_enabled = parse_bool(
+            lookup("ENABLE_ADSB_LOL_POSITIONS")
+                .as_deref()
+                .unwrap_or("false"),
+            ConfigError::InvalidAdsbLolToggle,
+        )?;
+        let adsb_lol = if adsb_lol_enabled {
+            let operator_id = lookup("ADSB_LOL_OPERATOR_ID")
+                .and_then(|value| Uuid::parse_str(&value).ok())
+                .map(OperatorId::from_uuid)
+                .ok_or(ConfigError::InvalidAdsbLolOperator)?;
+            let latitude_degrees = lookup("ADSB_LOL_LATITUDE")
+                .and_then(|value| value.parse::<f64>().ok())
+                .filter(|value| value.is_finite() && (-90.0..=90.0).contains(value))
+                .ok_or(ConfigError::InvalidAdsbLolCenter)?;
+            let longitude_degrees = lookup("ADSB_LOL_LONGITUDE")
+                .and_then(|value| value.parse::<f64>().ok())
+                .filter(|value| value.is_finite() && (-180.0..=180.0).contains(value))
+                .ok_or(ConfigError::InvalidAdsbLolCenter)?;
+            let radius_nautical_miles = lookup("ADSB_LOL_RADIUS_NM")
+                .as_deref()
+                .unwrap_or("25")
+                .parse::<u16>()
+                .ok()
+                .filter(|value| (1..=100).contains(value))
+                .ok_or(ConfigError::InvalidAdsbLolRadius)?;
+            let poll_interval_seconds = lookup("ADSB_LOL_POLL_INTERVAL_SECONDS")
+                .as_deref()
+                .unwrap_or("30")
+                .parse::<u64>()
+                .ok()
+                .filter(|value| *value >= 30)
+                .ok_or(ConfigError::InvalidAdsbLolPollInterval)?;
+            let base_url = Url::parse(
+                lookup("ADSB_LOL_API_BASE_URL")
+                    .as_deref()
+                    .unwrap_or(DEFAULT_ADSB_LOL_BASE_URL),
+            )
+            .ok()
+            .filter(|url| matches!(url.scheme(), "http" | "https"))
+            .ok_or(ConfigError::InvalidAdsbLolBaseUrl)?;
+            let user_agent =
+                lookup("ADSB_LOL_USER_AGENT").unwrap_or_else(|| DEFAULT_ADSB_LOL_USER_AGENT.into());
+            if user_agent.trim().is_empty() {
+                return Err(ConfigError::MissingAdsbLolUserAgent);
+            }
+            Some(AdsbLolConfig {
+                operator_id,
+                region: LivePositionRegion {
+                    latitude_degrees,
+                    longitude_degrees,
+                    radius_nautical_miles,
+                },
+                base_url,
+                user_agent,
+                poll_interval: Duration::from_secs(poll_interval_seconds),
+            })
+        } else {
+            None
+        };
 
         let auth_mode = match lookup("AUTH_MODE").as_deref() {
             Some("development") => AuthMode::Development,
@@ -257,6 +345,7 @@ impl Config {
             database_url,
             replay,
             noaa,
+            adsb_lol,
             auth: AuthConfig {
                 mode: auth_mode,
                 assertion: AssertionConfig {
@@ -387,6 +476,54 @@ mod tests {
         ])
         .unwrap_err();
         assert!(matches!(error, ConfigError::InvalidNoaaPollInterval));
+    }
+
+    #[test]
+    fn adsb_lol_is_disabled_by_default_and_requires_an_explicit_bounded_region() {
+        assert!(config(&[]).unwrap().adsb_lol.is_none());
+        assert!(matches!(
+            config(&[("ENABLE_ADSB_LOL_POSITIONS", "true")]),
+            Err(ConfigError::InvalidAdsbLolOperator)
+        ));
+        let configured = config(&[
+            ("ENABLE_ADSB_LOL_POSITIONS", "true"),
+            (
+                "ADSB_LOL_OPERATOR_ID",
+                "00000000-0000-0000-0000-000000000001",
+            ),
+            ("ADSB_LOL_LATITUDE", "37.62"),
+            ("ADSB_LOL_LONGITUDE", "-122.38"),
+        ])
+        .unwrap()
+        .adsb_lol
+        .unwrap();
+        assert_eq!(configured.region.radius_nautical_miles, 25);
+        assert_eq!(configured.poll_interval, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn adsb_lol_cannot_exceed_region_or_polling_limits() {
+        let required = [
+            ("ENABLE_ADSB_LOL_POSITIONS", "true"),
+            (
+                "ADSB_LOL_OPERATOR_ID",
+                "00000000-0000-0000-0000-000000000001",
+            ),
+            ("ADSB_LOL_LATITUDE", "37.62"),
+            ("ADSB_LOL_LONGITUDE", "-122.38"),
+        ];
+        let mut fast = required.to_vec();
+        fast.push(("ADSB_LOL_POLL_INTERVAL_SECONDS", "29"));
+        assert!(matches!(
+            config(&fast),
+            Err(ConfigError::InvalidAdsbLolPollInterval)
+        ));
+        let mut broad = required.to_vec();
+        broad.push(("ADSB_LOL_RADIUS_NM", "101"));
+        assert!(matches!(
+            config(&broad),
+            Err(ConfigError::InvalidAdsbLolRadius)
+        ));
     }
 
     #[test]

@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 const ALLOWED_PATHS = [
   /^api\/system\/(?:health|readiness)$/,
   /^api\/source-health$/,
+  /^api\/live-positions\/status$/,
   /^api\/(?:hazards|airport-observations)$/,
   /^api\/source-records\/[^/]+$/,
   /^api\/flights(?:\/[^/]+(?:\/timeline)?)?$/,

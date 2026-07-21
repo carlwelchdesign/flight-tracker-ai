@@ -17,6 +17,7 @@ pub mod domain;
 pub mod fleet;
 pub mod health;
 pub mod ingestion;
+pub mod live_positions;
 pub mod metrics;
 pub mod observability;
 pub mod replay;
@@ -31,6 +32,7 @@ use auth::{
 use fleet::{FleetStore, fleet_router, spawn_projection_worker};
 use health::{CriticalWorkerRegistry, WorkerSnapshot};
 use ingestion::IngestionSubscription;
+use live_positions::{LivePositionStatus, LivePositionStatusStore};
 use metrics::{ApiMetrics, observe_request};
 use observability::correlate_request;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
@@ -45,6 +47,7 @@ pub struct ApiState {
     replay: Option<ReplayHandle>,
     fleet: FleetStore,
     workers: CriticalWorkerRegistry,
+    live_positions: LivePositionStatusStore,
 }
 
 #[derive(Debug, Serialize)]
@@ -149,6 +152,24 @@ pub fn build_router_with_runtime_and_ingestion(
     subscriptions: Vec<IngestionSubscription>,
     auth: AuthService,
 ) -> Router {
+    build_router_with_runtime_and_live_positions(
+        database,
+        replay,
+        workers,
+        subscriptions,
+        LivePositionStatusStore::default(),
+        auth,
+    )
+}
+
+pub fn build_router_with_runtime_and_live_positions(
+    database: PgPool,
+    replay: Option<ReplayHandle>,
+    workers: CriticalWorkerRegistry,
+    subscriptions: Vec<IngestionSubscription>,
+    live_positions: LivePositionStatusStore,
+    auth: AuthService,
+) -> Router {
     let fleet = FleetStore::new(2_048);
     if let Some(handle) = replay.as_ref() {
         spawn_alert_worker(
@@ -169,7 +190,7 @@ pub fn build_router_with_runtime_and_ingestion(
             workers.register(subscription.worker_name),
         );
     }
-    build_router_with_services_and_health(database, replay, fleet, workers, auth)
+    build_router_with_services_and_health(database, replay, fleet, workers, live_positions, auth)
 }
 
 pub fn build_router_with_services(
@@ -183,6 +204,7 @@ pub fn build_router_with_services(
         replay,
         fleet,
         CriticalWorkerRegistry::default(),
+        LivePositionStatusStore::default(),
         auth,
     )
 }
@@ -192,6 +214,7 @@ fn build_router_with_services_and_health(
     replay: Option<ReplayHandle>,
     fleet: FleetStore,
     workers: CriticalWorkerRegistry,
+    live_positions: LivePositionStatusStore,
     auth: AuthService,
 ) -> Router {
     let audit_store = AuditStore::new(database.clone());
@@ -208,9 +231,11 @@ fn build_router_with_services_and_health(
             replay: replay.clone(),
             fleet: fleet.clone(),
             workers: workers.clone(),
+            live_positions: live_positions.clone(),
         });
     let mut protected = Router::new()
         .route("/api/source-health", get(source_health))
+        .route("/api/live-positions/status", get(live_position_status))
         .route("/api/system/health", get(system_health))
         .route("/api/system/readiness", get(system_readiness));
 
@@ -230,6 +255,7 @@ fn build_router_with_services_and_health(
             replay,
             fleet,
             workers,
+            live_positions,
         })
         .merge(fleet_routes)
         .merge(weather_routes)
@@ -401,6 +427,20 @@ async fn source_health(
         ))
     })?;
     Ok(Json(SourceHealthResponse { data: rows }))
+}
+
+async fn live_position_status(
+    State(state): State<ApiState>,
+    Extension(context): Extension<AuthContext>,
+) -> Result<impl IntoResponse, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
+    let status: LivePositionStatus = state
+        .live_positions
+        .snapshot(context.operator_id, Utc::now());
+    Ok((
+        [(axum::http::header::CACHE_CONTROL, "no-store")],
+        Json(status),
+    ))
 }
 
 async fn readiness(State(state): State<ApiState>) -> (StatusCode, Json<ProbeResponse>) {
@@ -606,6 +646,9 @@ mod tests {
                 .body(Body::empty())
                 .unwrap(),
             Request::get("/api/system/readiness")
+                .body(Body::empty())
+                .unwrap(),
+            Request::get("/api/live-positions/status")
                 .body(Body::empty())
                 .unwrap(),
             Request::get("/metrics").body(Body::empty()).unwrap(),

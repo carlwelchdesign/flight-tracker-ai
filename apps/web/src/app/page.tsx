@@ -4,6 +4,7 @@ import { getAuthContext } from "@/lib/auth-api";
 import { AuthSessionError, authMode, createInternalAssertion } from "@/lib/auth-server";
 import { getInitialFleet } from "@/lib/fleet-api";
 import { getInitialWeather } from "@/lib/weather-api";
+import { getInitialLivePositionStatus } from "@/lib/live-positions-api";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function Home() {
         authContext={result.authContext}
         initialFleet={result.initialFleet}
         initialWeather={result.initialWeather}
+        initialLivePositions={result.initialLivePositions}
       />
     );
   }
@@ -31,12 +33,19 @@ export default async function Home() {
 async function loadConsole() {
   try {
     const assertion = await createInternalAssertion();
-    const [authContext, initialFleet, initialWeather] = await Promise.all([
+    const [authContext, initialFleet, initialWeather, initialLivePositions] = await Promise.all([
       getAuthContext(),
       getInitialFleet(assertion),
       getInitialWeather(assertion),
+      getInitialLivePositionStatus(assertion),
     ]);
-    return { state: "ready" as const, authContext, initialFleet, initialWeather };
+    return {
+      state: "ready" as const,
+      authContext,
+      initialFleet,
+      initialWeather,
+      initialLivePositions,
+    };
   } catch (error) {
     const signedOut = error instanceof AuthSessionError && error.status === 401;
     return {

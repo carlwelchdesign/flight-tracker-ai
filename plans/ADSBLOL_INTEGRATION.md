@@ -9,7 +9,8 @@ best-effort aircraft-position source for the public portfolio demonstration.
 Deterministic replay remains the guaranteed demonstration path and the only
 fallback. The live source is not required for the site to be usable.
 
-This decision authorizes FT-302 to build an adapter. It does not claim an SLA,
+FT-302 implements this adapter behind an explicit, disabled-by-default runtime
+configuration. It does not claim an SLA,
 complete coverage, authoritative routes, schedules, flight status, or fitness
 for operational use.
 
@@ -132,18 +133,52 @@ failure-behavior check, not a coverage benchmark.
 
 ## FT-302 activation gate
 
-The live adapter remains disabled until FT-302 proves all of the following:
+The repository implementation proves all of the following. A deployment still
+keeps the adapter disabled until its operator, region, and user agent are set
+explicitly and the public-deployment revalidation below is complete.
 
-- provider types terminate at the Rust adapter;
-- the allowlist, unit conversions, bounds, duplicate, stale, and out-of-order
+- [x] provider types terminate at the Rust adapter;
+- [x] the allowlist, unit conversions, bounds, duplicate, stale, and out-of-order
   behavior have automated tests;
-- responses are not persisted or cached and browser/API headers preserve
+- [x] responses are not persisted or cached and browser/API headers preserve
   `no-store`;
-- one-in-flight polling, timeout, rate limiting, and backoff are enforced;
-- source, freshness, coverage quality, attribution, and best-effort state are
+- [x] one-in-flight polling, timeout, rate limiting, and backoff are enforced;
+- [x] source, freshness, coverage quality, attribution, and best-effort state are
   visible;
-- simulated route, schedule, and status facts cannot be presented as live; and
-- any provider failure leaves deterministic replay usable.
+- [x] simulated route, schedule, and status facts cannot be presented as live; and
+- [x] any provider failure leaves deterministic replay usable.
+
+## Implemented runtime contract
+
+The Rust process accepts one optional ADSB.lol configuration:
+
+- `ENABLE_ADSB_LOL_POSITIONS=true` opts in; omission or `false` leaves replay as
+  the default and reports the source as `disabled`.
+- `ADSB_LOL_OPERATOR_ID`, `ADSB_LOL_LATITUDE`, `ADSB_LOL_LONGITUDE`, and
+  `ADSB_LOL_USER_AGENT` are required when enabled.
+- `ADSB_LOL_RADIUS_NM` defaults to `25` and cannot exceed `100`.
+- `ADSB_LOL_POLL_INTERVAL_SECONDS` defaults to `30` and cannot be lower than
+  `30`.
+- `ADSB_LOL_API_BASE_URL` exists for controlled tests and defaults to the
+  official HTTPS API.
+
+The runtime performs one sequential regional request at a time. It publishes
+the transient normalized batch only to the in-memory fleet projection; the
+persistence and alert workers do not subscribe to this source. The raw response
+and normalized current positions therefore terminate in process and are never
+written to PostgreSQL. Provider failures update source state independently of
+critical replay worker health.
+
+Authenticated clients can read `GET /api/live-positions/status`. The
+tenant-scoped, provider-neutral response reports `disabled`, `connecting`,
+`current`, `degraded`, or `unavailable`, along with region, accepted/fresh/stale
+counts, last observation time, and the required attribution. This endpoint and
+all fleet read endpoints return `Cache-Control: no-store`; the Next.js proxy
+preserves the header.
+
+Before a public deployment enables the source, re-check the linked official
+documentation, license, response headers, attribution wording, and production
+contact guidance. That environment-specific check belongs to FT-404.
 
 ## Revalidation evidence
 

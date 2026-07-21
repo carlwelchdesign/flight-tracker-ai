@@ -5,12 +5,14 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M3 — Portfolio live data and operational workflow
-- Active ticket: None — FT-301 is complete; FT-302 is next
-- Branch: None
-- Pull request: [#20](https://github.com/carlwelchdesign/flight-tracker-ai/pull/20) (verified delivery)
-- Owner: Product and engineering
+- Active ticket: FT-302 — Integrate best-effort live aircraft positions
+- Branch: `feat/ft-302-live-flight-integration`
+- Pull request: Pending
+- Owner: Backend and full-stack engineering
 - Overall status: M0, M1, and M2 are complete; M3 is 3/4 complete after selecting ADSB.lol as an optional ephemeral position layer; M4 is 1/4 complete, and environment-specific risks remain explicit FT-302/FT-402/FT-404 gates rather than falsely completed hosted evidence
-- Next action: Start FT-302 on `feat/ft-302-live-flight-integration` and implement the disabled-by-default ADSB.lol Rust adapter, visible source/attribution states, and automatic replay fallback under `ADSBLOL_INTEGRATION.md`.
+- Next action: Land FT-302 through its pull request after CI verifies the
+  disabled-by-default ADSB.lol adapter, PostGIS contract, no-store source API,
+  live/replay UI states, and deterministic fallback.
 
 ## Milestone checklist
 

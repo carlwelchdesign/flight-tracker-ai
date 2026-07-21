@@ -7,6 +7,7 @@
 - **Last event** is the newest provider observation time accepted into the fleet picture.
 - **Last received** is the newest time this system accepted that source fact. A widening difference can indicate provider or transport delay.
 - **Simulation feed outage** is a deliberate development fault. It suspends replay events while keeping the API, replay runtime, projection worker, and SSE connection alive.
+- **Optional live position layer** reports `disabled`, `connecting`, `current`, `degraded`, or `unavailable` from the in-memory Rust ADSB.lol boundary. Provider failure does not disable replay or claim the last accepted positions are current.
 
 Never treat a green connection badge alone as proof that operational data is current.
 
@@ -19,6 +20,7 @@ curl -i http://127.0.0.1:8080/health
 curl -i http://127.0.0.1:8080/readiness
 curl -i http://127.0.0.1:3001/api/backend/api/system/health
 curl -i http://127.0.0.1:3001/api/backend/api/system/readiness
+curl -i http://127.0.0.1:3001/api/backend/api/live-positions/status
 curl -s http://127.0.0.1:3001/api/backend/metrics
 docker compose ps
 docker compose logs --tail=100 api
@@ -66,6 +68,7 @@ Restore through the banner/control, or call the endpoint with `{"active":false}`
 | Readiness PostGIS missing | Wrong database or incomplete migration | Verify the target database and migration state |
 | Stream reconnecting with service healthy | Browser-to-API/SSE interruption | Check the proxy route, network, and active-stream metric |
 | Stream live but event time stale | Source/provider/replay is not advancing | Check outage state, replay phase, and source timing |
+| ADSB.lol degraded or unavailable | Optional regional source timed out, rate-limited, returned invalid data, or failed repeatedly | Keep or select replay, inspect the sanitized error code, confirm the bounded configuration, and retry later; do not increase polling frequency |
 
 ## Recovery confirmation
 

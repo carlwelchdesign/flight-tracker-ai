@@ -109,11 +109,14 @@ async fn list_flights(
 ) -> Result<impl IntoResponse, Response> {
     require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
     validate_pagination(&query).map_err(IntoResponse::into_response)?;
-    Ok(Json(
-        state
-            .store
-            .list(context.operator_id, query.page, query.page_size)
-            .await,
+    Ok((
+        [(header::CACHE_CONTROL, "no-store")],
+        Json(
+            state
+                .store
+                .list(context.operator_id, query.page, query.page_size)
+                .await,
+        ),
     ))
 }
 
@@ -128,7 +131,7 @@ async fn flight_detail(
         .store
         .detail(context.operator_id, flight_id)
         .await
-        .map(Json)
+        .map(|view| ([(header::CACHE_CONTROL, "no-store")], Json(view)))
         .ok_or_else(|| ApiError::FlightNotFound.into_response())
 }
 
@@ -145,7 +148,7 @@ async fn flight_timeline(
         .store
         .timeline(context.operator_id, flight_id, query.page, query.page_size)
         .await
-        .map(Json)
+        .map(|timeline| ([(header::CACHE_CONTROL, "no-store")], Json(timeline)))
         .ok_or_else(|| ApiError::FlightNotFound.into_response())
 }
 
@@ -316,6 +319,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(list.status(), StatusCode::OK);
+        assert_eq!(list.headers()[header::CACHE_CONTROL], "no-store");
         let payload = json(list).await;
         assert_eq!(payload["data"].as_array().unwrap().len(), 2);
         assert_eq!(payload["pagination"]["total_items"], 3);
@@ -332,6 +336,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(detail.status(), StatusCode::OK);
+        assert_eq!(detail.headers()[header::CACHE_CONTROL], "no-store");
         assert_eq!(json(detail).await["flight"]["callsign"], "FT101");
 
         let timeline = app
@@ -345,6 +350,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(timeline.status(), StatusCode::OK);
+        assert_eq!(timeline.headers()[header::CACHE_CONTROL], "no-store");
         let payload = json(timeline).await;
         let events = payload["data"].as_array().unwrap();
         assert!(!events.is_empty());

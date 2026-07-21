@@ -8,6 +8,33 @@ afterEach(() => {
 });
 
 describe("backend audit proxy", () => {
+  it("allows live-position status and preserves the no-store boundary", async () => {
+    vi.stubEnv("AUTH_MODE", "development");
+    vi.stubEnv("DEV_AUTH_SUBJECT", "local-admin");
+    vi.stubEnv("DEV_AUTH_TENANT_ID", "local-flight-tracker");
+    vi.stubEnv("INTERNAL_AUTH_KEY_ID", "local-primary");
+    vi.stubEnv("INTERNAL_AUTH_SECRET", "local-development-internal-auth-secret-change-me");
+    const backendFetch = vi.fn(async () =>
+      Response.json(
+        { enabled: false, state: "disabled" },
+        { headers: { "cache-control": "no-store" } },
+      ),
+    );
+    vi.stubGlobal("fetch", backendFetch);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/backend/api/live-positions/status"),
+      { params: Promise.resolve({ path: ["api", "live-positions", "status"] }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(backendFetch).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: "/api/live-positions/status" }),
+      expect.objectContaining({ method: "GET", cache: "no-store" }),
+    );
+  });
+
   it("allows bounded audit export and preserves download headers", async () => {
     vi.stubEnv("AUTH_MODE", "development");
     vi.stubEnv("DEV_AUTH_SUBJECT", "local-admin");

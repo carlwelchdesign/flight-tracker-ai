@@ -31,6 +31,7 @@ type OperationsMapProps = {
   onSelect: (flightId: string) => void;
   onSelectHazard: (hazardId: string | null) => void;
   onRetryWeather: () => void;
+  liveReferenceTime: number | null;
 };
 
 const BOUNDS = { west: -125, east: -114, south: 32.5, north: 49 };
@@ -48,6 +49,7 @@ export function OperationsMap({
   onSelect,
   onSelectHazard,
   onRetryWeather,
+  liveReferenceTime,
 }: OperationsMapProps) {
   const [showHazards, setShowHazards] = useState(true);
   const [showObservations, setShowObservations] = useState(true);
@@ -237,7 +239,7 @@ export function OperationsMap({
         })}
 
         {markers.map(({ view, point, offsetX, offsetY }) => {
-          const attention = attentionLevel(view, hazards, fleetTime);
+          const attention = attentionLevel(view, hazards, fleetTime, liveReferenceTime);
           const selected = view.flight.id === selectedId;
           const style = {
             left: `${point.x}%`, top: `${point.y}%`,

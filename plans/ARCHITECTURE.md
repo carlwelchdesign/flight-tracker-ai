@@ -39,7 +39,7 @@ Use a modular monolith first: one Rust workspace containing the API, ingestion w
 |---|---|
 | Web app | Dispatcher experience, maps, tables, review actions, freshness UI |
 | API | Authenticated reads/writes, validation, SSE subscriptions |
-| Ingestion workers | Poll/stream providers, retain raw payloads, normalize canonical events |
+| Ingestion workers | Poll/stream providers, apply each source's retention boundary, and normalize canonical events |
 | Alert engine | Deterministic rule evaluation, deduplication, severity, evidence |
 | Replay runner | Re-emits time-ordered fixtures using the same normalization and rule paths |
 | PostgreSQL/PostGIS | Operational state, history, geometry, rule results, audit log |
@@ -56,6 +56,13 @@ Every envelope should carry:
 - Raw-payload reference or hash
 - Correlation identifiers such as flight, aircraft, airport, or hazard ID
 - Quality/freshness state
+
+ADSB.lol is the deliberate ephemeral exception to the normal raw-envelope
+retention path. Its per-record envelope exists only while the in-memory Rust
+adapter normalizes and publishes a current-state batch; raw and normalized
+ADSB.lol records are not written to PostgreSQL, fixtures, logs, exports,
+analytics, backups, or an LLM. The fleet API and Next.js proxy preserve
+`Cache-Control: no-store`. See `ADSBLOL_INTEGRATION.md`.
 
 ## Initial domain entities
 
@@ -81,6 +88,7 @@ Every envelope should carry:
 - `GET /api/alerts/{id}`
 - `POST /api/alerts/{id}/actions`
 - `GET /api/source-health`
+- `GET /api/live-positions/status`
 - `GET /api/events/stream`
 - Development-only replay controls protected by environment and authorization
 
