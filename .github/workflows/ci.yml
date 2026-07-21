@@ -155,6 +155,7 @@ jobs:
           assert alert['attention_score'] == alert['evidence']['attention']['total']
           assert alert['score_version'] == 1
           assert alert['rule_version'] == 1
+          assert alert['workflow_version'] == 1
           with open('/tmp/alert-id', 'w', encoding='utf-8') as target:
               target.write(alert['id'])
           PY
@@ -162,10 +163,11 @@ jobs:
           curl --fail --silent --request POST \
             --header "authorization: Bearer ${assertion}" \
             --header 'content-type: application/json' \
-            --data '{"action":"acknowledge","idempotency_key":"ci-replay-ack","comment":null}' \
+            --data '{"action":"acknowledge","idempotency_key":"ci-replay-ack","expected_workflow_version":1,"comment":null}' \
             "http://127.0.0.1:8080/api/alerts/${alert_id}/actions" \
             > /tmp/alert-detail.json
           grep --quiet '"lifecycle":"acknowledged"' /tmp/alert-detail.json
+          grep --quiet '"workflow_version":2' /tmp/alert-detail.json
           grep --quiet '"actor_id":"ci-admin"' /tmp/alert-detail.json
       - name: Verify schema and route-rule contracts
         env:
