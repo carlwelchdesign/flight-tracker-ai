@@ -5,12 +5,12 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M3 — Portfolio live data and operational workflow
-- Active ticket: FT-401 — Verify and deliver the portfolio trust review closeout
-- Branch: `docs/ft-401-security-trust-review`
-- Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; main merged and conflicts resolved)
-- Owner: Product, engineering, and security
-- Overall status: M0, M1, and M2 are complete; FT-401 repository controls satisfy the portfolio review, with environment-specific risks transferred to FT-302, FT-402, and FT-404 rather than represented as completed hosted evidence
-- Next action: Pass required PR checks for the FT-401 portfolio closeout, merge PR #18, then run FT-301 on its own branch.
+- Active ticket: None — FT-401 is complete; FT-301 is next
+- Branch: None
+- Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (verified delivery)
+- Owner: Product and engineering
+- Overall status: M0, M1, and M2 are complete; M4 is 1/4 complete after the FT-401 repository trust review, and environment-specific risks remain explicit FT-302/FT-402/FT-404 gates rather than falsely completed hosted evidence
+- Next action: Start FT-301 on `docs/ft-301-free-data-selection` and select an officially eligible free best-effort source or record replay-only as the outcome.
 
 ## Milestone checklist
 
@@ -29,7 +29,7 @@ Last updated: 2026-07-21
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
 | M3 | 2 | 4 |
-| M4 | 0 | 4 |
+| M4 | 1 | 4 |
 | M5 | 0 | 3 |
 
 ## Handoff notes
@@ -58,7 +58,7 @@ Last updated: 2026-07-21
 - FT-304 is delivered through PR #14 at implementation and CI contract commit `11bdc0d`. CI run `29816346733` verifies the additive migration, authenticated replay, workflow-version acknowledgement, tenant-safe assignment, all queue filters, structured dismissal, conflict rejection, bounded persistence volume, Rust and web quality gates, and production builds.
 - FT-301 commercial preparation package is merged through PR #15 at `c8d8a78`; PR #16 records the corrected procurement handoff. This research is retained for an optional future production track and is not an active portfolio-release gate.
 - FT-004 upgrades checkout and setup-node to their official Node 24 action-runtime releases through PR #17 at implementation commit `715d7d6`; CI run `29832129375` passed all three jobs with zero check annotations while preserving application Node.js `20.20.1`.
-- FT-401 review closeout is in draft PR [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18). It documents and enforces implemented trust boundaries, threat modeling, data lifecycle/backup/incident controls, and ten owned findings. Repository approval is separate from public deployment: residual environment risks are controlled by explicit FT-302/FT-402/FT-404 gates and expiries.
+- FT-401 is delivered through PR [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) at portfolio closeout commit `e28ffa1`. CI run [29851083689](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29851083689) passes Rust, web, and API/PostGIS checks. The review documents and enforces trust boundaries, threat modeling, lifecycle/backup/incident controls, and ten owned findings; repository approval remains separate from FT-404 public-deployment approval.
 - F401-004 is closed at implementation commit `e9e5f76`: operator-scoped membership foreign keys now protect both current alert assignments and assignment audit rows. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) proves direct-database and authenticated-API cross-tenant rejection plus valid same-tenant assignment.
 - Browser policy implementation commit `dc08690` adds strict nonce-aware Clerk CSP and production response hardening. CI run [29833848250](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833848250), the standalone header smoke, and all 30 web tests pass; F401-005 is controlled by FT-404's pre-publication hosted-Clerk smoke.
 - F401-010 is closed at implementation commit `38cf7b7`: public health/readiness probes now expose one status field, while detailed worker/database/PostGIS diagnostics require authorization. CI run [29834083229](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834083229) verifies the public, unauthorized, authenticated, PostGIS, BFF, and console contracts.

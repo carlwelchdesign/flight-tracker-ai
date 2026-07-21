@@ -4,12 +4,12 @@ Default owner: Product and engineering, supported by security.
 
 ## FT-401 — Complete security, privacy, and trust review
 
-Status: In progress
+Status: Complete
 
 Branch: `docs/ft-401-security-trust-review`
-Latest implementation commit: `4649408`
-Final commit: Pending
-Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; main merged and conflicts resolved)
+Latest implementation commit: `e28ffa1`
+Final commit: `e28ffa1`
+Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18)
 Owner: Product, engineering, and security
 Completion boundary: FT-401 approves the repository security baseline. FT-302 owns any future free-feed activation controls, FT-402 owns failure/recovery exercises, and FT-404 owns hosted secrets, identity, backups, browser smoke, and public-deployment approval. Commercial-provider procurement and real-operator approval are not dependencies. A replay-only deployment remains valid.
 
@@ -46,7 +46,7 @@ Sensitive-write monitoring evidence: commit `d975ac3` adds a deterministic Rust 
 
 Hosted-verifier evidence: commits `943bb65` and `f3d3e08` add a bounded HTTPS verifier for administrator audit/export/monitoring/integrity access, viewer/operator denial, expected sensitive-write records, cross-tenant exclusion, controlled-marker redaction, and exact retention disposition counts. Its sanitized evidence allowlists output fields and never includes tokens, response bodies, markers, or event IDs. CI run [29846123252](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29846123252) passes the ten-case regression suite plus all Rust, web, and PostGIS jobs. FT-404 must run this already-tested verifier against the chosen hosted environment before publication.
 
-Scope-reconciliation evidence (2026-07-21): FT-005 and ADR-010 remove commercial contract evidence, paid trials, pricing, SLA, and real-operator approval from this ticket. The implemented controls remain intact. `python3 scripts/validate_ft401_review.py --require-complete` passes after every residual risk is closed or controlled by a named downstream ticket and expiry; `validate_ft301_evidence.py --require-complete` is not an FT-401 completion condition. Required PR CI remains pending for the final closeout commit.
+Scope-reconciliation evidence (2026-07-21): FT-005 and ADR-010 remove commercial contract evidence, paid trials, pricing, SLA, and real-operator approval from this ticket. The implemented controls remain intact. `python3 scripts/validate_ft401_review.py --require-complete` passes after every residual risk is closed or controlled by a named downstream ticket and expiry; `validate_ft301_evidence.py --require-complete` is not an FT-401 completion condition. Closeout commit `e28ffa1` updates the portfolio limitation and evidence boundary; CI run [29851083689](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29851083689) passes Rust, web, and API/PostGIS checks.
 
 ## FT-402 — Run resilience and failure drills
 
