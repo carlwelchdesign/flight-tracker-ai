@@ -13,7 +13,7 @@ export type AuditEvent = {
 };
 
 export type AuditSignal = {
-  code: "high_risk_action" | "privileged_action_burst";
+  code: "high_risk_action" | "privileged_action_burst" | "sensitive_write_detected";
   severity: "warning" | "critical";
   actor_id: string;
   occurred_at: string;
@@ -81,7 +81,9 @@ function parseAuditEvent(value: unknown): AuditEvent {
 function parseAuditSignal(value: unknown): AuditSignal {
   if (
     !isRecord(value) ||
-    !["high_risk_action", "privileged_action_burst"].includes(String(value.code)) ||
+    !["high_risk_action", "privileged_action_burst", "sensitive_write_detected"].includes(
+      String(value.code),
+    ) ||
     !["warning", "critical"].includes(String(value.severity)) ||
     typeof value.actor_id !== "string" ||
     !isDate(value.occurred_at) ||

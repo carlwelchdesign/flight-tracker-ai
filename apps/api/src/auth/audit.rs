@@ -16,12 +16,14 @@ use uuid::Uuid;
 
 use crate::domain::OperatorId;
 
+use super::sensitive_write::{SensitiveWriteRisk, classify_sensitive_write};
 use super::{AuthContext, Permission, require};
 
 const DEFAULT_REVIEW_HOURS: i64 = 24;
 const MAX_EXPORT_DAYS: i64 = 31;
 const MAX_EXPORT_EVENTS: i64 = 10_000;
 const MAX_MONITOR_EVENTS: i64 = 10_000;
+const MAX_MONITOR_SENSITIVE_WRITES: i64 = 10_000;
 const BURST_WINDOW_MINUTES: i64 = 15;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
@@ -55,6 +57,15 @@ pub struct AuditSignalView {
     pub occurred_at: DateTime<Utc>,
     pub event_id: Option<Uuid>,
     pub message: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct SensitiveWriteCandidate {
+    id: Uuid,
+    actor_id: String,
+    occurred_at: DateTime<Utc>,
+    field_kind: String,
+    content: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -192,6 +203,48 @@ impl AuditStore {
         }
         Ok(events)
     }
+
+    async fn sensitive_writes(
+        &self,
+        operator_id: OperatorId,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+        limit: i64,
+    ) -> Result<Vec<SensitiveWriteCandidate>, sqlx::Error> {
+        sqlx::query_as::<_, SensitiveWriteCandidate>(
+            r#"
+            WITH sensitive_writes AS (
+                SELECT action.id, action.actor_id, action.occurred_at,
+                       'dispatcher_comment'::text AS field_kind, action.comment AS content
+                FROM alert_actions action
+                WHERE action.operator_id = $1
+                  AND action.occurred_at >= $2 AND action.occurred_at < $3
+                  AND action.comment IS NOT NULL
+
+                UNION ALL
+
+                SELECT revocation.id, actor.subject AS actor_id,
+                       revocation.revoked_at AS occurred_at,
+                       'session_revocation_reason'::text AS field_kind,
+                       revocation.reason AS content
+                FROM auth_session_revocations revocation
+                JOIN auth_identities actor ON actor.id = revocation.revoked_by_identity_id
+                WHERE revocation.operator_id = $1
+                  AND revocation.revoked_at >= $2 AND revocation.revoked_at < $3
+            )
+            SELECT id, actor_id, occurred_at, field_kind, content
+            FROM sensitive_writes
+            ORDER BY occurred_at DESC, field_kind, id DESC
+            LIMIT $4
+            "#,
+        )
+        .bind(operator_id.as_uuid())
+        .bind(from)
+        .bind(to)
+        .bind(limit)
+        .fetch_all(&self.database)
+        .await
+    }
 }
 
 pub fn audit_router(store: AuditStore) -> Router {
@@ -275,8 +328,23 @@ async fn list_signals(
     if events.len() as i64 > MAX_MONITOR_EVENTS {
         return Err(AuditError::ScopeTooLarge);
     }
+    let sensitive_writes = store
+        .sensitive_writes(
+            context.operator_id,
+            since,
+            through,
+            MAX_MONITOR_SENSITIVE_WRITES + 1,
+        )
+        .await
+        .map_err(|_| AuditError::Unavailable)?;
+    if sensitive_writes.len() as i64 > MAX_MONITOR_SENSITIVE_WRITES {
+        return Err(AuditError::ScopeTooLarge);
+    }
+    let mut data = detect_signals(&events);
+    data.extend(detect_sensitive_write_signals(&sensitive_writes));
+    sort_signals(&mut data);
     Ok(Json(AuditSignalList {
-        data: detect_signals(&events),
+        data,
         since,
         through,
     }))
@@ -356,13 +424,49 @@ fn detect_signals(events: &[AuditEventView]) -> Vec<AuditSignalView> {
             }
         }
     }
+    sort_signals(&mut signals);
+    signals
+}
+
+fn detect_sensitive_write_signals(candidates: &[SensitiveWriteCandidate]) -> Vec<AuditSignalView> {
+    candidates
+        .iter()
+        .filter_map(|candidate| {
+            let risk = classify_sensitive_write(&candidate.content)?;
+            let (severity, field_name) = match (risk, candidate.field_kind.as_str()) {
+                (SensitiveWriteRisk::CredentialMaterial, "dispatcher_comment") => {
+                    ("critical", "dispatcher comment")
+                }
+                (SensitiveWriteRisk::CredentialMaterial, "session_revocation_reason") => {
+                    ("critical", "session revocation reason")
+                }
+                (SensitiveWriteRisk::PersonalContact, "dispatcher_comment") => {
+                    ("warning", "dispatcher comment")
+                }
+                (SensitiveWriteRisk::PersonalContact, "session_revocation_reason") => {
+                    ("warning", "session revocation reason")
+                }
+                (_, _) => return None,
+            };
+            Some(AuditSignalView {
+                code: "sensitive_write_detected",
+                severity,
+                actor_id: candidate.actor_id.clone(),
+                occurred_at: candidate.occurred_at,
+                event_id: Some(candidate.id),
+                message: format!("Potential sensitive content detected in {field_name}"),
+            })
+        })
+        .collect()
+}
+
+fn sort_signals(signals: &mut [AuditSignalView]) {
     signals.sort_by(|left, right| {
         right
             .occurred_at
             .cmp(&left.occurred_at)
             .then_with(|| left.code.cmp(right.code))
     });
-    signals
 }
 
 fn audit_csv(events: &[AuditEventView]) -> String {
@@ -465,5 +569,36 @@ mod tests {
         assert!(validate_range(now, now, None).is_err());
         assert!(validate_range(now - Duration::days(32), now, Some(Duration::days(31))).is_err());
         assert!(validate_range(now - Duration::days(1), now, Some(Duration::days(31))).is_ok());
+    }
+
+    #[test]
+    fn sensitive_write_signals_never_copy_the_detected_content() {
+        let secret = "Authorization: Bearer test-sensitive-value-123456";
+        let email = "Contact private.person@example.test";
+        let candidates = vec![
+            SensitiveWriteCandidate {
+                id: Uuid::from_u128(10),
+                actor_id: "dispatcher-a".into(),
+                occurred_at: Utc::now(),
+                field_kind: "dispatcher_comment".into(),
+                content: secret.into(),
+            },
+            SensitiveWriteCandidate {
+                id: Uuid::from_u128(11),
+                actor_id: "administrator-a".into(),
+                occurred_at: Utc::now(),
+                field_kind: "session_revocation_reason".into(),
+                content: email.into(),
+            },
+        ];
+        let signals = detect_sensitive_write_signals(&candidates);
+        assert_eq!(signals.len(), 2);
+        assert!(signals.iter().any(|signal| signal.severity == "critical"));
+        assert!(signals.iter().any(|signal| signal.severity == "warning"));
+        let serialized = serde_json::to_string(&signals).unwrap();
+        assert!(!serialized.contains(secret));
+        assert!(!serialized.contains(email));
+        assert!(!serialized.contains("test-sensitive-value"));
+        assert!(!serialized.contains("private.person"));
     }
 }

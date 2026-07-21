@@ -1493,6 +1493,51 @@ async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool
     .await
     .unwrap();
 
+    let sensitive_comment = "Authorization: Bearer controlled-test-token-123456";
+    let sensitive_comment_action_id = Uuid::new_v4();
+    let alert_id = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM alerts WHERE operator_id = $1 ORDER BY event_time DESC LIMIT 1",
+    )
+    .bind(operator_id.as_uuid())
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"
+        INSERT INTO alert_actions (
+            id, operator_id, alert_id, schema_version, action, actor_id,
+            occurred_at, comment, idempotency_key
+        ) VALUES ($1,$2,$3,1,'comment','dispatcher:audit-scan',NOW(),$4,$5)
+        "#,
+    )
+    .bind(sensitive_comment_action_id)
+    .bind(operator_id.as_uuid())
+    .bind(alert_id)
+    .bind(sensitive_comment)
+    .bind(format!("audit-scan-{}", Uuid::new_v4()))
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let sensitive_reason = "Contact private.person@example.test for this controlled drill";
+    let sensitive_revocation_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO auth_session_revocations (
+            id, provider, session_id, identity_id, operator_id,
+            revoked_by_identity_id, reason, revoked_at, expires_at
+        ) VALUES ($1,'development',$2,$3,$4,$3,$5,NOW(),NOW() + INTERVAL '1 hour')
+        "#,
+    )
+    .bind(sensitive_revocation_id)
+    .bind(format!("audit-scan-session-{}", Uuid::new_v4()))
+    .bind(actor_identity_id)
+    .bind(operator_id.as_uuid())
+    .bind(sensitive_reason)
+    .execute(pool)
+    .await
+    .unwrap();
+
     let (other_auth, _) = authenticated_service(pool, other_operator_id).await;
     let other_identity_id = other_auth
         .store()
@@ -1513,6 +1558,23 @@ async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool
     .bind(other_operator_id.as_uuid())
     .bind(other_identity_id)
     .bind(&cross_tenant_marker)
+    .execute(pool)
+    .await
+    .unwrap();
+    let cross_tenant_sensitive_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO auth_session_revocations (
+            id, provider, session_id, identity_id, operator_id,
+            revoked_by_identity_id, reason, revoked_at, expires_at
+        ) VALUES ($1,'development',$2,$3,$4,$3,$5,NOW(),NOW() + INTERVAL '1 hour')
+        "#,
+    )
+    .bind(cross_tenant_sensitive_id)
+    .bind(format!("cross-tenant-scan-session-{}", Uuid::new_v4()))
+    .bind(other_identity_id)
+    .bind(other_operator_id.as_uuid())
+    .bind("password=other-tenant-controlled-value")
     .execute(pool)
     .await
     .unwrap();
@@ -1600,6 +1662,29 @@ async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool
                     && signal["message"] == "High-risk audit action recorded: session.revoked"
             })
     );
+    let sensitive_signals = signals_body["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|signal| signal["code"] == "sensitive_write_detected")
+        .collect::<Vec<_>>();
+    assert!(sensitive_signals.iter().any(|signal| {
+        signal["event_id"] == sensitive_comment_action_id.to_string()
+            && signal["severity"] == "critical"
+            && signal["message"] == "Potential sensitive content detected in dispatcher comment"
+    }));
+    assert!(sensitive_signals.iter().any(|signal| {
+        signal["event_id"] == sensitive_revocation_id.to_string()
+            && signal["severity"] == "warning"
+            && signal["message"]
+                == "Potential sensitive content detected in session revocation reason"
+    }));
+    let serialized_signals = signals_body.to_string();
+    assert!(!serialized_signals.contains(sensitive_comment));
+    assert!(!serialized_signals.contains(sensitive_reason));
+    assert!(!serialized_signals.contains("controlled-test-token"));
+    assert!(!serialized_signals.contains("private.person"));
+    assert!(!serialized_signals.contains(&cross_tenant_sensitive_id.to_string()));
 
     let (viewer_auth, viewer_authorization) =
         authenticated_service_with_role(pool, OperatorId::new(), AuthRole::Viewer).await;

@@ -74,7 +74,8 @@ export function AuditReview({ refreshRevision }: AuditReviewProps) {
       </header>
 
       <p className="audit-redaction-note">
-        Free-form comments, revocation reasons, idempotency keys, and session identifiers are excluded.
+        Free-form comments and revocation reasons are scanned for sensitive content but never
+        returned. Idempotency keys and session identifiers are also excluded.
       </p>
       {error && <p className="audit-review-error" role="alert">{error}</p>}
       {!events && !error && <p className="audit-review-loading">Loading audit evidence…</p>}

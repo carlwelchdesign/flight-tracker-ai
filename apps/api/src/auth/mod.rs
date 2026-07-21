@@ -7,6 +7,7 @@
 mod audit;
 mod http;
 mod model;
+mod sensitive_write;
 mod service;
 mod store;
 mod token;

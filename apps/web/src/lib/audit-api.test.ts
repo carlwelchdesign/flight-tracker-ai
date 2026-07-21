@@ -26,12 +26,12 @@ describe("audit API parsers", () => {
       parseAuditSignalList({
         data: [
           {
-            code: "high_risk_action",
-            severity: "warning",
+            code: "sensitive_write_detected",
+            severity: "critical",
             actor_id: "identity-1",
             occurred_at: "2026-07-21T12:00:00Z",
             event_id: "event-1",
-            message: "High-risk audit action recorded: session.revoked",
+            message: "Potential sensitive content detected in dispatcher comment",
           },
         ],
         since: "2026-07-20T12:00:00Z",

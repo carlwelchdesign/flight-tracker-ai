@@ -51,6 +51,7 @@ describe("audit review", () => {
     expect(await screen.findByText(/high-risk audit action recorded/i)).toBeInTheDocument();
     expect(screen.getByText("Session revoked")).toBeInTheDocument();
     expect(screen.queryByText(/sensitive-session/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/scanned for sensitive content but never returned/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /export redacted csv/i })).toHaveAttribute(
       "href",
       expect.stringContaining("audit-events/export"),
