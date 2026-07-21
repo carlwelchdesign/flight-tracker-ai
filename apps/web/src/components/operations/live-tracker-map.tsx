@@ -5,6 +5,7 @@ import type { FeatureCollection, LineString, Point } from "geojson";
 import type { GeoJSONSource, Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
 import type { EstimatedTrajectory, TrajectoryPoint } from "@/lib/flight-trajectories";
 import type { PublicAircraft, PublicLiveStatus } from "@/lib/public-live-positions";
+import { liveMarkerRotationDegrees } from "./aircraft-marker-heading";
 
 type Props = {
   aircraft: PublicAircraft[];
@@ -118,7 +119,7 @@ export function LiveTrackerMap({ aircraft, selectedId, status, mode, trail, proj
         );
         entry.element.style.setProperty(
           "--aircraft-heading",
-          `${item.heading_true_degrees ?? 0}deg`,
+          `${liveMarkerRotationDegrees(item.heading_true_degrees)}deg`,
         );
         animateMarker(entry, [item.longitude_degrees, item.latitude_degrees]);
       }

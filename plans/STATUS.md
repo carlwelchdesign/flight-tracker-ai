@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-405 — Live navigable flight tracker
-- Branch: `feat/ft-405-live-navigable-tracker`
-- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
+- Active ticket: FT-407 — Align live aircraft markers with trajectories
+- Branch: `fix/ft-407-aircraft-marker-heading`
+- Pull request: Pending
 - Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Complete FT-405's airport and NOAA hazard/weather overlays,
-  direct motion lifecycle tests, and forced hosted degraded-state exercise.
+- Next action: Apply and verify the public live marker's negative 90-degree
+  glyph-axis correction, then return to FT-405's remaining overlays and tests.
 
 ## Milestone checklist
 
@@ -24,6 +24,10 @@ Last updated: 2026-07-21
 
 ## Current product correction
 
+- FT-407 is in progress on `fix/ft-407-aircraft-marker-heading`. It corrects
+  the public live-map glyph axis without changing ADS-B headings, trajectory
+  math, or the protected console's separate north-facing SVG marker. See
+  [`FT-407-aircraft-marker-heading.md`](tickets/FT-407-aircraft-marker-heading.md).
 - FT-406 is complete and merged through stacked PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26). It adds a selected live
   aircraft's ten-minute observed trail and a separately labeled estimated
   five-minute motion projection without persisting provider positions or

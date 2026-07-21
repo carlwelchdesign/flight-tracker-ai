@@ -1,0 +1,45 @@
+# FT-407 — Align live aircraft markers with trajectories
+
+Status: In progress
+
+Branch: `fix/ft-407-aircraft-marker-heading`
+Latest implementation commit: Pending
+Final commit: Pending
+Pull request: Pending
+Owner: Frontend product engineering
+
+## Outcome
+
+Make every aircraft icon on the public live MapLibre tracker point in the same
+direction as its supplied true heading and estimated trajectory. Correct the
+live marker glyph's visual axis by negative 90 degrees without changing source
+heading facts, trajectory math, or the separate north-facing SVG used by the
+protected operations console.
+
+Dependency: FT-405 live navigable tracker and FT-406 flight trajectories. This
+ticket is intentionally stacked on the active FT-405 feature branch.
+
+## Acceptance checklist
+
+- [ ] The public live-map marker applies a negative 90-degree visual offset to
+      every supplied aircraft heading.
+- [ ] North, east, south, and west headings map deterministically to the
+      corrected icon rotation.
+- [ ] Missing heading remains deterministic and does not fabricate a motion
+      fact in the evidence panel.
+- [ ] The correction changes presentation only; source heading values and
+      trajectory calculations remain unchanged.
+- [ ] Focused tests, full web tests, typecheck, lint, production build, and
+      whitespace checks pass.
+- [ ] Browser verification confirms selected live markers align with their
+      dashed projections on desktop and remain usable on mobile.
+- [ ] The dedicated branch has intentional commits, a stacked pull request,
+      passing required checks, and updated ticket/status evidence.
+
+## Implementation notes
+
+- Keep the glyph-axis correction explicit at the public marker presentation
+  boundary.
+- Do not apply the offset to the protected console's north-facing SVG glyph.
+- Do not alter the ADS-B heading contract or geodesic projection policy.
+
