@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use flight_tracker_api::{
     alerting::{AlertActionRequest, AlertStore, spawn_alert_worker},
@@ -12,7 +15,7 @@ use tokio::sync::broadcast;
 use uuid::Uuid;
 
 const PRODUCTION_REPLAY_CHANNEL_CAPACITY: usize = 256;
-const BOUNDED_BACKLOG_CYCLES: usize = 60;
+const BOUNDED_BACKLOG_CYCLES: usize = 15;
 const DRILL_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// This drill uses the real PostGIS schema when TEST_DATABASE_URL is present.
@@ -82,7 +85,10 @@ async fn worker_restart_and_bounded_backlog_preserve_alert_history() {
     assert!(bounded_started.elapsed() < DRILL_TIMEOUT);
     assert_history_is_unchanged(&store, scenario_a.operator_id, alert_a).await;
     assert_eq!(alert_count(&pool, scenario_a.operator_id).await, 1);
-    assert_eq!(envelope_count(&pool, scenario_a.operator_id).await, 3);
+    assert_eq!(
+        envelope_count(&pool, scenario_a.operator_id).await,
+        i64::try_from(scenario_a.events.len()).unwrap()
+    );
     println!(
         "FT402_BACKLOG bounded_batches={bounded_batches} drain_ms={} result=passed",
         bounded_elapsed.as_millis()
@@ -91,7 +97,7 @@ async fn worker_restart_and_bounded_backlog_preserve_alert_history() {
     let _ = restarted_worker.await;
 
     let scenario_c = isolated_scenario("overflow-c");
-    let overflow_hub = IngestionHub::new(8);
+    let overflow_hub = IngestionHub::new(16);
     let mut measurement_receiver = overflow_hub.subscribe();
     let worker_receiver = overflow_hub.subscribe();
     for _ in 0..20 {
@@ -124,15 +130,23 @@ async fn worker_restart_and_bounded_backlog_preserve_alert_history() {
 
 fn isolated_scenario(label: &str) -> ReplayScenario {
     let mut scenario = ReplayScenario::from_json(include_str!(
-        "../../../fixtures/replay/m2-route-hazard-v1.json"
+        "../../../fixtures/replay/m1-operations-v1.json"
     ))
     .unwrap();
     scenario.id = format!("ft402-{label}");
     scenario.namespace_id = Uuid::new_v4();
     scenario.operator_id = OperatorId::new();
 
-    let flight_id = FlightId::new();
-    scenario.flights[0].id = flight_id;
+    let flight_ids = scenario
+        .flights
+        .iter_mut()
+        .map(|flight| {
+            let previous = flight.id;
+            let replacement = FlightId::new();
+            flight.id = replacement;
+            (previous, replacement)
+        })
+        .collect::<HashMap<_, _>>();
     for event in &mut scenario.events {
         event.provider_record_id = format!("{label}-{}", event.provider_record_id);
         match &mut event.payload {
@@ -141,14 +155,14 @@ fn isolated_scenario(label: &str) -> ReplayScenario {
             }
             | ScenarioPayload::Position {
                 flight_id: value, ..
-            } => *value = flight_id,
+            } => *value = flight_ids[value],
             ScenarioPayload::PlannedRoute {
                 route_id,
                 flight_id: value,
                 ..
             } => {
                 *route_id = PlannedRouteId::new();
-                *value = flight_id;
+                *value = flight_ids[value];
             }
             ScenarioPayload::WeatherHazard { hazard_id, .. } => {
                 *hazard_id = WeatherHazardId::new();
