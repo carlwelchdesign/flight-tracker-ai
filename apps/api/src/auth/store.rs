@@ -173,19 +173,20 @@ impl AuthStore {
             &identity.operator_id.as_uuid(),
             format!("development:{}", identity.subject).as_bytes(),
         );
-        sqlx::query(
+        let identity_id = sqlx::query_scalar::<_, Uuid>(
             r#"
             INSERT INTO auth_identities (id, provider, subject, display_name)
             VALUES ($1, 'development', $2, $3)
             ON CONFLICT (provider, subject) DO UPDATE SET
                 display_name = EXCLUDED.display_name,
                 disabled_at = NULL
+            RETURNING id
             "#,
         )
         .bind(identity_id)
         .bind(&identity.subject)
         .bind(&identity.display_name)
-        .execute(&mut *transaction)
+        .fetch_one(&mut *transaction)
         .await?;
         sqlx::query(
             r#"
