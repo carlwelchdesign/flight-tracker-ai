@@ -4,26 +4,38 @@ Default owner: Product for provider contracting; engineering and security for im
 
 ## FT-301 — Select and contract a commercial flight-data provider
 
-Status: Not started
+Status: In progress
 
 Branch: `docs/ft-301-commercial-provider-selection`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) (draft)
+Owner: Product, legal, and engineering
 
 Resolve the provider feasibility work with a documented selection appropriate for the intended use.
 
 Dependencies: FT-003
 
+Preparation checklist:
+
+- [x] Revalidate current public finalist product, protocol, trial, support, and standard-term claims.
+- [x] Define one clause-level rights and service questionnaire for both providers.
+- [x] Define a paired 14-day real-time trial protocol with frozen population, metric grains, null rules, bias controls, and exit criteria.
+- [x] Add comparable trial and 20/100/500-flight cost schemas with structural and completion validation.
+- [x] Add provider outreach drafts, RACI, evidence statuses, privacy controls, and pass/fail-before-weighting decision rules.
+- [ ] Legal approves the intended-use statement and questionnaire.
+- [ ] Product and the operator partner provide accountable contacts, target dates, approved budget range, and an authorized target population.
+- [ ] Both providers return controlling rights/SLA terms, comparable real-time trial access, and priced proposals.
+
 Acceptance checklist:
 
-- [ ] Commercial situational-display, tenant/customer, redistribution, source-combination, LADD/PIA, storage, and derived-data rights are confirmed in writing.
+- [ ] Commercial situational-display, tenant/customer, redistribution, source-combination, AI/ML processing, upstream-data SaaS, LADD/PIA, storage, and derived-data rights are confirmed in writing.
 - [ ] Cirium Sky Stream and FlightAware Firehose run the same target-tail trial for at least 14 days; coverage and p50/p95/p99 latency are recorded by region.
 - [ ] Rate and priced cost model covers 20, 100, and 500 monitored flights under normal, peak, replay, reconnect, and failure behavior.
 - [ ] Retention and deletion requirements are recorded.
 - [ ] Uptime definition, service credits, incident notification, support response, provider outage, and termination fallback are documented.
 - [ ] OD-002 is resolved in `../DECISIONS.md`.
 
-Verification evidence: Pending.
+In-progress verification evidence: [`provider-evaluation/`](../provider-evaluation/README.md) contains the common questionnaire, 66-row two-provider response matrix, 14-row fixed-weight score matrix, structured final-decision record, outreach requests, evidence register, paired trial protocol, five-behavior cost model, RACI, decision gates, and privacy controls; `python3 scripts/validate_ft301_evidence.py` verifies exact question/score coverage, answer/review compatibility, evidence statuses, trial metrics, cost scenarios, approval references, selected-provider consistency, and OD-002 state. Its regression suite passes, while `--require-complete` intentionally fails until all evidence, responses, scores, trial/price records, approvals, and the decision are complete. Public provider claims were revalidated on 2026-07-21 in [`PROVIDER_FEASIBILITY.md`](../PROVIDER_FEASIBILITY.md). Acceptance evidence remains pending; no provider has been selected.
 
 ## FT-302 — Integrate licensed live flight data
 

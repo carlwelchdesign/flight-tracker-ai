@@ -17,3 +17,9 @@ node_modules/
 
 # Local runtime data
 .data/
+__pycache__/
+*.py[cod]
+
+# FT-301 controlled provider evidence
+plans/provider-evaluation/private/
+plans/provider-evaluation/raw/
