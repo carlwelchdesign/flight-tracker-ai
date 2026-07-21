@@ -29,6 +29,7 @@ verify-web:
 	npm --prefix apps/web audit --omit=dev --audit-level=moderate
 	npm --prefix apps/web run lint
 	npm --prefix apps/web run typecheck
+	npm --prefix apps/web test
 	npm --prefix apps/web run build
 
 compose-check:

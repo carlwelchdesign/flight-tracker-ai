@@ -1,0 +1,187 @@
+import { useState } from "react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import type { FlightView, Hazard } from "@/lib/fleet-api";
+import { parseFlightPage } from "@/lib/fleet-api";
+import { FlightBoard } from "./flight-board";
+import { FlightDetail } from "./flight-detail";
+import { OperationsMap } from "./operations-map";
+import { attentionLevel, fleetReferenceTime, freshness, scheduleVariance } from "./operations-model";
+
+const flights = [
+  flight("101", "FT101", "SFO", "LAX", "active", -121.95, 37.25, "2026-07-20T16:01:00Z"),
+  flight("202", "FT202", "SEA", "SFO", "scheduled", -122.3088, 47.4502, "2026-07-20T16:02:00Z"),
+  flight("303", "FT303", "LAS", "SFO", "active", -121.62, 37.18, "2026-07-20T16:03:00Z"),
+];
+
+const hazards: Hazard[] = [
+  {
+    id: "hazard-1",
+    hazard_type: "convective_cell",
+    severity: "significant",
+    valid_from: "2026-07-20T16:00:00Z",
+    valid_to: "2026-07-20T16:15:00Z",
+    footprint: {
+      exterior: [
+        { longitude_degrees: -121.9, latitude_degrees: 37.1 },
+        { longitude_degrees: -121.4, latitude_degrees: 37.1 },
+        { longitude_degrees: -121.4, latitude_degrees: 37.5 },
+        { longitude_degrees: -121.9, latitude_degrees: 37.5 },
+        { longitude_degrees: -121.9, latitude_degrees: 37.1 },
+      ],
+    },
+  },
+];
+
+describe("operations console interaction", () => {
+  it("synchronizes map, board, and detail selection with accessible controls", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    expect(screen.getByRole("heading", { name: "FT101" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /western united states route map/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /select ft303, watch attention/i })).toHaveStyle({
+      "--aircraft-offset-y": "-38px",
+    });
+
+    await user.click(screen.getByRole("button", { name: /select ft303, watch attention/i }));
+    expect(screen.getByRole("heading", { name: "FT303" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /select flight ft303/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    const flight202 = screen.getByRole("button", { name: /select flight ft202/i });
+    flight202.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("heading", { name: "FT202" })).toBeInTheDocument();
+    expect(screen.getAllByText("+32 min")).toHaveLength(2);
+  });
+
+  it("presents a recoverable empty state", () => {
+    render(
+      <FlightBoard
+        flights={[]}
+        hazards={[]}
+        selectedId={null}
+        refreshing={false}
+        controlsAvailable={false}
+        onSelect={() => undefined}
+        onStart={() => undefined}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "No active flight picture" })).toBeInTheDocument();
+    expect(screen.getByText(/replay controls are unavailable/i)).toBeInTheDocument();
+  });
+});
+
+describe("operational presentation rules", () => {
+  it("derives delayed and hazard-adjacent attention from source facts", () => {
+    const reference = fleetReferenceTime(flights);
+    expect(scheduleVariance(flights[1])).toEqual({ label: "+32 min", minutes: 32 });
+    expect(attentionLevel(flights[1], hazards, reference)).toMatchObject({
+      level: "watch",
+      reason: "+32 min departure",
+    });
+    expect(attentionLevel(flights[2], hazards, reference)).toMatchObject({
+      level: "watch",
+      reason: "Hazard-adjacent track",
+    });
+  });
+
+  it("makes stale source data visible and attention-worthy", () => {
+    const reference = Date.parse("2026-07-20T16:03:01Z");
+    expect(freshness(flights[0], reference)).toEqual({ level: "stale", label: "2m behind" });
+    expect(attentionLevel(flights[0], [], reference)).toMatchObject({
+      level: "watch",
+      reason: "Position data is stale",
+    });
+  });
+
+  it("rejects malformed fleet transport payloads before rendering", () => {
+    expect(() => parseFlightPage({ data: [{}], pagination: {} })).toThrow(
+      "Fleet API returned an unexpected list payload",
+    );
+  });
+});
+
+function Harness() {
+  const [selectedId, setSelectedId] = useState(flights[0].flight.id);
+  const selected = flights.find((view) => view.flight.id === selectedId) ?? null;
+  return (
+    <>
+      <OperationsMap
+        flights={flights}
+        hazards={hazards}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+      />
+      <FlightBoard
+        flights={flights}
+        hazards={hazards}
+        selectedId={selectedId}
+        refreshing={false}
+        controlsAvailable
+        onSelect={setSelectedId}
+        onStart={() => undefined}
+      />
+      <FlightDetail
+        selected={selected}
+        flights={flights}
+        hazards={hazards}
+        timeline={[]}
+        timelineState="ready"
+      />
+    </>
+  );
+}
+
+function flight(
+  suffix: string,
+  flightCallsign: string,
+  origin: string,
+  destination: string,
+  status: FlightView["flight"]["status"],
+  longitude: number,
+  latitude: number,
+  eventTime: string,
+): FlightView {
+  const envelopeId = `00000000-0000-0000-0000-000000000${suffix}`;
+  const source = {
+    envelope_id: envelopeId,
+    provider: "simulation",
+    feed: "m1-operations-v1",
+    provider_record_id: `record-${suffix}`,
+  };
+  const times = { event_time: eventTime, received_at: eventTime, processed_at: eventTime };
+  return {
+    flight: {
+      id: `00000000-0000-0000-0000-000000000${suffix}`,
+      operator_id: "00000000-0000-0000-0000-000000000999",
+      schema_version: 1,
+      source,
+      times,
+      callsign: flightCallsign,
+      aircraft_registration: `N${suffix}FT`,
+      origin_airport_code: origin,
+      destination_airport_code: destination,
+      scheduled_departure_at: "2026-07-20T15:30:00Z",
+      scheduled_arrival_at: "2026-07-20T17:30:00Z",
+      status,
+    },
+    latest_position: {
+      id: `10000000-0000-0000-0000-000000000${suffix}`,
+      operator_id: "00000000-0000-0000-0000-000000000999",
+      flight_id: `00000000-0000-0000-0000-000000000${suffix}`,
+      schema_version: 1,
+      source,
+      times,
+      point: { longitude_degrees: longitude, latitude_degrees: latitude },
+      altitude: { value: 24_000, unit: "feet", reference: "mean_sea_level" },
+      heading_true_degrees: 310,
+      ground_speed: { value: 430, unit: "knots" },
+      quality: "observed",
+    },
+  };
+}

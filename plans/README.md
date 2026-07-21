@@ -14,12 +14,13 @@ Build an operations-intelligence console inspired by Flight Science: live fleet 
 4. [CANONICAL_EVENT_MODEL.md](CANONICAL_EVENT_MODEL.md) — provider-independent v1 domain and persistence contract
 5. [REPLAY_SCENARIOS.md](REPLAY_SCENARIOS.md) — versioned simulation format, virtual clock, and development controls
 6. [FLEET_API.md](FLEET_API.md) — current-state projection, typed reads, SSE reconnect, and metrics
-7. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
-8. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
-9. [tickets/README.md](tickets/README.md) — ticket index and update rules
-10. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
-11. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
-12. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
+7. [OPERATIONS_CONSOLE.md](OPERATIONS_CONSOLE.md) — dispatcher workflow, interface states, responsiveness, and accessibility contract
+8. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
+9. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
+10. [tickets/README.md](tickets/README.md) — ticket index and update rules
+11. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
+12. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
+13. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
 
 ## Planning rules
 

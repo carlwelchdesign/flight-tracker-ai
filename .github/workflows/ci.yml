@@ -40,6 +40,7 @@ jobs:
       - run: npm audit --omit=dev --audit-level=moderate
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build
 
   integration:

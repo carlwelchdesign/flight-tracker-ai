@@ -31,7 +31,7 @@ Status: Complete
 
 Branch: `feat/ft-102-fleet-api-event-stream`
 Final implementation commit: `7e99083`
-Pull request: [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6) (ready for review; required checks passed)
+Pull request: [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6) (merged at `aed432d`)
 Owner: Backend engineering
 
 Project current flight state from replay events and expose list, detail, timeline, and SSE endpoints.
@@ -50,11 +50,12 @@ Verification evidence: `plans/FLEET_API.md`; focused projection, HTTP, SSE, metr
 
 ## FT-103 — Build map, flight board, and flight detail experience
 
-Status: Not started
+Status: Complete
 
 Branch: `feat/ft-103-operations-console`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `160f5f6`
+Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (required checks passing; ready for human review)
+Owner: Frontend engineering with product-design review
 
 Create the desktop operations interface with synchronized map and table selection.
 
@@ -62,14 +63,14 @@ Dependencies: FT-102
 
 Acceptance checklist:
 
-- [ ] Board shows callsign, route, phase, schedule variance, freshness, and attention level.
-- [ ] Map shows aircraft, route, origin, and destination with accessible selection behavior.
-- [ ] Selecting a flight synchronizes the map, board, and detail panel.
-- [ ] Loading, empty, disconnected, stale, and error states are designed and implemented.
-- [ ] Keyboard navigation and basic screen-reader labels are verified.
-- [ ] Dense layouts remain usable at the agreed minimum desktop viewport.
+- [x] Board shows callsign, route, phase, schedule variance, freshness, and attention level.
+- [x] Map shows aircraft, route, origin, and destination with accessible selection behavior.
+- [x] Selecting a flight synchronizes the map, board, and detail panel.
+- [x] Loading, empty, disconnected, stale, and error states are designed and implemented.
+- [x] Keyboard navigation and basic screen-reader labels are verified.
+- [x] Dense layouts remain usable at the agreed minimum desktop viewport.
 
-Verification evidence: Pending.
+Verification evidence: `plans/OPERATIONS_CONSOLE.md`; 31 passing Rust tests; strict workspace Clippy; Rust formatting and release build; 5 passing frontend interaction, stale-data, collision, empty-state, and payload-validation tests; dependency audit with 0 vulnerabilities; frontend lint, typecheck, and production build; Compose configuration and diff hygiene; browser-verified live, disconnected, empty, timeline, replay-control, pointer-selection, and synchronized-selection behavior; no horizontal page overflow at 1440x900, the agreed 1180x720 minimum, 820x900, or 390x844; implementation commit `160f5f6`; PR [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7), with Rust, web, and API/PostGIS smoke checks passing.
 
 ## FT-104 — Add source health and operational observability
 
