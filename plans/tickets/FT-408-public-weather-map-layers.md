@@ -1,11 +1,11 @@
 # FT-408 — Public NOAA weather map layers
 
-Status: In progress
+Status: In review
 
 Branch: `feat/ft-408-public-weather-map-layers`
-Latest implementation commit: Pending
+Latest implementation commit: `f31d650`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28)
 Owner: Full-stack product engineering
 
 ## Outcome
