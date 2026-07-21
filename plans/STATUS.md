@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-405 — Live navigable flight tracker release closeout
-- Branch: `feat/ft-405-live-navigable-tracker`
-- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
+- Active ticket: FT-409 — Prioritize selected aircraft details
+- Branch: `feat/ft-409-prioritize-selected-aircraft`
+- Pull request: [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
 - Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Close the remaining FT-405 direct motion/lifecycle coverage and
-  forced hosted fallback checks before merging the parent release PR.
+- Next action: Move selected-aircraft evidence above the current traffic list,
+  verify responsive behavior, and deliver the stacked PR.
 
 ## Milestone checklist
 
