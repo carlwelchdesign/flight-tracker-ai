@@ -79,3 +79,19 @@ After intervention, require all of the following before considering the developm
 - The console reports service healthy and stream live.
 - Last event and last received advance after replay resumes.
 - A known correlation ID appears in the JSON request-completion log.
+
+After an alert worker restart or a logged `alert input lagged` event, also reset
+and replay the complete deterministic scenario. PostgreSQL retains alert and
+append-only action history, and deterministic IDs prevent duplicate lifecycle
+records, but the bounded in-memory channel does not recover skipped unique
+events. Do not declare recovery until the expected alert count and existing
+workflow versions/actions match their pre-failure values.
+
+## Repeatable FT-402 drills
+
+Run the provider/UI tests and PostGIS-backed worker drill described in
+[`RESILIENCE_DRILLS.md`](RESILIENCE_DRILLS.md). The worker test prints the
+bounded batch count, skipped overflow count, and recovery time. The controlled
+database script prints its measured snapshot RPO/RTO and removes only the
+validated scratch restore database. These measurements are repository evidence;
+they do not replace the hosted recovery and monitoring exercises in FT-404.

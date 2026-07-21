@@ -270,4 +270,32 @@ mod tests {
         assert_eq!(recovered.aircraft_count, 2);
         assert!(recovered.last_error_code.is_none());
     }
+
+    #[test]
+    fn high_latency_timeout_is_visible_as_degraded_before_unavailable() {
+        let store = LivePositionStatusStore::default();
+        let operator = OperatorId::new();
+        store.register(
+            operator,
+            LivePositionRegion {
+                latitude_degrees: 37.62,
+                longitude_degrees: -122.38,
+                radius_nautical_miles: 25,
+            },
+            Duration::from_secs(30),
+            now(0),
+        );
+
+        store.record_failure(operator, now(1), "timeout");
+        let degraded = store.snapshot(operator, now(1));
+        assert_eq!(degraded.state, LivePositionState::Degraded);
+        assert_eq!(degraded.last_error_code.as_deref(), Some("timeout"));
+
+        store.record_failure(operator, now(2), "timeout");
+        store.record_failure(operator, now(3), "timeout");
+        assert_eq!(
+            store.snapshot(operator, now(3)).state,
+            LivePositionState::Unavailable
+        );
+    }
 }

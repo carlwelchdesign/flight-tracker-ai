@@ -47,3 +47,19 @@ If any integrity violation is non-zero, stop. Do not delete the conflicting evid
 - [ ] Security and the recovery approver sign the go/no-go decision.
 
 F401-008 remains open until this checklist is completed in the representative managed environment. FT-402 owns the destructive recovery drill; this runbook supplies its release gate.
+
+## Repository recovery rehearsal
+
+FT-402 automates the non-hosted portion of this sequence in CI with
+`scripts/run_ft402_database_recovery.sh`. Against the ephemeral PostGIS service,
+it writes one controlled marker, captures a custom-format logical backup,
+restores to a distinct database ending in `_ft402_restore`, and verifies the
+marker, alert/action counts, successful migration ledger, and PostGIS extension.
+It prints measured controlled-snapshot RPO/RTO and then removes the scratch
+target and archive.
+
+This proves that the schema and repository data can traverse the documented
+dump/restore boundary. It does not check managed encryption, provider snapshot
+retention, protected control-copy import, access logs, regional isolation,
+human approvals, or a traffic cutover. Those required drill-evidence boxes
+remain unchecked until FT-404 exercises a representative hosted environment.

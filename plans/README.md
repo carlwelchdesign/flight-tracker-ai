@@ -26,13 +26,15 @@ Build a portfolio demonstration inspired by Flight Science: fleet monitoring, av
 16. [RETENTION_DELETION_RUNBOOK.md](RETENTION_DELETION_RUNBOOK.md) — two-person policy/run approval, deletion evidence, tombstones, and failure handling
 17. [DATA_LIFECYCLE_INCIDENT_POLICY.md](DATA_LIFECYCLE_INCIDENT_POLICY.md) — retention, deletion, backup, restoration, and incident baseline
 18. [SECURITY_PRIVACY_TRUST_REVIEW.md](SECURITY_PRIVACY_TRUST_REVIEW.md) — FT-401 threat model, trust controls, and approval gate
-19. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
-20. [ADSBLOL_INTEGRATION.md](ADSBLOL_INTEGRATION.md) — selected free position source, ODbL controls, bounded sample, and FT-302 activation gate
-21. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
-22. [tickets/README.md](tickets/README.md) — ticket index and update rules
-23. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
-24. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
-25. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
+19. [RESILIENCE_DRILLS.md](RESILIENCE_DRILLS.md) — repeatable provider, worker, backlog, and database recovery evidence
+20. [PORTFOLIO_DEMO_RUNBOOK.md](PORTFOLIO_DEMO_RUNBOOK.md) — recruiter-facing demo path and failure-safe fallback
+21. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
+22. [ADSBLOL_INTEGRATION.md](ADSBLOL_INTEGRATION.md) — selected free position source, ODbL controls, bounded sample, and FT-302 activation gate
+23. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
+24. [tickets/README.md](tickets/README.md) — ticket index and update rules
+25. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
+26. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
+27. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
 
 ## Planning rules
 

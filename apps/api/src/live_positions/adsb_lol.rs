@@ -549,7 +549,12 @@ mod tests {
     };
 
     use axum::{
-        Json, Router, extract::State, http::HeaderMap, response::IntoResponse, routing::get,
+        Json, Router,
+        body::Body,
+        extract::State,
+        http::HeaderMap,
+        response::{IntoResponse, Response},
+        routing::get,
     };
     use chrono::TimeZone;
     use serde_json::json;
@@ -691,6 +696,23 @@ mod tests {
         assert_eq!(position.point.as_geojson_position(), [-121.0, 38.0]);
     }
 
+    #[test]
+    fn rejects_malformed_top_level_payload_without_publishing_partial_state() {
+        let result = normalize_snapshot(
+            AdsbLolPayload {
+                value: json!({
+                    "now": "not-a-timestamp",
+                    "ac": {"unexpected": "object"}
+                }),
+                received_at: received_at(),
+            },
+            OperatorId::new(),
+            Utc.with_ymd_and_hms(2026, 7, 21, 17, 16, 2).unwrap(),
+            Duration::from_secs(30),
+        );
+        assert!(matches!(result, Err(AdsbLolError::MalformedJson(_))));
+    }
+
     #[derive(Clone, Default)]
     struct TestState {
         attempts: Arc<AtomicUsize>,
@@ -787,6 +809,46 @@ mod tests {
             .await
             .unwrap_err();
         assert_eq!(error.code(), "timeout");
+    }
+
+    #[tokio::test]
+    async fn oversized_response_is_rejected_before_its_body_is_retained() {
+        async fn oversized() -> Response {
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::CONTENT_LENGTH, MAX_RESPONSE_BYTES + 1)
+                .body(Body::from(vec![b' '; MAX_RESPONSE_BYTES + 1]))
+                .unwrap()
+        }
+
+        let router = Router::new().route("/v2/point/37.62/-122.38/25", get(oversized));
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let client = AdsbLolClient::new(AdsbLolClientConfig {
+            base_url: Url::parse(&format!("http://{address}/")).unwrap(),
+            user_agent: "flight-tracker-ai-test/1.0".into(),
+            connect_timeout: Duration::from_secs(1),
+            request_timeout: Duration::from_secs(1),
+            retry: RetryPolicy {
+                max_attempts: 1,
+                base_delay: Duration::ZERO,
+                max_delay: Duration::ZERO,
+            },
+        })
+        .unwrap();
+
+        let error = client
+            .fetch_point(LivePositionRegion {
+                latitude_degrees: 37.62,
+                longitude_degrees: -122.38,
+                radius_nautical_miles: 25,
+            })
+            .await
+            .unwrap_err();
+        assert!(matches!(error, AdsbLolError::ResponseTooLarge));
+        assert_eq!(error.code(), "response_too_large");
     }
 
     #[test]

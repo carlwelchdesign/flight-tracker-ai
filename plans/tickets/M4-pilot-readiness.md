@@ -50,11 +50,12 @@ Scope-reconciliation evidence (2026-07-21): FT-005 and ADR-010 remove commercial
 
 ## FT-402 — Run resilience and failure drills
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-402-resilience-drills`
 Final commit: Pending
 Pull request: Pending
+Owner: Backend, reliability, and full-stack engineering
 
 Demonstrate a reliable recruiter-facing experience under feed, database, worker, network, and malformed-data failures.
 
@@ -62,14 +63,23 @@ Dependencies: FT-302, FT-304
 
 Acceptance checklist:
 
-- [ ] Free-feed outage and high-latency checks produce visible degraded states and leave replay available.
+- [x] Free-feed outage and high-latency checks produce visible degraded states and leave replay available.
 - [ ] Worker restart does not duplicate or lose lifecycle history beyond documented guarantees.
 - [ ] Database recovery procedure is tested.
-- [ ] Malformed and adversarial provider payloads are rejected or quarantined.
+- [x] Malformed and adversarial provider payloads are rejected or quarantined.
 - [ ] Alert backlog recovery behavior is measured.
-- [ ] Demo and developer runbooks are updated from the findings.
+- [x] Demo and developer runbooks are updated from the findings.
 
-Verification evidence: Pending.
+Verification evidence in progress: focused Rust tests prove bounded timeout,
+degraded/unavailable/recovered source transitions, malformed top-level failure,
+invalid-record rejection, freshest-duplicate selection, and the one-megabyte
+response cap. React behavior proves a timeout is visibly degraded and replay
+remains directly selectable. [`RESILIENCE_DRILLS.md`](../RESILIENCE_DRILLS.md),
+[`OPERATIONS_RUNBOOK.md`](../OPERATIONS_RUNBOOK.md),
+[`BACKUP_RESTORE_RUNBOOK.md`](../BACKUP_RESTORE_RUNBOOK.md), and
+[`PORTFOLIO_DEMO_RUNBOOK.md`](../PORTFOLIO_DEMO_RUNBOOK.md) record the measured
+contract and honest recovery boundary. Worker, backlog, and database recovery
+boxes remain open until the new PostGIS CI drills execute successfully.
 
 ## FT-403 — Validate the recruiter and hiring-manager demo
 
