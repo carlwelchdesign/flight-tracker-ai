@@ -233,7 +233,8 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
         AuthRole::Administrator,
     )
     .await;
-    let now = Utc::now();
+    let now = chrono::DateTime::<Utc>::from_timestamp_micros(Utc::now().timestamp_micros())
+        .expect("current time is representable at PostgreSQL precision");
     let old_id = Uuid::new_v4();
     let current_id = Uuid::new_v4();
     let other_id = Uuid::new_v4();
