@@ -8,10 +8,10 @@
   web services from [`render.yaml`](../render.yaml). Free services are
   acceptable for this hobby portfolio, not an availability claim: they sleep
   after 15 idle minutes and can take about one minute to wake.
-- **Database:** Neon Free Postgres in AWS `us-east-1`, aligned with the Render
-  Virginia service before that service is provisioned, with PostGIS enabled, a
-  direct or pooled TLS URL, instant restore, and one protected snapshot. Neon
-  is separate from Vercel and Render lifecycle.
+- **Database:** Separate Neon Free Postgres projects for production
+  (`neon-bronze-curtain`) and staging (`neon-bistre-lantern`) in AWS
+  `us-east-1`, aligned with Render Virginia, with PostGIS enabled and direct
+  and pooled TLS URLs. Neon is separate from Vercel and Render lifecycle.
 - **Identity:** Clerk Organizations. The Vercel server signs short-lived
   internal assertions; Render verifies the same named secret. No assertion
   secret is exposed to browser code.
@@ -38,9 +38,9 @@ production airline infrastructure, high availability, or a commercial SLA.
 
 ## Provisioning order
 
-1. Provision Neon through the Vercel Marketplace in AWS `us-east-1`. Keep the
-   production branch separate from a staging branch, enable PostGIS on both,
-   and verify:
+1. Provision Neon through the Vercel Marketplace in AWS `us-east-1`. Keep
+   production separate from staging with distinct projects or branches, enable
+   PostGIS on both, and verify:
 
    ```sql
    CREATE EXTENSION IF NOT EXISTS postgis;
@@ -78,25 +78,46 @@ production airline infrastructure, high availability, or a commercial SLA.
 
 ## Provisioning evidence
 
-On 2026-07-21, the linked Vercel project provisioned and connected the Neon
-resource `neon-bronze-curtain` and Clerk resource `clerk-celeste-door`. Vercel
-reports both resources as available. It injected the expected pooled and
-unpooled Neon connection variables plus `CLERK_SECRET_KEY` and
-`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` into Development, Preview, and Production.
+On 2026-07-21, the linked Vercel project provisioned Neon resources
+`neon-bronze-curtain` for production and `neon-bistre-lantern` for staging, and
+connected Clerk resource `clerk-celeste-door`. The staging database is attached
+only to Preview under a namespaced variable set, while the production database
+retains its original connection. Vercel reports both databases as available.
+It injected the expected pooled and unpooled Neon connection variables plus
+`CLERK_SECRET_KEY` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`.
 `AUTH_MODE`, `OPERATIONS_MODE`, `INTERNAL_AUTH_KEY_ID`,
-`AUTH_ASSERTION_ISSUER`, and `AUTH_ASSERTION_AUDIENCE` are also configured for
-all three Vercel environments; `API_BASE_URL` and `INTERNAL_AUTH_SECRET` remain
-intentionally unset until the corresponding Render service and environment
-exist.
+`AUTH_ASSERTION_ISSUER`, and `AUTH_ASSERTION_AUDIENCE` are configured for all
+three Vercel environments. Preview and Production now have distinct
+`API_BASE_URL` and `INTERNAL_AUTH_SECRET` values matching their Render service.
 Clerk Production now uses live keys while Preview uses test keys. The production
 domain is `flight-tracker-ai-one.vercel.app`, required organization membership
 is enabled, and organization `Flight Tracker Portfolio` exists. Production
-deployment `dpl_2hfw56Se2W9oSDx7fCQ4F3hHd2cb` serves the public signed-out state
+deployment `dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` serves the public signed-out state
 and production Clerk sign-in flow without exposing configuration details.
 The pooled and direct database URLs both require TLS, target AWS `us-east-1`,
 and differ as expected by pooler usage. The direct connection enabled and
 reported PostGIS `3.5.0`. No secret value is recorded here. Snapshot and
 isolated-restore evidence remain pending.
+
+Render Blueprint `exs-d9ft018okrbs738q5r60` created production service
+`srv-d9ft2gn7f7vs739ass40` at `https://flight-tracker-api-cpxg.onrender.com`
+and staging service `srv-d9ft2gn7f7vs739ass3g` at
+`https://flight-tracker-api-staging.onrender.com`. The first staging start
+failed closed because a sensitive Vercel pull represented its database URL as
+the literal placeholder `[SENSITIVE]`; the authenticated provider value was
+then applied directly without exposing it. Production health and migrations
+passed. Hosted readiness exposed an idle `alert_projection` heartbeat defect,
+which commit `a665494` fixes with a periodic supervised heartbeat and an HSTS
+response layer; commit `6a4929e` passes CI run
+[`29865574640`](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29865574640).
+Render production deploy `dep-d9ftbi61a83c7396hbsg` and staging deploy
+`dep-d9ftf2naqgkc738okfig` run commit `6a4929e`. Both return exact HTTP 200
+health/readiness contracts with HSTS, PostGIS, migrations, and all four
+critical workers ready. A short-lived deployment-verifier identity proved each
+environment's distinct internal assertion secret and was then removed from
+both databases. Public verifier evidence passes for protected Vercel preview
+`dpl_FNbngNWmbKNSafY5rvNypHjPaPzS` and publication-ready production deployment
+`dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` without emitting origins, bodies, or secrets.
 
 ## Vercel server-only configuration
 
@@ -137,19 +158,19 @@ into an isolated branch, verify PostGIS and migration state, and follow
 
 ## Required hosted evidence
 
-- [ ] Vercel Git connection creates a distinct pull-request preview.
-- [ ] Staging and production Render deployment IDs, commits, health, readiness,
+- [x] Vercel Git connection creates a distinct pull-request preview.
+- [x] Staging and production Render deployment IDs, commits, health, readiness,
       and worker status pass.
 - [ ] Neon region, PostGIS version, pooling path, snapshot, and isolated restore
       are recorded without exposing its connection string.
-- [ ] Vercel and Render use matching active key IDs and distinct preview versus
+- [x] Vercel and Render use matching active key IDs and distinct preview versus
       production secret references.
 - [ ] Clerk sign-in, organization selection, membership, session expiry, and
       revoked-session behavior pass.
 - [ ] Browser smoke covers replay, flight evidence, alert action, cold-start or
       degraded state, source labels, and optional positions disabled.
 - [ ] Hosted FT-401 verifier passes with sanitized output.
-- [ ] Response headers, TLS, bounded logs, and basic availability monitoring
+- [x] Response headers, TLS, bounded logs, and basic availability monitoring
       pass.
 - [ ] FT-403 independent neutral reviewer passes the unfacilitated protocol.
 - [ ] The candidate contains no certification, operational-authority,

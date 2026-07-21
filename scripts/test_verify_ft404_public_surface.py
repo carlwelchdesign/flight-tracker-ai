@@ -130,6 +130,29 @@ class PublicSurfaceVerificationTest(unittest.TestCase):
         self.assertFalse(evidence["publication_ready"])
         self.assertTrue(evidence["summary"]["deployment_protected"])
 
+    def test_structured_vercel_protection_response_passes_for_preview(self):
+        responses = healthy_api()
+        responses[(WEB, "/")] = json_response(
+            401,
+            {
+                "error": {"code": "401", "message": "Authentication Required"},
+                "protection": {
+                    "vercel_auth_enabled": True,
+                    "password_enabled": False,
+                },
+            },
+            {"server": "Vercel", "x-vercel-id": "iad1::safe-reference"},
+        )
+
+        evidence = verify_public_surface(
+            SurfaceConfig("preview-structured-401", WEB, API, allow_deployment_protection=True),
+            FakeClient(responses),
+        )
+
+        self.assertEqual(evidence["status"], "passed")
+        self.assertFalse(evidence["publication_ready"])
+        self.assertTrue(evidence["summary"]["deployment_protected"])
+
     def test_unknown_redirect_and_open_api_fail_closed(self):
         responses = healthy_api()
         responses[(WEB, "/")] = response(302, headers={"location": "https://evil.example/"})

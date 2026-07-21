@@ -139,8 +139,7 @@ def verify_public_surface(config: SurfaceConfig, client: SurfaceHttpClient) -> d
             checks.append({"check": "web_identity_redirect", "status": "passed"})
             _verify_web_headers(root, checks, failures)
         elif (
-            root.status in REDIRECT_STATUSES
-            and _is_vercel_protection(location)
+            _is_vercel_protection_response(root, location)
             and config.allow_deployment_protection
         ):
             deployment_protected = True
@@ -212,6 +211,28 @@ def _is_bounded_sign_in_landing(response: HttpResponse) -> bool:
 def _is_vercel_protection(location: str) -> bool:
     parsed = urlsplit(location)
     return parsed.scheme == "https" and parsed.netloc == "vercel.com" and parsed.path == "/sso-api"
+
+
+def _is_vercel_protection_response(response: HttpResponse, location: str) -> bool:
+    if response.status in REDIRECT_STATUSES:
+        return _is_vercel_protection(location)
+    if (
+        response.status != 401
+        or response.headers.get("server", "").lower() != "vercel"
+        or not response.headers.get("x-vercel-id")
+    ):
+        return False
+    try:
+        payload = _parse_json(response)
+    except (ValueError, json.JSONDecodeError):
+        return False
+    return (
+        isinstance(payload, dict)
+        and isinstance(payload.get("error"), dict)
+        and payload["error"].get("code") == "401"
+        and isinstance(payload.get("protection"), dict)
+        and payload["protection"].get("vercel_auth_enabled") is True
+    )
 
 
 def _verify_web_headers(

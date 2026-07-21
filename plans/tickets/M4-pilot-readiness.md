@@ -125,7 +125,7 @@ neutral reviewer on the candidate preview produced by FT-404.
 Status: In progress
 
 Branch: `feat/ft-404-production-deployment`
-Latest implementation commit: `e33a21c`
+Latest implementation commit: `6a4929e`
 Final commit: Pending
 Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
 Owner: Platform, backend, security, and full-stack engineering
@@ -137,14 +137,14 @@ Dependencies: FT-401, FT-402
 Acceptance checklist:
 
 - [x] Vercel project is connected to GitHub and creates isolated preview deployments for pull requests.
-- [ ] Production Next.js environment calls the Rust API through a server-only configured URL.
-- [ ] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
+- [x] Production Next.js environment calls the Rust API through a server-only configured URL.
+- [x] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
 - [ ] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
-- [ ] Secrets and environment variables are separated across development, preview, and production.
-- [ ] Public domain, TLS, security headers, bounded logging, and basic availability monitoring are verified.
+- [x] Secrets and environment variables are separated across development, preview, and production.
+- [x] Public domain, TLS, security headers, bounded logging, and basic availability monitoring are verified.
 - [ ] Deployment, migration, rollback, and incident runbooks are tested.
 - [ ] End-to-end smoke checks prove browser, API, database, replay fallback, source labeling, and degraded-state behavior.
-- [ ] The public deployment contains no claim of certification, operational authority, commercial SLA, or real-operator endorsement.
+- [x] The public deployment contains no claim of certification, operational authority, commercial SLA, or real-operator endorsement.
 
 Verification evidence: The Vercel project `flight-tracker-ai` is Git-connected
 to this repository with `apps/web` as its Next.js root and Node.js 20.x. The
@@ -200,8 +200,34 @@ feature-branch checks during FT-404 verification; production is promoted
 manually after staging and browser smoke. The final promotion commit switches
 both services to `main`. Render Free rejects a configurable maximum shutdown
 delay, so the Blueprint uses the platform default.
-Each service requires a distinct Neon branch URL and internal assertion secret.
+Each service requires a distinct Neon database URL and internal assertion secret.
 The Blueprint passes Render's official JSON Schema, the Rust release build
 passes locally, and CI run
 [29862882559](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29862882559)
 passes all repository jobs at commit `e33a21c`.
+
+Render Blueprint `exs-d9ft018okrbs738q5r60` created production service
+`srv-d9ft2gn7f7vs739ass40` and staging service
+`srv-d9ft2gn7f7vs739ass3g`. Production uses `neon-bronze-curtain`; staging uses
+the separately provisioned `neon-bistre-lantern` Free database attached only to
+Preview under namespaced variables. Preview and Production have distinct API
+origins and internal assertion secrets. The first staging launch failed closed
+when a sensitive Vercel pull yielded the literal placeholder `[SENSITIVE]`;
+the authenticated provider value was applied directly without exposing it.
+Production health and migrations then exposed an idle alert-worker heartbeat
+defect through the protected diagnostics route. Commit `a665494` adds the
+periodic heartbeat, API HSTS, and bounded signed-out verifier contract; commit
+`6a4929e` passes CI run
+[29865574640](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29865574640).
+
+Render production deploy `dep-d9ftbi61a83c7396hbsg` and staging deploy
+`dep-d9ftf2naqgkc738okfig` run commit `6a4929e`. Both return exact health and
+readiness responses with HSTS, PostGIS and migrations ready, and
+`alert_projection`, `fleet_projection`, `replay_runtime`, and
+`retention_scheduler` running. Distinct short-lived internal assertions passed
+in both environments; their temporary verifier identities were removed.
+Vercel preview `dpl_FNbngNWmbKNSafY5rvNypHjPaPzS` passes the sanitized protected
+preview contract, and refreshed production deployment
+`dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` is the current public alias and passes the
+publication-ready public-boundary verifier. Reviewer enrollment, the managed
+snapshot/isolated restore, and authenticated browser/FT-401 smoke remain open.
