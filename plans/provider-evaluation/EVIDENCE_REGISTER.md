@@ -13,11 +13,11 @@ Use only `missing`, `requested`, `received`, `accepted`, `exception`, or `reject
 | FA-RIGHTS | FlightAware Firehose | Rights and license | missing | Order plus July 2026 data-service terms | Pending | Pending | Product | Legal | Order must expressly close AI processing, longer retention, multi-tenant SaaS, upstream-source, display, and derivative rights. |
 | FA-SLA | FlightAware Firehose | SLA and support | missing | SLA and support schedule | Pending | Pending | Product | Engineering | Public page advertises high-SLA options but no binding percentage. |
 | FA-PRICE | FlightAware Firehose | Price | missing | Proposal for 20/100/500 flights | Pending | Pending | Product | Engineering | Fixed monthly fee is package-specific. |
-| FA-TRIAL | FlightAware Firehose | Real-time trial | requested | Matched 14-day target-tail window | Pending | Pending | Engineering | Product | Self-service trial is historical-only; sales must provision real time. |
+| FA-TRIAL | FlightAware Firehose | Real-time trial | missing | Matched 14-day target-tail window | Pending | Pending | Engineering | Product | Change to requested only after Sales confirms receipt; self-service trial is historical-only. |
 | CI-RIGHTS | Cirium Sky Stream | Rights and license | missing | Contract, license, and data schedules | Pending | Pending | Product | Legal | Marketing use cases are not contractual permission. |
 | CI-SLA | Cirium Sky Stream | SLA and support | missing | SLA and support schedule | Pending | Pending | Product | Engineering | Public material does not state a binding uptime remedy. |
 | CI-PRICE | Cirium Sky Stream | Price | missing | Proposal for 20/100/500 flights | Pending | Pending | Product | Engineering | Contract price is not public. |
-| CI-TRIAL | Cirium Sky Stream | Real-time trial | requested | Matched 14-day target-tail window | Pending | Pending | Engineering | Product | Public documentation offers a 14-day Sky Stream trial. |
+| CI-TRIAL | Cirium Sky Stream | Real-time trial | missing | Matched 14-day target-tail window | Pending | Pending | Engineering | Product | Change to requested only after Cirium confirms receipt; public documentation offers a 14-day trial. |
 | TARGET-POP | Both | Trial population | missing | Redacted target-tail and expected-flight manifest | Pending | Pending | Operator partner | Product | Must be operator-owned or explicitly authorized. |
 | TRIAL-RESULT | Both | Technical scorecard | missing | Common trial window | Pending | Pending | Engineering | Product | Do not compare different windows or populations. |
 

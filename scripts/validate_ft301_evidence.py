@@ -20,6 +20,7 @@ REQUIRED_FILES = {
     "TRIAL_PROTOCOL.md",
     "DECISION_SCORECARD.md",
     "OUTREACH_REQUESTS.md",
+    "PROCUREMENT_HANDOFF.md",
     "provider-decision.csv",
     "provider-question-responses.csv",
     "provider-scores.csv",

@@ -6,11 +6,11 @@ Last updated: 2026-07-21
 
 - Current milestone: M3 — Commercial flight data and operational workflow
 - Active ticket: FT-301 — Select and contract a commercial flight-data provider
-- Branch: `docs/ft-301-commercial-provider-selection`
-- Pull request: [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) (draft)
+- Branch: None — external procurement evidence pending after handoff PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
+- Pull request: None active after the procurement handoff merges
 - Owner: Product, legal, and engineering
 - Overall status: M0, M1, and M2 are complete; FT-303 and FT-304 are complete while FT-301 remains externally gated
-- Next action: Deliver the comparable-trial and contract-review package, then obtain signed provider terms, real-time trial access, target-tail inputs, and priced proposals from both finalists.
+- Next action: Assign the named Product/Legal/Engineering/operator owners in the controlled tracker, approve the intended-use questionnaire, and submit both provider requests using `provider-evaluation/PROCUREMENT_HANDOFF.md`.
 
 ## Milestone checklist
 
@@ -56,7 +56,7 @@ Last updated: 2026-07-21
 - FT-301 is externally gated on written commercial rights and a common 14-day provider trial. FT-303 and FT-304 are complete, so this is now the critical path for live flight integration and pilot readiness.
 - FT-303 is delivered through PR #13 at implementation commit `1430ce8`. CI run `29814499315` verifies Rust, web, live authenticated replay, the identity migration, PostGIS cross-tenant route isolation, session revocation, and actor/tenant audit behavior. Hosted identity remains behind a provider-neutral boundary; tenant membership and operational authorization are app-owned and enforced by Rust.
 - FT-304 is delivered through PR #14 at implementation and CI contract commit `11bdc0d`. CI run `29816346733` verifies the additive migration, authenticated replay, workflow-version acknowledgement, tenant-safe assignment, all queue filters, structured dismissal, conflict rejection, bounded persistence volume, Rust and web quality gates, and production builds.
-- FT-301 is active on `docs/ft-301-commercial-provider-selection`. Public claims were revalidated on 2026-07-21; engineering can make the comparison executable, but selection remains gated on written Order-level rights (including explicit AI/ML, retention, and upstream-data SaaS authorization), a matched real-time 14-day trial, operator-owned target tails, and priced proposals.
+- FT-301 preparation package is merged through PR #15 at `c8d8a78`; PR #16 records the corrected external procurement handoff. Selection remains gated on named accountable owners, written Order-level rights (including explicit AI/ML, retention, and upstream-data SaaS authorization), a matched real-time 14-day trial, operator-owned target tails, and priced proposals.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

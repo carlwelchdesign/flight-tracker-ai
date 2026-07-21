@@ -2,6 +2,8 @@
 
 This folder turns the commercial-provider gate into a repeatable procurement and trial workflow. It does not select a provider and it does not treat public marketing as contractual permission.
 
+Start with [the procurement handoff](PROCUREMENT_HANDOFF.md) when assigning owners or contacting providers.
+
 ## Current state
 
 - Finalists: Cirium Sky Stream and FlightAware Firehose.

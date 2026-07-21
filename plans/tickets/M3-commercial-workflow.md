@@ -6,9 +6,15 @@ Default owner: Product for provider contracting; engineering and security for im
 
 Status: In progress
 
-Branch: `docs/ft-301-commercial-provider-selection`
+Preparation branch: `docs/ft-301-commercial-provider-selection`
+Preparation commit: `fadb4ea`
+Preparation pull request: [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) (merged at `c8d8a78`)
+Procurement handoff branch: `docs/ft-301-procurement-handoff`
+Procurement handoff commit: `7013020`
+Procurement handoff pull request: [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
+Final evidence branch: Pending external evidence
 Final commit: Pending
-Pull request: [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) (draft)
+Final pull request: Pending
 Owner: Product, legal, and engineering
 
 Resolve the provider feasibility work with a documented selection appropriate for the intended use.
@@ -35,7 +41,7 @@ Acceptance checklist:
 - [ ] Uptime definition, service credits, incident notification, support response, provider outage, and termination fallback are documented.
 - [ ] OD-002 is resolved in `../DECISIONS.md`.
 
-In-progress verification evidence: [`provider-evaluation/`](../provider-evaluation/README.md) contains the common questionnaire, 66-row two-provider response matrix, 14-row fixed-weight score matrix, structured final-decision record, outreach requests, evidence register, paired trial protocol, five-behavior cost model, RACI, decision gates, and privacy controls; `python3 scripts/validate_ft301_evidence.py` verifies exact question/score coverage, answer/review compatibility, evidence statuses, trial metrics, cost scenarios, approval references, selected-provider consistency, and OD-002 state. Its regression suite passes, while `--require-complete` intentionally fails until all evidence, responses, scores, trial/price records, approvals, and the decision are complete. Public provider claims were revalidated on 2026-07-21 in [`PROVIDER_FEASIBILITY.md`](../PROVIDER_FEASIBILITY.md). Acceptance evidence remains pending; no provider has been selected.
+In-progress verification evidence: preparation package merged through PR [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) at `c8d8a78`. [`provider-evaluation/`](../provider-evaluation/README.md) contains the procurement handoff, common questionnaire, 66-row two-provider response matrix, 14-row fixed-weight score matrix, structured final-decision record, outreach requests, evidence register, paired trial protocol, five-behavior cost model, RACI, decision gates, and privacy controls; `python3 scripts/validate_ft301_evidence.py` verifies exact question/score coverage, answer/review compatibility, evidence statuses, trial metrics, cost scenarios, approval references, selected-provider consistency, and OD-002 state. Its regression suite passes, while `--require-complete` intentionally fails until all evidence, responses, scores, trial/price records, approvals, and the decision are complete. Public provider claims were revalidated on 2026-07-21 in [`PROVIDER_FEASIBILITY.md`](../PROVIDER_FEASIBILITY.md). Acceptance evidence remains pending; no provider has been selected.
 
 ## FT-302 — Integrate licensed live flight data
 
