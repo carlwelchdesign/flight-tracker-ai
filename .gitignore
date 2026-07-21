@@ -9,6 +9,7 @@
 # Node
 node_modules/
 .next/
+.vercel/
 
 # Editors and operating systems
 .DS_Store

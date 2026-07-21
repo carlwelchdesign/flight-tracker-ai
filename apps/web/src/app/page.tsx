@@ -6,6 +6,7 @@ import { AuthSessionError, authMode, createInternalAssertion } from "@/lib/auth-
 import { getInitialFleet } from "@/lib/fleet-api";
 import { getInitialWeather } from "@/lib/weather-api";
 import { getInitialLivePositionStatus } from "@/lib/live-positions-api";
+import { describeConsoleFailure } from "@/lib/console-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function Home() {
       <h1>{result.signedOut ? "Sign in to continue" : "Console access unavailable"}</h1>
       <p>{result.message}</p>
       {authMode() === "clerk" && <Link href="/sign-in">Open secure sign in</Link>}
+      {!result.signedOut && <Link href="/?retry=1" prefetch={false}>Try again</Link>}
     </main>
   );
 }
@@ -49,15 +51,15 @@ async function loadConsole() {
       initialLivePositions,
     };
   } catch (error) {
-    const signedOut = error instanceof AuthSessionError && error.status === 401;
+    const failure = describeConsoleFailure(
+      error instanceof AuthSessionError
+        ? { status: error.status, message: error.message }
+        : null,
+      process.env.OPERATIONS_MODE,
+    );
     return {
       state: "unavailable" as const,
-      signedOut,
-      message: signedOut
-        ? "Your operations data remains protected until a valid session is available."
-        : error instanceof Error
-          ? error.message
-          : "The authorization boundary could not be reached.",
+      ...failure,
     };
   }
 }

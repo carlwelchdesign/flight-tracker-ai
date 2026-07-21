@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-403 — Validate the recruiter and hiring-manager demo
-- Branch: `docs/ft-403-portfolio-demo-validation`
-- Pull request: [#23](https://github.com/carlwelchdesign/flight-tracker-ai/pull/23)
-- Owner: Product design, user research, and engineering
+- Active ticket: FT-404 — Deploy the public portfolio and preview environments
+- Branch: `feat/ft-404-production-deployment`
+- Pull request: Pending
+- Owner: Platform, backend, security, and full-stack engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Verify and merge the FT-403 orientation and neutral-review
-  protocol, then use the FT-404 private preview to collect the remaining
+- Next action: Provision and verify the free-tier Vercel, Render, Neon, and
+  Clerk candidate; use its private preview to collect the remaining FT-403
   independent participant evidence before public promotion.
 
 ## Milestone checklist

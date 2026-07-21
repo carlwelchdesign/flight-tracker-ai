@@ -24,8 +24,9 @@ pub enum AppEnvironment {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReplayConfig {
-    pub scenario_path: PathBuf,
+pub enum ReplayConfig {
+    Development { scenario_path: PathBuf },
+    Portfolio,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +84,12 @@ pub enum ConfigError {
     InvalidReplayToggle,
     #[error("replay controls are forbidden unless APP_ENV=development")]
     ReplayControlsForbidden,
+    #[error("ENABLE_PORTFOLIO_REPLAY must be true or false")]
+    InvalidPortfolioReplayToggle,
+    #[error("development and portfolio replay modes cannot both be enabled")]
+    ConflictingReplayModes,
+    #[error("portfolio replay is forbidden unless APP_ENV=production")]
+    PortfolioReplayForbidden,
     #[error("REPLAY_SCENARIO_PATH must be set when replay controls are enabled")]
     MissingReplayScenarioPath,
     #[error("ENABLE_NOAA_WEATHER must be true or false")]
@@ -156,6 +163,15 @@ impl Config {
             "false" => false,
             _ => return Err(ConfigError::InvalidReplayToggle),
         };
+        let portfolio_replay_enabled = parse_bool(
+            lookup("ENABLE_PORTFOLIO_REPLAY")
+                .as_deref()
+                .unwrap_or("false"),
+            ConfigError::InvalidPortfolioReplayToggle,
+        )?;
+        if replay_enabled && portfolio_replay_enabled {
+            return Err(ConfigError::ConflictingReplayModes);
+        }
         let replay = if replay_enabled {
             if environment != AppEnvironment::Development {
                 return Err(ConfigError::ReplayControlsForbidden);
@@ -163,9 +179,14 @@ impl Config {
             let scenario_path = lookup("REPLAY_SCENARIO_PATH")
                 .filter(|value| !value.trim().is_empty())
                 .ok_or(ConfigError::MissingReplayScenarioPath)?;
-            Some(ReplayConfig {
+            Some(ReplayConfig::Development {
                 scenario_path: scenario_path.into(),
             })
+        } else if portfolio_replay_enabled {
+            if environment != AppEnvironment::Production {
+                return Err(ConfigError::PortfolioReplayForbidden);
+            }
+            Some(ReplayConfig::Portfolio)
         } else {
             None
         };
@@ -445,6 +466,30 @@ mod tests {
             .replay
             .is_some()
         );
+    }
+
+    #[test]
+    fn production_accepts_only_the_built_in_portfolio_replay() {
+        let configured = config(&[
+            ("APP_ENV", "production"),
+            ("AUTH_MODE", "clerk"),
+            ("ENABLE_PORTFOLIO_REPLAY", "true"),
+        ])
+        .unwrap();
+        assert_eq!(configured.replay, Some(ReplayConfig::Portfolio));
+
+        assert!(matches!(
+            config(&[("ENABLE_PORTFOLIO_REPLAY", "true")]),
+            Err(ConfigError::PortfolioReplayForbidden)
+        ));
+        assert!(matches!(
+            config(&[
+                ("ENABLE_REPLAY_CONTROLS", "true"),
+                ("ENABLE_PORTFOLIO_REPLAY", "true"),
+                ("REPLAY_SCENARIO_PATH", "fixture.json"),
+            ]),
+            Err(ConfigError::ConflictingReplayModes)
+        ));
     }
 
     #[test]

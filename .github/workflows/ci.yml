@@ -219,3 +219,7 @@ jobs:
           --test route_hazard_postgis_review
           --test resilience_drills
           -- --nocapture
+      - name: Verify hosted portfolio bootstrap
+        env:
+          TEST_DATABASE_URL: postgres://flight_tracker:flight_tracker@127.0.0.1:5432/flight_tracker?sslmode=disable
+        run: scripts/verify_hosted_portfolio_bootstrap.sh

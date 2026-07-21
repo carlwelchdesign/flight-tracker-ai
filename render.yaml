@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: flight-tracker-api
+    runtime: docker
+    plan: free
+    region: oregon
+    repo: https://github.com/carlwelchdesign/flight-tracker-ai
+    branch: main
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    maxShutdownDelaySeconds: 30
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: API_BIND_ADDRESS
+        value: 0.0.0.0:10000
+      - key: APP_ENV
+        value: production
+      - key: AUTH_MODE
+        value: clerk
+      - key: DATABASE_URL
+        sync: false
+      - key: INTERNAL_AUTH_SECRET
+        sync: false
+      - key: INTERNAL_AUTH_KEY_ID
+        value: portfolio-primary-2026-07
+      - key: AUTH_ASSERTION_ISSUER
+        value: flight-tracker-web
+      - key: AUTH_ASSERTION_AUDIENCE
+        value: flight-tracker-api
+      - key: ENABLE_REPLAY_CONTROLS
+        value: "false"
+      - key: ENABLE_PORTFOLIO_REPLAY
+        value: "true"
+      - key: ENABLE_NOAA_WEATHER
+        value: "false"
+      - key: ENABLE_ADSB_LOL_POSITIONS
+        value: "false"
+      - key: RUST_LOG
+        value: flight_tracker_api=info

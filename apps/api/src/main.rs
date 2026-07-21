@@ -2,7 +2,7 @@ mod config;
 
 use std::time::Duration;
 
-use config::Config;
+use config::{Config, ReplayConfig};
 use flight_tracker_api::{
     alerting::spawn_alert_worker,
     auth::{AuthService, AuthStore, InternalAssertionVerifier},
@@ -55,7 +55,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ingestion_subscriptions = Vec::<IngestionSubscription>::new();
     let live_position_statuses = LivePositionStatusStore::default();
     let replay = if let Some(replay_config) = config.replay {
-        let scenario = ReplayScenario::load(&replay_config.scenario_path)?;
+        let (scenario, mode) = match replay_config {
+            ReplayConfig::Development { scenario_path } => {
+                (ReplayScenario::load(&scenario_path)?, "development")
+            }
+            ReplayConfig::Portfolio => (
+                ReplayScenario::from_json(include_str!(
+                    "../../../fixtures/replay/m1-operations-v1.json"
+                ))?,
+                "portfolio",
+            ),
+        };
         let scenario_id = scenario.id.clone();
         let handle = ReplayHandle::new(scenario, 256);
         spawn_replay_runtime(
@@ -66,7 +76,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!(
             correlation_id = %scenario_id,
             scenario = %scenario_id,
-            "development replay controls enabled"
+            replay_mode = mode,
+            "replay controls enabled"
         );
         Some(handle)
     } else {

@@ -122,11 +122,12 @@ neutral reviewer on the candidate preview produced by FT-404.
 
 ## FT-404 — Deploy the public portfolio and preview environments
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-404-production-deployment`
 Final commit: Pending
 Pull request: Pending
+Owner: Platform, backend, security, and full-stack engineering
 
 Deploy the public Next.js interface on Vercel while placing the Rust API, optional continuous ingestion, and PostgreSQL/PostGIS on infrastructure suited to those persistent workloads.
 
@@ -134,7 +135,7 @@ Dependencies: FT-401, FT-402
 
 Acceptance checklist:
 
-- [ ] Vercel project is connected to GitHub and creates isolated preview deployments for pull requests.
+- [ ] Vercel project is connected to GitHub and creates isolated preview deployments for pull requests. (Git connection complete; preview evidence pending this branch PR.)
 - [ ] Production Next.js environment calls the Rust API through a server-only configured URL.
 - [ ] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
 - [ ] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
