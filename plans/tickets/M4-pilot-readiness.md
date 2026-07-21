@@ -125,7 +125,7 @@ neutral reviewer on the candidate preview produced by FT-404.
 Status: In progress
 
 Branch: `feat/ft-404-production-deployment`
-Latest implementation commit: `a2da158`
+Latest implementation commit: `f897532`
 Final commit: Pending
 Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
 Owner: Platform, backend, security, and full-stack engineering
@@ -170,3 +170,5 @@ unprovisioned, so its Blueprint region is aligned to Virginia before service
 creation. Clerk organization/user
 bootstrap, Neon snapshot/isolated restore, Render deployment, cross-service
 secrets, and hosted smoke remain pending.
+Provisioning and region-alignment evidence is recorded in commit `f897532` and
+draft PR [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24).
