@@ -24,6 +24,10 @@ Last updated: 2026-07-21
 
 ## Current product correction
 
+- FT-407 is complete in stacked PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27). It corrects
+  the public live-map glyph axis without changing ADS-B headings, trajectory
+  math, or the protected console's separate north-facing SVG marker. See
+  [`FT-407-aircraft-marker-heading.md`](tickets/FT-407-aircraft-marker-heading.md).
 - FT-406 is complete and merged through stacked PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26). It adds a selected live
   aircraft's ten-minute observed trail and a separately labeled estimated
   five-minute motion projection without persisting provider positions or
@@ -50,6 +54,13 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
+- FT-407 is delivered in stacked PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27)
+  at implementation commit `c36f763`. CI run
+  [29875663012](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875663012)
+  passes all five checks. The public live MapLibre marker now applies an
+  explicit negative 90-degree glyph-axis correction; browser verification
+  proved a supplied 298.26-degree heading renders at 208.26 degrees without
+  changing source evidence or trajectory math.
 - FT-406 is merged into the FT-405 feature branch through PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26)
   at merge commit `2df6deb`. Final CI run
   [29875004160](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875004160)
