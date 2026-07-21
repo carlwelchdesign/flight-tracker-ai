@@ -7,7 +7,7 @@ Last updated: 2026-07-21
 - Current milestone: M4 — Portfolio launch and demonstration hardening
 - Active ticket: FT-409 — Prioritize selected aircraft details
 - Branch: `feat/ft-409-prioritize-selected-aircraft`
-- Pull request: Pending
+- Pull request: [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
 - Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
 - Next action: Move selected-aircraft evidence above the current traffic list,

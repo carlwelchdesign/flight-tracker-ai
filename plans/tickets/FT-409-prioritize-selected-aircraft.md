@@ -1,11 +1,11 @@
 # FT-409 — Prioritize selected aircraft details
 
-Status: In progress
+Status: In review
 
 Branch: `feat/ft-409-prioritize-selected-aircraft`
-Latest implementation commit: Pending
+Latest implementation commit: `4b37eef`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
 Owner: Frontend product engineering
 
 ## Outcome
