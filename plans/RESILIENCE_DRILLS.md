@@ -68,6 +68,22 @@ FT402_ALLOW_DESTRUCTIVE_RECOVERY=true \
   isolated snapshot. Managed backup encryption, access controls, retention,
   regional recovery, approvals, and hosted RPO/RTO remain FT-404 evidence.
 
+## Recorded CI rehearsal
+
+CI run
+[29856364366](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29856364366)
+recorded the following on its ephemeral Linux/PostGIS environment:
+
+- bounded backlog: 208 batches drained in 1,286 ms with no lifecycle loss or
+  duplicate alert;
+- forced overflow: 273 batches published, 257 explicitly reported skipped, and
+  recovery from the retained complete replay window in 33 ms; and
+- database restore: zero controlled transactions lost, 3,520 ms measured RTO,
+  PostGIS present, and controlled operator/alert/action/migration counts equal.
+
+These values describe that one controlled CI run. They are not latency targets,
+capacity promises, or availability objectives for a hosted service.
+
 ## Pass criteria
 
 The ticket passes only when Rust, web, and PostGIS CI are green; CI contains both
