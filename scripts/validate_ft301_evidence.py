@@ -8,10 +8,56 @@ import csv
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+import re
 import sys
 
 
 PROVIDERS = {"cirium_sky_stream", "flightaware_firehose"}
+REQUIRED_FILES = {
+    "README.md",
+    "RIGHTS_AND_SERVICE_QUESTIONNAIRE.md",
+    "EVIDENCE_REGISTER.md",
+    "TRIAL_PROTOCOL.md",
+    "DECISION_SCORECARD.md",
+    "OUTREACH_REQUESTS.md",
+    "trial-scorecard.csv",
+    "cost-model.csv",
+}
+REQUIRED_RIGHTS_IDS = {f"R-{number:02d}" for number in range(1, 22)}
+REQUIRED_SERVICE_IDS = {f"S-{number:02d}" for number in range(1, 13)}
+REQUIRED_EVIDENCE_IDS = {
+    "FA-RIGHTS",
+    "FA-SLA",
+    "FA-PRICE",
+    "FA-TRIAL",
+    "CI-RIGHTS",
+    "CI-SLA",
+    "CI-PRICE",
+    "CI-TRIAL",
+    "TARGET-POP",
+    "TRIAL-RESULT",
+}
+EVIDENCE_STATUSES = {
+    "missing",
+    "requested",
+    "received",
+    "accepted",
+    "exception",
+    "rejected",
+}
+TERMINAL_EVIDENCE_STATUSES = {"accepted", "exception", "rejected"}
+EVIDENCE_COLUMNS = (
+    "Evidence ID",
+    "Provider",
+    "Category",
+    "Status",
+    "Document or test window",
+    "Controlled reference",
+    "Received",
+    "Owner",
+    "Reviewer",
+    "Notes",
+)
 TRIAL_METRICS = {
     "expected_flight_identification",
     "position_availability",
@@ -59,6 +105,87 @@ COST_COLUMNS = (
     "replay_monthly", "support_monthly", "other_monthly", "total_monthly",
     "quote_evidence_id", "status", "notes",
 )
+
+
+def markdown_table(path: Path, header: tuple[str, ...]) -> tuple[list[list[str]], list[str]]:
+    """Read a Markdown table with an exact header and return its data rows."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    header_index: int | None = None
+    for index, line in enumerate(lines):
+        if not line.startswith("|"):
+            continue
+        cells = tuple(cell.strip() for cell in line.strip().strip("|").split("|"))
+        if cells == header:
+            header_index = index
+            break
+    if header_index is None:
+        return [], [f"{path.name}: required table header is missing or changed"]
+
+    rows: list[list[str]] = []
+    errors: list[str] = []
+    for line_number, line in enumerate(lines[header_index + 1 :], start=header_index + 2):
+        if not line.startswith("|"):
+            if rows:
+                break
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if all(cell and set(cell) <= {"-", ":"} for cell in cells):
+            continue
+        if len(cells) != len(header):
+            errors.append(
+                f"{path.name} line {line_number}: expected {len(header)} columns, found {len(cells)}"
+            )
+            continue
+        rows.append(cells)
+    return rows, errors
+
+
+def validate_questionnaire(path: Path) -> list[str]:
+    text = path.read_text(encoding="utf-8")
+    found = re.findall(r"^\|\s*([RS]-\d{2})\s*\|", text, flags=re.MULTILINE)
+    errors: list[str] = []
+    duplicates = sorted({item for item in found if found.count(item) > 1})
+    if duplicates:
+        errors.append(f"{path.name}: duplicate question IDs {duplicates}")
+    found_set = set(found)
+    expected = REQUIRED_RIGHTS_IDS | REQUIRED_SERVICE_IDS
+    missing = sorted(expected - found_set)
+    unexpected = sorted(found_set - expected)
+    if missing:
+        errors.append(f"{path.name}: missing question IDs {missing}")
+    if unexpected:
+        errors.append(f"{path.name}: unsupported question IDs {unexpected}")
+    return errors
+
+
+def validate_evidence_register(path: Path, require_complete: bool) -> list[str]:
+    rows, errors = markdown_table(path, EVIDENCE_COLUMNS)
+    seen: set[str] = set()
+    for line_offset, row in enumerate(rows, start=1):
+        evidence_id, _, _, status, _, reference, received, owner, reviewer, _ = row
+        if evidence_id in seen:
+            errors.append(f"{path.name}: duplicate evidence ID {evidence_id}")
+        seen.add(evidence_id)
+        if evidence_id not in REQUIRED_EVIDENCE_IDS:
+            errors.append(f"{path.name}: unsupported evidence ID {evidence_id}")
+        if status not in EVIDENCE_STATUSES:
+            errors.append(
+                f"{path.name} row {line_offset}: unsupported status {status!r}"
+            )
+        if not owner or not reviewer:
+            errors.append(f"{path.name} row {line_offset}: owner and reviewer are required")
+        if status in {"received", *TERMINAL_EVIDENCE_STATUSES}:
+            if not reference or reference.lower() == "pending":
+                errors.append(f"{path.name} row {line_offset}: received evidence needs a controlled reference")
+            if not received or received.lower() == "pending":
+                errors.append(f"{path.name} row {line_offset}: received evidence needs a received date")
+        if require_complete and status not in TERMINAL_EVIDENCE_STATUSES:
+            errors.append(f"{path.name}: {evidence_id} is not in a terminal review state")
+
+    missing = sorted(REQUIRED_EVIDENCE_IDS - seen)
+    if missing:
+        errors.append(f"{path.name}: missing evidence IDs {missing}")
+    return errors
 
 
 def validate_table(path: Path, expected: tuple[str, ...]) -> tuple[list[dict[str, str]], list[str]]:
@@ -189,15 +316,20 @@ def validate_cost(rows: list[dict[str, str]], require_complete: bool) -> list[st
 
 
 def validate(directory: Path, require_complete: bool = False) -> list[str]:
+    missing_package_files = sorted(
+        name for name in REQUIRED_FILES if not (directory / name).is_file()
+    )
+    if missing_package_files:
+        return [f"missing required files: {', '.join(missing_package_files)}"]
+
     trial = directory / "trial-scorecard.csv"
     cost = directory / "cost-model.csv"
-    missing = [path.name for path in (trial, cost) if not path.is_file()]
-    if missing:
-        return [f"missing required files: {', '.join(missing)}"]
     trial_rows, trial_errors = validate_table(trial, TRIAL_COLUMNS)
     cost_rows, cost_errors = validate_table(cost, COST_COLUMNS)
     return (
-        trial_errors
+        validate_questionnaire(directory / "RIGHTS_AND_SERVICE_QUESTIONNAIRE.md")
+        + validate_evidence_register(directory / "EVIDENCE_REGISTER.md", require_complete)
+        + trial_errors
         + cost_errors
         + validate_trial(trial_rows, require_complete)
         + validate_cost(cost_rows, require_complete)

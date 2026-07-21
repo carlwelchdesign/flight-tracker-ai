@@ -1,5 +1,6 @@
 import csv
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -21,7 +22,8 @@ class Ft301EvidenceValidationTest(unittest.TestCase):
     def test_rejects_duplicate_metrics_and_bad_cost_totals(self) -> None:
         source = ROOT / "plans" / "provider-evaluation"
         with tempfile.TemporaryDirectory() as temporary:
-            directory = Path(temporary)
+            directory = Path(temporary) / "provider-evaluation"
+            shutil.copytree(source, directory)
             with (source / "trial-scorecard.csv").open(encoding="utf-8") as trial_source:
                 trial_rows = list(csv.DictReader(trial_source))
             trial_rows.append(trial_rows[0].copy())
@@ -40,6 +42,37 @@ class Ft301EvidenceValidationTest(unittest.TestCase):
             errors = validate(directory)
             self.assertTrue(any("duplicate" in error for error in errors))
             self.assertTrue(any("component sum" in error for error in errors))
+
+    def test_rejects_missing_right_and_invalid_evidence_status(self) -> None:
+        source = ROOT / "plans" / "provider-evaluation"
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "provider-evaluation"
+            shutil.copytree(source, directory)
+            questionnaire = directory / "RIGHTS_AND_SERVICE_QUESTIONNAIRE.md"
+            questionnaire.write_text(
+                questionnaire.read_text(encoding="utf-8").replace(
+                    "| R-21 | Does the Order expressly override",
+                    "| R-22 | Does the Order expressly override",
+                ),
+                encoding="utf-8",
+            )
+            register = directory / "EVIDENCE_REGISTER.md"
+            register.write_text(
+                register.read_text(encoding="utf-8").replace(
+                    "| FA-RIGHTS | FlightAware Firehose | Rights and license | missing |",
+                    "| FA-RIGHTS | FlightAware Firehose | Rights and license | guessed |",
+                ).replace(
+                    "| FA-SLA | FlightAware Firehose | SLA and support | missing |",
+                    "| FA-SLA | FlightAware Firehose | SLA and support | received |",
+                ),
+                encoding="utf-8",
+            )
+            errors = validate(directory)
+            self.assertTrue(any("missing question IDs" in error for error in errors))
+            self.assertTrue(any("unsupported question IDs" in error for error in errors))
+            self.assertTrue(any("unsupported status" in error for error in errors))
+            self.assertTrue(any("controlled reference" in error for error in errors))
+            self.assertTrue(any("received date" in error for error in errors))
 
     @staticmethod
     def _write(path: Path, rows: list[dict[str, str]]) -> None:

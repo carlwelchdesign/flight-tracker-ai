@@ -17,7 +17,7 @@ This folder turns the commercial-provider gate into a repeatable procurement and
 3. Confirm both providers can supply the same 14-calendar-day real-time trial window and target population before starting either clock.
 4. Freeze the test population and regions using [the trial protocol](TRIAL_PROTOCOL.md).
 5. Collect raw trial observations without converting missing values into zero or silently dropping reconnect periods.
-6. Populate `trial-scorecard.csv` and `cost-model.csv`; validate them with `python3 scripts/validate_ft301_evidence.py` from the repository root.
+6. Populate the evidence register, `trial-scorecard.csv`, and `cost-model.csv`; validate the complete package with `python3 scripts/validate_ft301_evidence.py` from the repository root. The validator protects the required document set, R-01–R-21 and S-01–S-12 question IDs, evidence IDs/statuses, trial metrics, and cost scenarios.
 7. Apply the pass/fail gates and scored comparison in [the decision scorecard](DECISION_SCORECARD.md).
 8. Legal records its approval, Engineering records technical approval, Product records the commercial recommendation, and the accountable owner resolves OD-002.
 
@@ -42,7 +42,7 @@ Do not commit credentials, contracts, quotes marked confidential, real tail list
 
 ## Completion rule
 
-FT-301 remains incomplete until every ticket acceptance item has primary evidence and OD-002 names one provider or records a no-select decision. A technically superior feed cannot win without acceptable rights, and permissive rights cannot compensate for failed target-fleet coverage.
+FT-301 remains incomplete until every ticket acceptance item has primary evidence, `python3 scripts/validate_ft301_evidence.py --require-complete` passes, and OD-002 names one provider or records a no-select decision. A technically superior feed cannot win without acceptable rights, and permissive rights cannot compensate for failed target-fleet coverage.
 
 ## Planning-review traceability
 

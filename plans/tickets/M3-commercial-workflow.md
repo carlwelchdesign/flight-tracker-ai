@@ -35,7 +35,7 @@ Acceptance checklist:
 - [ ] Uptime definition, service credits, incident notification, support response, provider outage, and termination fallback are documented.
 - [ ] OD-002 is resolved in `../DECISIONS.md`.
 
-In-progress verification evidence: [`provider-evaluation/`](../provider-evaluation/README.md) contains the common questionnaire, outreach requests, evidence register, paired trial protocol, scorecard, five-behavior cost model, RACI, decision gates, and privacy controls; `python3 scripts/validate_ft301_evidence.py` verifies structural coverage, and `--require-complete` intentionally fails while trial and price evidence remain pending. Public provider claims were revalidated on 2026-07-21 in [`PROVIDER_FEASIBILITY.md`](../PROVIDER_FEASIBILITY.md). Acceptance evidence remains pending; no provider has been selected.
+In-progress verification evidence: [`provider-evaluation/`](../provider-evaluation/README.md) contains the common questionnaire, outreach requests, evidence register, paired trial protocol, scorecard, five-behavior cost model, RACI, decision gates, and privacy controls; `python3 scripts/validate_ft301_evidence.py` verifies the required package, R-01–R-21 and S-01–S-12 question IDs, evidence register schema/statuses, trial metrics, and cost scenarios. Its regression suite passes, while `--require-complete` intentionally fails until all evidence is in a terminal reviewed state and trial/price records are complete. Public provider claims were revalidated on 2026-07-21 in [`PROVIDER_FEASIBILITY.md`](../PROVIDER_FEASIBILITY.md). Acceptance evidence remains pending; no provider has been selected.
 
 ## FT-302 — Integrate licensed live flight data
 
