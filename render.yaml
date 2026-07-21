@@ -3,7 +3,7 @@ services:
     name: flight-tracker-api
     runtime: docker
     plan: free
-    region: oregon
+    region: virginia
     repo: https://github.com/carlwelchdesign/flight-tracker-ai
     branch: main
     dockerfilePath: ./apps/api/Dockerfile

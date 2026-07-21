@@ -158,3 +158,15 @@ passes Rust, web, PostGIS, hosted-bootstrap, and sanitized FT-404 verifier tests
 [`HOSTED_DEPLOYMENT_RUNBOOK.md`](../HOSTED_DEPLOYMENT_RUNBOOK.md)
 and [`render.yaml`](../../render.yaml) define the remaining Render, Neon, Clerk,
 secret, restore, browser, and promotion gates. Hosted smoke evidence is pending.
+On 2026-07-21, Vercel provisioned and attached available Neon resource
+`neon-bronze-curtain` and Clerk resource `clerk-celeste-door` to
+`flight-tracker-ai`. The expected encrypted environment-variable names are
+present across Development, Preview, and Production. The Neon pooled and direct
+TLS paths target AWS `us-east-1`, and the direct path successfully enabled and
+reported PostGIS `3.5.0`. The auth mode, operations mode, assertion key ID,
+issuer, and audience are configured across all three Vercel environments; the
+API URL and internal assertion secret wait for Render. Render remains
+unprovisioned, so its Blueprint region is aligned to Virginia before service
+creation. Clerk organization/user
+bootstrap, Neon snapshot/isolated restore, Render deployment, cross-service
+secrets, and hosted smoke remain pending.

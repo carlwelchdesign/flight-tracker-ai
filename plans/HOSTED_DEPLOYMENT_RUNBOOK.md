@@ -8,9 +8,10 @@
   [`render.yaml`](../render.yaml). The free service is acceptable for this
   hobby portfolio, not an availability claim: it sleeps after 15 idle minutes
   and can take about one minute to wake.
-- **Database:** Neon Free Postgres in the same US West region when available,
-  with PostGIS enabled, a direct or pooled TLS URL, instant restore, and one
-  protected snapshot. Neon is separate from Vercel and Render lifecycle.
+- **Database:** Neon Free Postgres in AWS `us-east-1`, aligned with the Render
+  Virginia service before that service is provisioned, with PostGIS enabled, a
+  direct or pooled TLS URL, instant restore, and one protected snapshot. Neon
+  is separate from Vercel and Render lifecycle.
 - **Identity:** Clerk Organizations. The Vercel server signs short-lived
   internal assertions; Render verifies the same named secret. No assertion
   secret is exposed to browser code.
@@ -33,7 +34,8 @@ production airline infrastructure, high availability, or a commercial SLA.
 
 ## Provisioning order
 
-1. Create the Neon project in a US West region. Enable PostGIS and verify:
+1. Provision Neon through the Vercel Marketplace in AWS `us-east-1`. Enable
+   PostGIS and verify:
 
    ```sql
    CREATE EXTENSION IF NOT EXISTS postgis;
@@ -64,6 +66,23 @@ production airline infrastructure, high availability, or a commercial SLA.
 6. Deploy a private Vercel preview, run every verification below, and collect
    the FT-403 neutral-review observation. Promote that exact artifact only
    after both ticket gates pass.
+
+## Provisioning evidence
+
+On 2026-07-21, the linked Vercel project provisioned and connected the Neon
+resource `neon-bronze-curtain` and Clerk resource `clerk-celeste-door`. Vercel
+reports both resources as available. It injected the expected pooled and
+unpooled Neon connection variables plus `CLERK_SECRET_KEY` and
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` into Development, Preview, and Production.
+`AUTH_MODE`, `OPERATIONS_MODE`, `INTERNAL_AUTH_KEY_ID`,
+`AUTH_ASSERTION_ISSUER`, and `AUTH_ASSERTION_AUDIENCE` are also configured for
+all three Vercel environments; `API_BASE_URL` and `INTERNAL_AUTH_SECRET` remain
+intentionally unset until the corresponding Render service and environment
+exist.
+The pooled and direct database URLs both require TLS, target AWS `us-east-1`,
+and differ as expected by pooler usage. The direct connection enabled and
+reported PostGIS `3.5.0`. No secret value is recorded here. Snapshot and
+isolated-restore evidence remain pending.
 
 ## Vercel server-only configuration
 
