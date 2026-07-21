@@ -4,11 +4,11 @@ Default owner: Product and engineering for source eligibility; engineering and s
 
 ## FT-301 — Select an eligible free aircraft-position source
 
-Status: In progress
+Status: Complete
 
 Branch: `docs/ft-301-free-data-selection`
-Final commit: Pending
-Pull request: Pending
+Final commit: `13d64eb`
+Pull request: [#20](https://github.com/carlwelchdesign/flight-tracker-ai/pull/20)
 Owner: Product and engineering
 
 Select a zero-data-fee, best-effort aircraft-position source whose official terms permit a publicly hosted, non-commercial portfolio demonstration. Selecting replay-only is an acceptable outcome if no candidate has sufficiently clear terms.
@@ -25,11 +25,13 @@ Acceptance checklist:
 - [x] No SLA, procurement process, paid trial, legal department, operator partner, or commercial-use approval is required for the portfolio release.
 - [x] OD-002 is resolved in `../DECISIONS.md` with a selected source or an explicit replay-only decision.
 
-Working evidence: [`ADSBLOL_INTEGRATION.md`](../ADSBLOL_INTEGRATION.md) selects
+Verification evidence: [`ADSBLOL_INTEGRATION.md`](../ADSBLOL_INTEGRATION.md) selects
 ADSB.lol for an optional ephemeral position layer, records ODbL attribution and
 `no-store` controls, captures a three-region bounded sample, and preserves
-deterministic replay as the only fallback. ADR-011 resolves OD-002. Delivery
-validation and PR evidence remain pending.
+deterministic replay as the only fallback. ADR-011 resolves OD-002. The archived
+commercial package and FT-401 review remain valid, all five FT-301 validator
+tests pass, and Rust, web, and API/PostGIS checks pass in CI run
+[29852787739](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29852787739).
 
 Historical evidence: PR [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) and PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16) produced a complete commercial procurement framework. It is retained under [`provider-evaluation/`](../provider-evaluation/README.md) for a possible future production track but is not part of this ticket's acceptance gate.
 
