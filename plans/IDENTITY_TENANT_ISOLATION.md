@@ -12,7 +12,7 @@ browser session -> Next.js identity adapter -> short-lived internal assertion
 
 - Clerk Organizations is the first hosted adapter because the web application targets Vercel and needs an active organization per operational tenant.
 - The Rust API does not depend on Clerk types or metadata. Next.js converts a verified hosted session into a 30-second internal JWT containing provider, external subject, external tenant, session, and standard time/identity claims.
-- The internal assertion is signed server-side with `INTERNAL_AUTH_SECRET`, is audience/issuer restricted, and is never exposed as an application credential or accepted from a query/body field.
+- The internal assertion is signed server-side with the named `INTERNAL_AUTH_KEY_ID`/`INTERNAL_AUTH_SECRET` pair, is audience/issuer restricted, and is never exposed as an application credential or accepted from a query/body field. Rust can accept one explicitly named previous key during the bounded rotation procedure in [`CREDENTIAL_ROTATION_RUNBOOK.md`](CREDENTIAL_ROTATION_RUNBOOK.md).
 - Rust validates signature, algorithm, issuer, audience, expiry, not-before time, and required claims. It then resolves the subject and tenant through app-owned records on every request.
 - Missing, expired, disabled, revoked, cross-tenant, and insufficient-role requests fail closed.
 - Health and readiness remain unauthenticated infrastructure probes. Operational APIs, streams, metrics, source evidence, and development replay controls require authorization.
@@ -69,7 +69,7 @@ Development bootstrap may create the configured local operator, identity, and ad
 
 Production provisioning requires a Clerk organization plus an app operator/identity/membership mapping. Removing or revoking a membership immediately denies access without deleting historical audit records. Rolling back the web identity adapter does not require rewriting authorization data or tenant-scoped repositories.
 
-For Vercel, configure `AUTH_MODE=clerk`, Clerk's publishable and secret keys, the internal assertion secret/issuer/audience, and `API_BASE_URL` on the Next.js project. The Rust deployment receives the same assertion settings plus `APP_ENV=production`, `AUTH_MODE=clerk`, and `DATABASE_URL`. The shared secret is a server-to-server credential and must never use the checked-in development value in a hosted environment.
+For Vercel, configure `AUTH_MODE=clerk`, Clerk's publishable and secret keys, the internal assertion active key ID/secret, issuer/audience, and `API_BASE_URL` on the Next.js project. The Rust deployment receives the same active assertion settings plus optional previous key ID/secret during rotation, `APP_ENV=production`, `AUTH_MODE=clerk`, and `DATABASE_URL`. The shared secret is a server-to-server credential and must never use the checked-in development value in a hosted environment.
 
 ## Verification requirements
 
