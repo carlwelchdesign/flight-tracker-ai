@@ -71,7 +71,8 @@ Every envelope should carry:
 
 ## API outline
 
-- `GET /health` and `GET /readiness`
+- `GET /health` and `GET /readiness` for minimal public load-balancer probes
+- `GET /api/system/health` and `GET /api/system/readiness` for authenticated diagnostics
 - `GET /api/flights`
 - `GET /api/flights/{id}`
 - `GET /api/flights/{id}/timeline`
@@ -83,7 +84,7 @@ Every envelope should carry:
 - `GET /api/events/stream`
 - Development-only replay controls protected by environment and authorization
 
-`/health` is a liveness-oriented response: it remains HTTP 200 while reporting `ok` or `degraded`, the critical-worker check, and each worker's state and last heartbeat. `/readiness` is fail-closed: it returns 503 unless the database, PostGIS, and all registered critical workers are ready. A worker is degraded while starting, after a failed/stopped task, or when its heartbeat exceeds the health threshold.
+Public `/health` is an HTTP 200 liveness probe with exactly `{"status":"ok"}`. Public `/readiness` is fail-closed and returns only `ready` or `not_ready`; it returns 503 unless the database, PostGIS, and all registered critical workers are ready. Authenticated `/api/system/health` and `/api/system/readiness` expose the service version, critical-worker state/heartbeat, and named database/PostGIS checks to operators. A worker is degraded while starting, after a failed/stopped task, or when its heartbeat exceeds the health threshold.
 
 ## Security and operational constraints
 

@@ -56,7 +56,7 @@ Committed normalized events publish through the same ingestion/projection bounda
 
 ## Operations and recovery
 
-1. Check `/health` for `noaa_weather_ingestion` and `noaa_projection`. These workers should remain running during provider failures.
+1. Check authenticated `/api/system/health` for `noaa_weather_ingestion` and `noaa_projection`. These workers should remain running during provider failures.
 2. Check `/api/source-health` for the affected feed, timestamps, failure count, and error code.
 3. For `rate_limited`, confirm the interval is at least 60 seconds and only one deployment is polling for this operator/feed.
 4. For `timeout` or `provider_unavailable`, check the AviationWeather.gov status page and outbound network path.

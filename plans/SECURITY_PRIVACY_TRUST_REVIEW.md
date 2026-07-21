@@ -40,7 +40,7 @@ Evidence observed in the repository:
 - Next.js requires a hosted user, session, and active organization; the browser cannot submit operator authority.
 - Rust validates algorithm, signature, issuer, audience, required claims, not-before/expiry, and a maximum 60-second assertion lifetime, then resolves app-owned membership and revocation on every request.
 - Production configuration rejects development authentication and development replay controls.
-- Only `/health` and `/readiness` are unauthenticated; operational reads, raw NOAA evidence, SSE, metrics, replay controls, alert actions, and membership administration require authorization.
+- Only minimal `/health` and `/readiness` status probes are unauthenticated; detailed service, worker, database, and PostGIS diagnostics live under authenticated `/api/system/*` routes. Operational reads, raw NOAA evidence, SSE, metrics, replay controls, alert actions, and membership administration also require authorization.
 - Roles ask for named permissions. Viewers cannot mutate alerts; only administrators manage memberships/sessions.
 - Store reads and writes take `operator_id` from `AuthContext`; assignment additionally verifies an active, enabled, same-operator dispatcher/operator/administrator, and composite database foreign keys prevent cross-operator alert and assignment-audit references.
 - Alert actions use idempotency keys, row/advisory locks, expected workflow versions, structured dismissal reasons, and an append-only action history.
@@ -59,7 +59,7 @@ Evidence observed in the repository:
 | T-06 | Dispatcher or administrator performs a privileged action without accountability or overwrites another actor. | Named permissions, authenticated actor, idempotency, workflow-version conflict, structured reasons, alert/authorization audit. | Define audit access/export, retention, integrity review, and privileged-action alerting. | F401-007 |
 | T-07 | Commercial data is displayed, retained, exported, combined, or processed by AI beyond contract scope. | FT-301 deny-by-default gate; commercial provider not integrated; raw route restricted to NOAA; provider/question evidence validator. | Implement selected Order's entitlement, attribution, field, retention, deletion, blocked-tail, export, and AI rules before adapter activation. | F401-003 |
 | T-08 | Data survives revocation, termination, deletion request, backup expiry, or provider deadline. | No production commercial ingestion exists. | Implement object inventory, scheduled deletion, backup expiry, restore-time tombstones, deletion evidence, and contract-specific overrides. | F401-002, F401-008 |
-| T-09 | Public probes or browser responses reveal unnecessary topology, worker, identity, or operational detail. | Generic auth failures; no stack traces/request bodies returned; BFF allowlists paths/headers. | Minimize externally exposed probe payloads and add production response security headers. | F401-005, F401-010 |
+| T-09 | Public probes or browser responses reveal unnecessary topology, worker, identity, or operational detail. | Public probes expose one status field; detailed diagnostics require app authorization; generic auth failures and BFF path/header allowlists prevent accidental detail forwarding; baseline browser headers and Clerk strict CSP are configured. | F401-010 is closed. Complete F401-005 with a real hosted-Clerk browser smoke before sharing a preview externally. | F401-005, F401-010 |
 | T-10 | Free-form notes, support exports, or correlation IDs become a channel for secrets or personal data. | Correlation IDs allow a small safe character set; operations runbook forbids sensitive values; comments remain tenant-scoped. | Add user guidance, export redaction, bounded lengths, retention, and incident scanning before pilot. | F401-002, F401-007 |
 
 ## Advisory-language review
@@ -86,7 +86,7 @@ After FT-301 selects a provider, the adapter design must map every accepted/exce
 | Review lens | Main conclusion | Canonical control |
 | --- | --- | --- |
 | Trust/privacy/rights | Identity controls are credible, but commercial rights, deletion, export, and AI policy remain contract-specific. | FT-301 matrix plus F401-002/F401-003/F401-007/F401-008. |
-| Platform architecture | Tenant scope is enforced in application queries and alert assignments now have database-level operator integrity; secret rotation, abuse quarantine, and probe/header hardening remain open. | F401-004 closed; F401-001/F401-005/F401-006/F401-010 remain open. |
+| Platform architecture | Tenant scope and assignment integrity are enforced, and public probes are minimal. Secret rotation, abuse quarantine, and hosted-Clerk CSP verification remain open. | F401-004/F401-010 closed; F401-001/F401-005/F401-006 remain open. |
 | Delivery/TPM | No finding may disappear into prose; each has an owner, severity, deadline gate, status, and verification requirement. | `SECURITY_FINDINGS.csv` and FT-401 checklist. |
 
 ## Approval rule

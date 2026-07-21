@@ -46,7 +46,8 @@ The active hosted organization becomes the assertion's external tenant. Rust map
 
 ## Endpoint policy
 
-- Public: `GET /health`, `GET /readiness`.
+- Public: minimal `GET /health` and `GET /readiness` status probes.
+- Authenticated operational diagnostics: `GET /api/system/health`, `GET /api/system/readiness`.
 - Operational read: fleet list/detail/timeline, SSE, weather, source evidence, source health, alerts, auth context.
 - Dispatcher write: alert actions. Actor and operator are taken from `AuthContext`.
 - Operator write: development replay controls.

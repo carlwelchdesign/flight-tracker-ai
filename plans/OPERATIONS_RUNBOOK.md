@@ -2,7 +2,7 @@
 
 ## What the console signals mean
 
-- **Service healthy/degraded** comes from the Rust `/health` contract and reflects registered critical workers.
+- **Service healthy/degraded** comes from the authenticated Rust `/api/system/health` contract and reflects registered critical workers.
 - **Stream live/reconnecting/disconnected** describes the browser's SSE connection. It does not prove source events are fresh.
 - **Last event** is the newest provider observation time accepted into the fleet picture.
 - **Last received** is the newest time this system accepted that source fact. A widening difference can indicate provider or transport delay.
@@ -17,12 +17,14 @@ From the repository root, inspect the API directly:
 ```sh
 curl -i http://127.0.0.1:8080/health
 curl -i http://127.0.0.1:8080/readiness
-curl -s http://127.0.0.1:8080/metrics
+curl -i http://127.0.0.1:3001/api/backend/api/system/health
+curl -i http://127.0.0.1:3001/api/backend/api/system/readiness
+curl -s http://127.0.0.1:3001/api/backend/metrics
 docker compose ps
 docker compose logs --tail=100 api
 ```
 
-`/health` should be HTTP 200 and list `replay_runtime` and `fleet_projection` as `running` in development. `/readiness` should be HTTP 200 with database, PostGIS, and critical workers all `ok`. A 503 readiness response is expected whenever any one of those dependencies is unavailable.
+Public `/health` should be exactly `{"status":"ok"}`. Public `/readiness` should be `{"status":"ready"}`; a 503 with `not_ready` is expected whenever the database, PostGIS, or a critical worker is unavailable. The authenticated `/api/system/health` response lists `replay_runtime` and `fleet_projection` as `running` in development, and `/api/system/readiness` names the database, PostGIS, and critical-worker checks. The development web BFF commands above create the same short-lived assertion used by the console.
 
 ## Correlating a request
 
@@ -49,7 +51,7 @@ Expected behavior:
 1. The console shows a prominent `Simulation feed outage` banner.
 2. Last event and last received times stop advancing.
 3. The SSE stream can remain live because transport is still available.
-4. `/health` and `/readiness` remain healthy because no critical worker failed.
+4. `/api/system/health` and `/api/system/readiness` remain healthy because no critical worker failed.
 
 Restore through the banner/control, or call the endpoint with `{"active":false}`. Replay reset also restores the feed.
 
@@ -69,8 +71,8 @@ Restore through the banner/control, or call the endpoint with `{"active":false}`
 
 After intervention, require all of the following before considering the development stack recovered:
 
-- `/health` reports `ok` and every registered worker is `running`.
-- `/readiness` returns HTTP 200 with every check `ok`.
+- `/api/system/health` reports `ok` and every registered worker is `running`.
+- `/api/system/readiness` returns HTTP 200 with every check `ok`.
 - The console reports service healthy and stream live.
 - Last event and last received advance after replay resumes.
 - A known correlation ID appears in the JSON request-completion log.
