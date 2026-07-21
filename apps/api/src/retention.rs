@@ -17,8 +17,12 @@ use crate::{
     domain::OperatorId,
 };
 
+mod integrity;
 mod schedule;
 
+pub use integrity::{
+    RetentionIntegrityView, RetentionIntegrityViolations, RetentionTombstoneCounts,
+};
 pub use schedule::{
     CreateRetentionSchedule, RetentionScheduleAttemptView, RetentionScheduleView,
     spawn_retention_scheduler,
@@ -568,6 +572,7 @@ pub fn retention_router(store: RetentionStore) -> Router {
             post(execute_run),
         )
         .merge(schedule::schedule_router())
+        .merge(integrity::integrity_router())
         .with_state(store)
 }
 

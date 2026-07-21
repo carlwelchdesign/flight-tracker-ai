@@ -55,5 +55,6 @@ F401-007 cannot close until Security and the operator owner complete this drill 
 - [ ] Export a bounded CSV and verify no comment, revocation reason, idempotency key, or session ID appears.
 - [ ] Follow the incident escalation path and record the disposition.
 - [ ] Verify the approved retention job and integrity procedure from F401-002 have run against the same evidence class.
+- [ ] Confirm `GET /api/admin/retention/integrity` reports zero tombstone violations and disposition any paused schedule or recent failure.
 
 Record environment, participants, timestamps, test actor/tenant references, screenshots or controlled evidence links, results, deviations, and remediation tickets. Do not place real session IDs, secrets, or unrestricted exports in Git.

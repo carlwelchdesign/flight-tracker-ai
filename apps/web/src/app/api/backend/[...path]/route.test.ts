@@ -91,5 +91,19 @@ describe("backend audit proxy", () => {
       expect.objectContaining({ pathname: "/api/admin/retention/schedules/schedule-1/pause" }),
       expect.objectContaining({ method: "POST" }),
     );
+
+    const integrityResponse = await GET(
+      new NextRequest("http://localhost/api/backend/api/admin/retention/integrity"),
+      {
+        params: Promise.resolve({
+          path: ["api", "admin", "retention", "integrity"],
+        }),
+      },
+    );
+    expect(integrityResponse.status).toBe(200);
+    expect(backendFetch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pathname: "/api/admin/retention/integrity" }),
+      expect.objectContaining({ method: "GET" }),
+    );
   });
 });

@@ -1334,6 +1334,48 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
         failed_attempts[0].error_code.as_deref(),
         Some("schedule_authorization_inactive")
     );
+
+    let integrity = store.retention_integrity(operator_id, now).await.unwrap();
+    assert!(integrity.healthy);
+    assert_eq!(integrity.paused_schedules, 1);
+    assert_eq!(integrity.failed_attempts_24h, 1);
+    let integrity_probe_tombstone = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO lifecycle_deletion_tombstones (
+            id, operator_id, retention_run_id, data_class, record_id, deleted_at
+        ) VALUES ($1,$2,$3,'authorization_audit',$4,$5)
+        "#,
+    )
+    .bind(integrity_probe_tombstone)
+    .bind(operator_id.as_uuid())
+    .bind(audit_run.id)
+    .bind(current_audit_id)
+    .bind(now)
+    .execute(pool)
+    .await
+    .unwrap();
+    let detected = store.retention_integrity(operator_id, now).await.unwrap();
+    assert!(!detected.healthy);
+    assert_eq!(detected.violations.authorization_audit, 1);
+    let other_integrity = store
+        .retention_integrity(other.operator_id, now)
+        .await
+        .unwrap();
+    assert!(other_integrity.healthy);
+    assert_eq!(other_integrity.violations.authorization_audit, 0);
+    sqlx::query("DELETE FROM lifecycle_deletion_tombstones WHERE id = $1")
+        .bind(integrity_probe_tombstone)
+        .execute(pool)
+        .await
+        .unwrap();
+    assert!(
+        store
+            .retention_integrity(operator_id, now)
+            .await
+            .unwrap()
+            .healthy
+    );
 }
 
 async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool) {
