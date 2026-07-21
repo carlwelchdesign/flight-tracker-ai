@@ -10,8 +10,9 @@ Last updated: 2026-07-21
 - Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
 - Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Push the verified live-map implementation, deploy the Render and
-  Vercel candidates, then prove live refresh and motion against ADSB.lol.
+- Next action: Add airport and NOAA hazard/weather overlays, direct motion and
+  reduced-motion lifecycle tests, and a forced hosted degraded-state exercise
+  before closing and merging FT-405.
 
 ## Milestone checklist
 
@@ -25,11 +26,11 @@ Last updated: 2026-07-21
 ## Current product correction
 
 - FT-405 is active on `feat/ft-405-live-navigable-tracker`. The existing public
-  SVG/replay surface is an interim prototype, not the intended end state. The
-  next release must expose the existing bounded ADSB.lol Rust adapter through a
-  sanitized public no-store read model, replace the fixed SVG with MapLibre,
-  animate aircraft between 30-second best-effort snapshots, and retain replay
-  only as an explicit degraded-source fallback. See
+  SVG/replay surface has been replaced in production by a sanitized public
+  no-store ADSB.lol read model, a navigable MapLibre/OpenFreeMap view, animated
+  aircraft updates, truthful evidence fields, and an explicit replay fallback.
+  It is a working live core, not the final map: airport and NOAA hazard/weather
+  overlays plus forced hosted failure-state verification remain. See
   [`FT-405-live-navigable-tracker.md`](tickets/FT-405-live-navigable-tracker.md).
 
 ## Ticket progress
