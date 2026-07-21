@@ -388,7 +388,7 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
         serde_json::from_slice(&hazards.into_body().collect().await.unwrap().to_bytes()).unwrap();
     assert_eq!(body["data"][0]["revision"], 3);
     assert_eq!(body["data"][0]["status"], "cancelled");
-    assert_eq!(body["data"][0]["severity"], "severe");
+    assert_eq!(body["data"][0]["severity"], "significant");
     assert_eq!(
         body["data"][0]["footprint"]["exterior"]
             .as_array()
