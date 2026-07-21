@@ -49,11 +49,11 @@ Verification evidence: Pending.
 
 ## FT-303 — Add identity, roles, and tenant isolation
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-303-identity-tenant-isolation`
-Final commit: Pending
-Pull request: Pending
+Final commit: `1430ce8`
+Pull request: [#13](https://github.com/carlwelchdesign/flight-tracker-ai/pull/13)
 Owner: Security and full-stack engineering
 
 Protect real operational data and actions with authenticated, scoped access.
@@ -62,14 +62,14 @@ Dependencies: FT-001, FT-002
 
 Acceptance checklist:
 
-- [ ] Operator, dispatcher, viewer, and administrator permissions are documented.
-- [ ] Every operational query and mutation is tenant-scoped.
-- [ ] Cross-tenant access tests fail closed.
-- [ ] Audit events include authenticated actor and tenant.
-- [ ] Session expiry and revoked access produce safe UI behavior.
-- [ ] OD-004 is resolved in `../DECISIONS.md`.
+- [x] Operator, dispatcher, viewer, and administrator permissions are documented.
+- [x] Every operational query and mutation is tenant-scoped.
+- [x] Cross-tenant access tests fail closed.
+- [x] Audit events include authenticated actor and tenant.
+- [x] Session expiry and revoked access produce safe UI behavior.
+- [x] OD-004 is resolved in `../DECISIONS.md`.
 
-Verification evidence: Pending.
+Verification evidence: [identity and tenant isolation contract](../IDENTITY_TENANT_ISOLATION.md); provider-neutral 30-second Next.js-to-Rust assertions with a 60-second API maximum; Clerk Organization and signed development adapters; app-owned memberships, roles, revocations, and authorization audit migration; authenticated tenant context across fleet list/detail/timeline, SSE replay/live delivery, weather, source evidence/health, alerts/actions, metrics, and replay controls; browser payloads no longer carry operator or actor authority; cross-tenant in-memory fleet IDs, PostGIS route reads, source-record denial, membership, expiry, revocation, and actor/tenant audit coverage; 60 Rust library tests, 8 binary configuration tests, deterministic golden tests, strict Clippy and formatting; 22 web parser, authorization, interaction, and revoked-session tests plus lint, typecheck, production build, and dependency audit with 0 vulnerabilities; live authenticated replay alert creation and actor-derived acknowledgement plus schema/PostGIS contracts in [CI run 29814499315](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29814499315); final implementation fix `1430ce8`; PR [#13](https://github.com/carlwelchdesign/flight-tracker-ai/pull/13), with all required checks passing.
 
 ## FT-304 — Build the dispatcher review queue
 
