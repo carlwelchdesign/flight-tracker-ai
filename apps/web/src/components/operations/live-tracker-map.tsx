@@ -5,7 +5,10 @@ import type { FeatureCollection, LineString, Point } from "geojson";
 import type { GeoJSONSource, Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
 import type { EstimatedTrajectory, TrajectoryPoint } from "@/lib/flight-trajectories";
 import type { PublicAircraft, PublicLiveStatus } from "@/lib/public-live-positions";
+import type { PublicWeatherSnapshot, PublicWeatherState } from "@/lib/public-weather";
 import { liveMarkerRotationDegrees } from "./aircraft-marker-heading";
+import { PublicWeatherOverlay } from "./public-weather-overlay";
+import { weatherGeoJson, type WeatherSelection } from "./public-weather-map";
 
 type Props = {
   aircraft: PublicAircraft[];
@@ -14,6 +17,10 @@ type Props = {
   mode: "live" | "stale" | "replay";
   trail: readonly TrajectoryPoint[];
   projection: EstimatedTrajectory | null;
+  weather: PublicWeatherSnapshot | null;
+  weatherState: PublicWeatherState | "loading";
+  weatherRetained: boolean;
+  onRetryWeather: () => void;
   onSelect: (id: string) => void;
 };
 
@@ -24,14 +31,34 @@ const TRAJECTORY_SOURCE_ID = "selected-aircraft-trajectory";
 const OBSERVED_TRAIL_LAYER_ID = "selected-aircraft-observed-trail";
 const PROJECTED_TRAJECTORY_LAYER_ID = "selected-aircraft-projected-trajectory";
 const PROJECTED_ENDPOINT_LAYER_ID = "selected-aircraft-projected-endpoint";
+const WEATHER_SOURCE_ID = "public-noaa-weather";
+const WEATHER_HAZARD_FILL_LAYER_ID = "public-weather-hazard-fill";
+const WEATHER_HAZARD_LINE_LAYER_ID = "public-weather-hazard-line";
+const WEATHER_OBSERVATION_LAYER_ID = "public-weather-observation";
+const WEATHER_STATION_LABEL_LAYER_ID = "public-weather-station-label";
 
-export function LiveTrackerMap({ aircraft, selectedId, status, mode, trail, projection, onSelect }: Props) {
+export function LiveTrackerMap({
+  aircraft,
+  selectedId,
+  status,
+  mode,
+  trail,
+  projection,
+  weather,
+  weatherState,
+  weatherRetained,
+  onRetryWeather,
+  onSelect,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef(new Map<string, MarkerEntry>());
   const onSelectRef = useRef(onSelect);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [showHazards, setShowHazards] = useState(true);
+  const [showObservations, setShowObservations] = useState(true);
+  const [weatherSelection, setWeatherSelection] = useState<WeatherSelection | null>(null);
   const hasFitRef = useRef(false);
 
   useEffect(() => {
@@ -58,6 +85,7 @@ export function LiveTrackerMap({ aircraft, selectedId, status, mode, trail, proj
         map.addControl(new maplibre.FullscreenControl(), "top-right");
         map.on("load", () => {
           if (disposed) return;
+          addWeatherLayers(map, setWeatherSelection);
           addTrajectoryLayers(map);
           setMapReady(true);
         });
@@ -137,6 +165,23 @@ export function LiveTrackerMap({ aircraft, selectedId, status, mode, trail, proj
     source?.setData(trajectoryGeoJson(mode === "replay" ? [] : trail, mode === "replay" ? null : projection));
   }, [mapReady, mode, projection, trail]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const source = map.getSource(WEATHER_SOURCE_ID) as GeoJSONSource | undefined;
+    source?.setData(weatherGeoJson(weather, showHazards, showObservations, weatherSelection));
+  }, [mapReady, showHazards, showObservations, weather, weatherSelection]);
+
+  function handleShowHazards(value: boolean) {
+    setShowHazards(value);
+    if (!value && weatherSelection?.kind === "hazard") setWeatherSelection(null);
+  }
+
+  function handleShowObservations(value: boolean) {
+    setShowObservations(value);
+    if (!value && weatherSelection?.kind === "observation") setWeatherSelection(null);
+  }
+
   function handleFitTraffic() {
     if (mapRef.current) fitTraffic(mapRef.current, aircraft);
   }
@@ -166,6 +211,18 @@ export function LiveTrackerMap({ aircraft, selectedId, status, mode, trail, proj
         {!mapReady && <div className="map-loading">Loading navigable map…</div>}
         {mapError && <div className="map-error" role="status">{mapError}</div>}
         <div className="map-help">Drag to pan · Scroll to zoom · Right-drag to rotate</div>
+        <PublicWeatherOverlay
+          snapshot={weather}
+          state={weatherState}
+          retained={weatherRetained}
+          showHazards={showHazards}
+          showObservations={showObservations}
+          selection={weatherSelection}
+          onShowHazards={handleShowHazards}
+          onShowObservations={handleShowObservations}
+          onSelect={setWeatherSelection}
+          onRetry={onRetryWeather}
+        />
         {mode !== "replay" && (
           <aside className="trajectory-legend" aria-label="Selected aircraft trajectory legend">
             <span className="trajectory-observed"><i aria-hidden="true" />Observed trail</span>
@@ -177,6 +234,100 @@ export function LiveTrackerMap({ aircraft, selectedId, status, mode, trail, proj
       </div>
     </section>
   );
+}
+
+function addWeatherLayers(map: MapLibreMap, onSelect: (selection: WeatherSelection) => void) {
+  map.addSource(WEATHER_SOURCE_ID, {
+    type: "geojson",
+    data: weatherGeoJson(null, true, true, null),
+  });
+  map.addLayer({
+    id: WEATHER_HAZARD_FILL_LAYER_ID,
+    type: "fill",
+    source: WEATHER_SOURCE_ID,
+    filter: ["==", ["get", "kind"], "hazard"],
+    paint: {
+      "fill-color": [
+        "match", ["get", "severity"],
+        "severe", "#f05b55",
+        "significant", "#f2a65a",
+        "advisory", "#d6c56a",
+        "#80969d",
+      ],
+      "fill-opacity": [
+        "case",
+        ["==", ["get", "lifecycle"], "active"], 0.24,
+        ["==", ["get", "lifecycle"], "upcoming"], 0.14,
+        0.07,
+      ],
+    },
+  });
+  map.addLayer({
+    id: WEATHER_HAZARD_LINE_LAYER_ID,
+    type: "line",
+    source: WEATHER_SOURCE_ID,
+    filter: ["==", ["get", "kind"], "hazard"],
+    paint: {
+      "line-color": [
+        "match", ["get", "severity"],
+        "severe", "#ff7770",
+        "significant", "#f2a65a",
+        "advisory", "#d6c56a",
+        "#80969d",
+      ],
+      "line-width": ["case", ["boolean", ["get", "selected"], false], 4, 2],
+      "line-opacity": ["case", ["==", ["get", "lifecycle"], "active"], 0.95, 0.45],
+    },
+  });
+  map.addLayer({
+    id: WEATHER_OBSERVATION_LAYER_ID,
+    type: "circle",
+    source: WEATHER_SOURCE_ID,
+    filter: ["==", ["get", "kind"], "observation"],
+    paint: {
+      "circle-radius": ["case", ["boolean", ["get", "selected"], false], 9, 7],
+      "circle-color": [
+        "match", ["get", "flight_category"],
+        "visual", "#62d98a",
+        "marginal_visual", "#6bb7ff",
+        "instrument", "#f05b55",
+        "low_instrument", "#d47cff",
+        "#9aaeb4",
+      ],
+      "circle-stroke-color": "#061117",
+      "circle-stroke-width": ["case", ["boolean", ["get", "selected"], false], 4, 2],
+    },
+  });
+  map.addLayer({
+    id: WEATHER_STATION_LABEL_LAYER_ID,
+    type: "symbol",
+    source: WEATHER_SOURCE_ID,
+    filter: ["==", ["get", "kind"], "observation"],
+    layout: {
+      "text-field": ["get", "station_code"],
+      "text-size": 10,
+      "text-offset": [0, 1.45],
+      "text-anchor": "top",
+      "text-allow-overlap": false,
+    },
+    paint: {
+      "text-color": "#dce8ea",
+      "text-halo-color": "#061117",
+      "text-halo-width": 2,
+    },
+  });
+  map.on("click", WEATHER_HAZARD_FILL_LAYER_ID, (event) => {
+    const id = event.features?.[0]?.properties?.id;
+    if (typeof id === "string") onSelect({ kind: "hazard", id });
+  });
+  map.on("click", WEATHER_OBSERVATION_LAYER_ID, (event) => {
+    const id = event.features?.[0]?.properties?.id;
+    if (typeof id === "string") onSelect({ kind: "observation", id });
+  });
+  for (const layer of [WEATHER_HAZARD_FILL_LAYER_ID, WEATHER_OBSERVATION_LAYER_ID]) {
+    map.on("mouseenter", layer, () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", layer, () => { map.getCanvas().style.cursor = ""; });
+  }
 }
 
 function animateMarker(entry: MarkerEntry, destination: [number, number]) {

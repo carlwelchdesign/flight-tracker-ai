@@ -1,4 +1,4 @@
 mod http;
 pub mod noaa;
 
-pub use http::weather_router;
+pub use http::{public_weather_router, weather_router};

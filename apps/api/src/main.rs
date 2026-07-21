@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use config::{Config, ReplayConfig};
 use flight_tracker_api::{
+    PublicPortfolioOperators,
     alerting::spawn_alert_worker,
     auth::{AuthService, AuthStore, InternalAssertionVerifier},
     build_router_with_runtime_and_public_live_positions,
@@ -84,6 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
+    let public_weather_operator = config.public_weather_operator;
     if let Some(noaa_config) = config.noaa {
         let operator_exists =
             sqlx::query_scalar::<_, bool>("SELECT EXISTS (SELECT 1 FROM operators WHERE id = $1)")
@@ -185,7 +187,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             workers,
             ingestion_subscriptions,
             live_position_statuses,
-            public_live_operator,
+            PublicPortfolioOperators {
+                live_positions: public_live_operator,
+                weather: public_weather_operator,
+            },
             auth,
         ),
     )
