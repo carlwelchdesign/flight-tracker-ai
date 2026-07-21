@@ -10,9 +10,8 @@ Last updated: 2026-07-21
 - Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
 - Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Add airport and NOAA hazard/weather overlays, direct motion and
-  reduced-motion lifecycle tests, and a forced hosted degraded-state exercise
-  before closing and merging FT-405.
+- Next action: Complete FT-405's airport and NOAA hazard/weather overlays,
+  direct motion lifecycle tests, and forced hosted degraded-state exercise.
 
 ## Milestone checklist
 
@@ -25,6 +24,11 @@ Last updated: 2026-07-21
 
 ## Current product correction
 
+- FT-406 is complete in stacked PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26). It adds a selected live
+  aircraft's ten-minute observed trail and a separately labeled estimated
+  five-minute motion projection without persisting provider positions or
+  claiming a filed route, destination, ETA, or authoritative prediction. See
+  [`FT-406-flight-trajectories.md`](tickets/FT-406-flight-trajectories.md).
 - FT-405 is active on `feat/ft-405-live-navigable-tracker`. The existing public
   SVG/replay surface has been replaced in production by a sanitized public
   no-store ADSB.lol read model, a navigable MapLibre/OpenFreeMap view, animated
@@ -46,6 +50,14 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
+- FT-406 is delivered in stacked PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26)
+  at implementation commit `8bce8aa`. CI run
+  [29874867026](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29874867026)
+  passes all five checks. Selected live aircraft now show a bounded ten-minute
+  page-memory trail and a separately styled deterministic five-minute motion
+  estimate; neither is persisted or represented as a route, destination, ETA,
+  or new observation. Live desktop/mobile browser verification captured two
+  accepted source points and an 11.1 NM projection after one provider refresh.
 - GitHub repository: `carlwelchdesign/flight-tracker-ai`.
 - `main` and `origin` are established; planning baseline commit: `8feb57d`.
 - FT-001 is merged through PR #1 at `c8e0bb4`.

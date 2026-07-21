@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
+import type { FeatureCollection, LineString, Point } from "geojson";
+import type { GeoJSONSource, Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
+import type { EstimatedTrajectory, TrajectoryPoint } from "@/lib/flight-trajectories";
 import type { PublicAircraft, PublicLiveStatus } from "@/lib/public-live-positions";
 
 type Props = {
@@ -9,14 +11,20 @@ type Props = {
   selectedId: string | null;
   status: PublicLiveStatus | null;
   mode: "live" | "stale" | "replay";
+  trail: readonly TrajectoryPoint[];
+  projection: EstimatedTrajectory | null;
   onSelect: (id: string) => void;
 };
 
 type MarkerEntry = { marker: MapLibreMarker; element: HTMLButtonElement; animationFrame: number | null };
 
 const DEFAULT_CENTER: [number, number] = [-122.38, 37.62];
+const TRAJECTORY_SOURCE_ID = "selected-aircraft-trajectory";
+const OBSERVED_TRAIL_LAYER_ID = "selected-aircraft-observed-trail";
+const PROJECTED_TRAJECTORY_LAYER_ID = "selected-aircraft-projected-trajectory";
+const PROJECTED_ENDPOINT_LAYER_ID = "selected-aircraft-projected-endpoint";
 
-export function LiveTrackerMap({ aircraft, selectedId, status, mode, onSelect }: Props) {
+export function LiveTrackerMap({ aircraft, selectedId, status, mode, trail, projection, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef(new Map<string, MarkerEntry>());
@@ -48,7 +56,9 @@ export function LiveTrackerMap({ aircraft, selectedId, status, mode, onSelect }:
         map.addControl(new maplibre.NavigationControl({ visualizePitch: true }), "top-right");
         map.addControl(new maplibre.FullscreenControl(), "top-right");
         map.on("load", () => {
-          if (!disposed) setMapReady(true);
+          if (disposed) return;
+          addTrajectoryLayers(map);
+          setMapReady(true);
         });
         map.on("error", (event) => {
           if (!disposed && event.error) setMapError("Basemap temporarily unavailable");
@@ -119,6 +129,13 @@ export function LiveTrackerMap({ aircraft, selectedId, status, mode, onSelect }:
     });
   }, [aircraft, mapReady, selectedId, status]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const source = map.getSource(TRAJECTORY_SOURCE_ID) as GeoJSONSource | undefined;
+    source?.setData(trajectoryGeoJson(mode === "replay" ? [] : trail, mode === "replay" ? null : projection));
+  }, [mapReady, mode, projection, trail]);
+
   function handleFitTraffic() {
     if (mapRef.current) fitTraffic(mapRef.current, aircraft);
   }
@@ -148,6 +165,14 @@ export function LiveTrackerMap({ aircraft, selectedId, status, mode, onSelect }:
         {!mapReady && <div className="map-loading">Loading navigable map…</div>}
         {mapError && <div className="map-error" role="status">{mapError}</div>}
         <div className="map-help">Drag to pan · Scroll to zoom · Right-drag to rotate</div>
+        {mode !== "replay" && (
+          <aside className="trajectory-legend" aria-label="Selected aircraft trajectory legend">
+            <span className="trajectory-observed"><i aria-hidden="true" />Observed trail</span>
+            <small>{trail.length < 2 ? "Starts after next refresh" : `${trail.length} source points`}</small>
+            <span className="trajectory-estimated"><i aria-hidden="true" />Estimated 5-min projection</span>
+            <small>{projection ? `${projection.distance_nautical_miles.toFixed(1)} NM at current motion` : "Heading or speed unavailable"}</small>
+          </aside>
+        )}
       </div>
     </section>
   );
@@ -201,6 +226,93 @@ function fitTraffic(map: MapLibreMap, aircraft: PublicAircraft[]) {
 
 function reducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function addTrajectoryLayers(map: MapLibreMap) {
+  map.addSource(TRAJECTORY_SOURCE_ID, {
+    type: "geojson",
+    lineMetrics: true,
+    data: trajectoryGeoJson([], null),
+  });
+  map.addLayer({
+    id: OBSERVED_TRAIL_LAYER_ID,
+    type: "line",
+    source: TRAJECTORY_SOURCE_ID,
+    filter: ["==", ["get", "kind"], "observed"],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-width": 4,
+      "line-gradient": [
+        "interpolate", ["linear"], ["line-progress"],
+        0, "rgba(92, 225, 185, 0.12)",
+        1, "rgba(92, 225, 185, 0.95)",
+      ],
+    },
+  });
+  map.addLayer({
+    id: PROJECTED_TRAJECTORY_LAYER_ID,
+    type: "line",
+    source: TRAJECTORY_SOURCE_ID,
+    filter: ["==", ["get", "kind"], "estimated"],
+    layout: { "line-cap": "round" },
+    paint: {
+      "line-color": "#f2a65a",
+      "line-width": 3,
+      "line-opacity": 0.9,
+      "line-dasharray": [2, 2],
+    },
+  });
+  map.addLayer({
+    id: PROJECTED_ENDPOINT_LAYER_ID,
+    type: "circle",
+    source: TRAJECTORY_SOURCE_ID,
+    filter: ["==", ["get", "kind"], "estimated-endpoint"],
+    paint: {
+      "circle-radius": 5,
+      "circle-color": "#f2a65a",
+      "circle-stroke-color": "#07141a",
+      "circle-stroke-width": 2,
+    },
+  });
+}
+
+function trajectoryGeoJson(
+  trail: readonly TrajectoryPoint[],
+  projection: EstimatedTrajectory | null,
+): FeatureCollection<LineString | Point, { kind: string }> {
+  const features: FeatureCollection<LineString | Point, { kind: string }>["features"] = [];
+  if (trail.length >= 2) {
+    features.push({
+      type: "Feature",
+      properties: { kind: "observed" },
+      geometry: {
+        type: "LineString",
+        coordinates: trail.map((point) => [point.longitude_degrees, point.latitude_degrees]),
+      },
+    });
+  }
+  if (projection) {
+    features.push({
+      type: "Feature",
+      properties: { kind: "estimated" },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [projection.start.longitude_degrees, projection.start.latitude_degrees],
+          [projection.end.longitude_degrees, projection.end.latitude_degrees],
+        ],
+      },
+    });
+    features.push({
+      type: "Feature",
+      properties: { kind: "estimated-endpoint" },
+      geometry: {
+        type: "Point",
+        coordinates: [projection.end.longitude_degrees, projection.end.latitude_degrees],
+      },
+    });
+  }
+  return { type: "FeatureCollection", features };
 }
 
 function isStale(item: PublicAircraft, status: PublicLiveStatus | null) {

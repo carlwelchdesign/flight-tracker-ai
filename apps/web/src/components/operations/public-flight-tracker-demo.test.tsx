@@ -65,7 +65,10 @@ describe("public flight tracker demo", () => {
     expect(screen.getByText("Received")).toBeInTheDocument();
     expect(screen.getByText("Snapshot age")).toBeInTheDocument();
     expect(screen.getByText("Provider state")).toBeInTheDocument();
-    expect(screen.getByText(/markers animate between accepted snapshots/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Observed trail").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Estimated 5-min projection/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Starts after next refresh/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/dashed projection is a geometric estimate/i)).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 });

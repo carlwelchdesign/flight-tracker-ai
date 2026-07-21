@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import {
+  estimateTrajectory,
+  type EstimatedTrajectory,
+  type TrajectoryHistory,
+  type TrajectoryPoint,
+  updateTrajectoryHistory,
+} from "@/lib/flight-trajectories";
 import { PUBLIC_DEMO_FLIGHTS } from "@/lib/public-demo-data";
 import {
   parsePublicLiveSnapshot,
@@ -19,6 +26,7 @@ export function PublicFlightTrackerDemo() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshFailed, setRefreshFailed] = useState(false);
+  const [trajectoryHistory, setTrajectoryHistory] = useState<TrajectoryHistory>(() => new Map());
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -26,6 +34,7 @@ export function PublicFlightTrackerDemo() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const next = parsePublicLiveSnapshot(await response.json());
       setSnapshot(next);
+      setTrajectoryHistory((current) => updateTrajectoryHistory(current, next.data, Date.now()));
       setRefreshFailed(false);
       if (next.data.length > 0) {
         setSelectedId((current) => current && next.data.some((item) => item.id === current)
@@ -57,6 +66,8 @@ export function PublicFlightTrackerDemo() {
   const mode = useReplay ? "replay" : refreshFailed || snapshot?.status.state !== "current" ? "stale" : "live";
   const sourceState = loading ? "connecting" : snapshot?.status.state ?? (refreshFailed ? "unavailable" : "connecting");
   const selected = aircraft.find((item) => item.id === selectedId) ?? aircraft[0] ?? null;
+  const selectedTrail = selected && !useReplay ? trajectoryHistory.get(selected.id) ?? [] : [];
+  const selectedProjection = selected && !useReplay ? estimateTrajectory(selected) : null;
 
   return (
     <main className="operations-shell live-tracker-shell">
@@ -105,6 +116,8 @@ export function PublicFlightTrackerDemo() {
           selectedId={selected?.id ?? null}
           status={snapshot?.status ?? null}
           mode={mode}
+          trail={selectedTrail}
+          projection={selectedProjection}
           onSelect={setSelectedId}
         />
         <section className="ops-panel live-traffic-panel" id="live-flight-list" aria-labelledby="traffic-title">
@@ -130,7 +143,13 @@ export function PublicFlightTrackerDemo() {
             {!loading && aircraft.length === 0 && <p className="empty-traffic">No aircraft are visible in this regional snapshot.</p>}
           </div>
         </section>
-        <AircraftInspector aircraft={selected} mode={mode} status={snapshot?.status ?? null} />
+        <AircraftInspector
+          aircraft={selected}
+          mode={mode}
+          status={snapshot?.status ?? null}
+          trail={selectedTrail}
+          projection={selectedProjection}
+        />
       </div>
 
       <footer className="operations-footer live-footer">
@@ -146,10 +165,14 @@ function AircraftInspector({
   aircraft,
   mode,
   status,
+  trail,
+  projection,
 }: {
   aircraft: PublicAircraft | null;
   mode: string;
   status: PublicLiveSnapshot["status"] | null;
+  trail: readonly TrajectoryPoint[];
+  projection: EstimatedTrajectory | null;
 }) {
   return (
     <section className="ops-panel live-inspector" aria-labelledby="aircraft-detail-title">
@@ -169,10 +192,18 @@ function AircraftInspector({
           <Fact label="Freshness" value={mode === "replay" ? "Simulated" : isAircraftStale(aircraft, status) ? "Stale" : "Fresh"} />
           <Fact label="Provider state" value={mode === "replay" ? "Replay fallback" : status?.state ?? "Connecting"} />
           <Fact label="Source quality" value={mode === "replay" ? "Simulated" : aircraft.quality} />
+          <Fact
+            label="Observed trail"
+            value={mode === "replay" ? "Live only" : trail.length < 2 ? "Starts after next refresh" : `${trail.length} source points`}
+          />
+          <Fact
+            label="Estimated projection"
+            value={projection ? `${projection.horizon_minutes} min · ${projection.distance_nautical_miles.toFixed(1)} NM` : "Not available"}
+          />
         </dl>
       ) : <p className="empty-traffic">Choose an aircraft to inspect its supplied position and motion facts.</p>}
       <p className="truth-note">
-        Markers animate between accepted snapshots; timestamps remain the source evidence. Routes, schedules, delays, and airline identity are not inferred when the source does not supply them.
+        The solid trail contains accepted observations. The dashed projection is a geometric estimate from current heading and speed—not a filed route, destination, ETA, or new source observation.
       </p>
     </section>
   );

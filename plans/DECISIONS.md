@@ -80,6 +80,14 @@
 - Product boundary: ADSB.lol supplies identity, position, motion, and source-quality facts only. Routes, schedules, delays, cancellations, and operational statuses remain visibly simulated unless a future source independently proves those facts.
 - Resolution: OD-002 is resolved in favor of ADSB.lol under the controls in `ADSBLOL_INTEGRATION.md`; replay-only remains a valid deployment mode.
 
+### ADR-012 — Live trajectories are ephemeral observations plus labeled estimates
+
+- Date: 2026-07-21
+- Decision: Build selected-aircraft trajectories from a bounded page-memory trail of accepted ADSB.lol observations and an independently styled five-minute geometric projection from the latest supplied position, true heading, and ground speed.
+- Reason: A short observed trail makes motion understandable while a small deterministic projection communicates direction without requiring a route provider, persistence, or AI inference.
+- Constraint: Retain at most ten minutes and 25 observations per aircraft; discard them on reload; never write, export, log, analyze, or send them to an LLM. Label the solid line `Observed trail` and the dashed line `Estimated 5-min projection`.
+- Product boundary: The projection is presentation-only. It is not a filed route, destination prediction, ETA, conflict forecast, safety recommendation, or new source observation. Missing motion facts produce no projection.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |
