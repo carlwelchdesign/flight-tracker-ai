@@ -1,7 +1,7 @@
 use std::{env, net::SocketAddr, path::PathBuf, time::Duration};
 
 use flight_tracker_api::{
-    auth::{AssertionConfig, AuthRole, DevelopmentIdentity},
+    auth::{AssertionConfig, AssertionKey, AuthRole, DevelopmentIdentity},
     domain::OperatorId,
 };
 use reqwest::Url;
@@ -89,6 +89,12 @@ pub enum ConfigError {
     DevelopmentAuthForbidden,
     #[error("INTERNAL_AUTH_SECRET must contain at least 32 bytes")]
     InvalidInternalAuthSecret,
+    #[error("INTERNAL_AUTH_KEY_ID must be configured")]
+    MissingInternalAuthKeyId,
+    #[error(
+        "INTERNAL_AUTH_PREVIOUS_KEY_ID and INTERNAL_AUTH_PREVIOUS_SECRET must be configured together"
+    )]
+    IncompletePreviousInternalAuthKey,
     #[error("AUTH_ASSERTION_ISSUER and AUTH_ASSERTION_AUDIENCE must not be empty")]
     InvalidAuthBoundary,
     #[error("development auth requires DEV_AUTH_OPERATOR_ID to be a UUID")]
@@ -197,6 +203,17 @@ impl Config {
         if secret.len() < 32 {
             return Err(ConfigError::InvalidInternalAuthSecret);
         }
+        let key_id = lookup("INTERNAL_AUTH_KEY_ID")
+            .filter(|value| !value.trim().is_empty())
+            .ok_or(ConfigError::MissingInternalAuthKeyId)?;
+        let previous_key = match (
+            lookup("INTERNAL_AUTH_PREVIOUS_KEY_ID").filter(|value| !value.trim().is_empty()),
+            lookup("INTERNAL_AUTH_PREVIOUS_SECRET").filter(|value| !value.is_empty()),
+        ) {
+            (None, None) => None,
+            (Some(id), Some(secret)) => Some(AssertionKey { id, secret }),
+            _ => return Err(ConfigError::IncompletePreviousInternalAuthKey),
+        };
         let issuer = lookup("AUTH_ASSERTION_ISSUER").unwrap_or_else(|| "flight-tracker-web".into());
         let audience =
             lookup("AUTH_ASSERTION_AUDIENCE").unwrap_or_else(|| "flight-tracker-api".into());
@@ -243,7 +260,8 @@ impl Config {
             auth: AuthConfig {
                 mode: auth_mode,
                 assertion: AssertionConfig {
-                    secret,
+                    active_key: AssertionKey { id: key_id, secret },
+                    previous_key,
                     issuer,
                     audience,
                     leeway_seconds: 5,
@@ -279,6 +297,10 @@ mod tests {
             (
                 "INTERNAL_AUTH_SECRET".to_owned(),
                 "development-only-secret-at-least-32-bytes".to_owned(),
+            ),
+            (
+                "INTERNAL_AUTH_KEY_ID".to_owned(),
+                "local-primary".to_owned(),
             ),
             (
                 "DEV_AUTH_OPERATOR_ID".to_owned(),
@@ -388,5 +410,40 @@ mod tests {
             config(&[("INTERNAL_AUTH_SECRET", "short")]),
             Err(ConfigError::InvalidInternalAuthSecret)
         ));
+        assert!(matches!(
+            config(&[("INTERNAL_AUTH_KEY_ID", "")]),
+            Err(ConfigError::MissingInternalAuthKeyId)
+        ));
+    }
+
+    #[test]
+    fn previous_internal_assertion_key_is_an_explicit_pair() {
+        assert!(matches!(
+            config(&[("INTERNAL_AUTH_PREVIOUS_KEY_ID", "previous")]),
+            Err(ConfigError::IncompletePreviousInternalAuthKey)
+        ));
+        assert!(matches!(
+            config(&[(
+                "INTERNAL_AUTH_PREVIOUS_SECRET",
+                "previous-secret-at-least-thirty-two-bytes"
+            )]),
+            Err(ConfigError::IncompletePreviousInternalAuthKey)
+        ));
+
+        let configured = config(&[
+            ("INTERNAL_AUTH_PREVIOUS_KEY_ID", "previous"),
+            (
+                "INTERNAL_AUTH_PREVIOUS_SECRET",
+                "previous-secret-at-least-thirty-two-bytes",
+            ),
+        ])
+        .unwrap();
+        assert_eq!(
+            configured.auth.assertion.previous_key,
+            Some(AssertionKey {
+                id: "previous".into(),
+                secret: "previous-secret-at-least-thirty-two-bytes".into(),
+            })
+        );
     }
 }

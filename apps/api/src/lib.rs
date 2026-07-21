@@ -489,7 +489,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        auth::{AssertionConfig, AuthStore, InternalAssertionVerifier},
+        auth::{AssertionConfig, AssertionKey, AuthStore, InternalAssertionVerifier},
         replay::ReplayScenario,
     };
 
@@ -503,7 +503,11 @@ mod tests {
     fn test_auth(database: &PgPool) -> AuthService {
         AuthService::new(
             InternalAssertionVerifier::new(AssertionConfig {
-                secret: "test-only-internal-assertion-secret-32-bytes".into(),
+                active_key: AssertionKey {
+                    id: "test-primary".into(),
+                    secret: "test-only-internal-assertion-secret-32-bytes".into(),
+                },
+                previous_key: None,
                 issuer: "test-web".into(),
                 audience: "test-api".into(),
                 leeway_seconds: 0,

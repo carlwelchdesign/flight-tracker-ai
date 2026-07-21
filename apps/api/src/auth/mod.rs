@@ -17,4 +17,6 @@ pub use store::{
     AuthStore, DevelopmentIdentity, MembershipStatus, MembershipUpdate, MembershipView,
     SessionRevocation,
 };
-pub use token::{AssertionClaims, AssertionConfig, AssertionError, InternalAssertionVerifier};
+pub use token::{
+    AssertionClaims, AssertionConfig, AssertionError, AssertionKey, InternalAssertionVerifier,
+};

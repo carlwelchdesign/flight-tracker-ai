@@ -10,8 +10,8 @@ use flight_tracker_api::{
         candidate_from_route_hazard,
     },
     auth::{
-        AssertionClaims, AssertionConfig, AuthRole, AuthService, AuthStore, DevelopmentIdentity,
-        InternalAssertionVerifier, SessionRevocation,
+        AssertionClaims, AssertionConfig, AssertionKey, AuthRole, AuthService, AuthStore,
+        DevelopmentIdentity, InternalAssertionVerifier, SessionRevocation,
     },
     build_router,
     domain::{
@@ -77,14 +77,20 @@ async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthS
         nbf: now.timestamp() as u64,
         exp: (now + Duration::seconds(60)).timestamp() as u64,
     };
+    let mut header = Header::new(Algorithm::HS256);
+    header.kid = Some("schema-contract-primary".into());
     let token = encode(
-        &Header::new(Algorithm::HS256),
+        &header,
         &claims,
         &EncodingKey::from_secret(SECRET.as_bytes()),
     )
     .unwrap();
     let verifier = InternalAssertionVerifier::new(AssertionConfig {
-        secret: SECRET.into(),
+        active_key: AssertionKey {
+            id: "schema-contract-primary".into(),
+            secret: SECRET.into(),
+        },
+        previous_key: None,
         issuer: "schema-contract-web".into(),
         audience: "schema-contract-api".into(),
         leeway_seconds: 0,

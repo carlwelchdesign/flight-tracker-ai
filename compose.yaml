@@ -29,6 +29,9 @@ services:
       APP_ENV: development
       AUTH_MODE: ${AUTH_MODE:-development}
       INTERNAL_AUTH_SECRET: ${INTERNAL_AUTH_SECRET:-local-development-internal-auth-secret-change-me}
+      INTERNAL_AUTH_KEY_ID: ${INTERNAL_AUTH_KEY_ID:-local-primary}
+      INTERNAL_AUTH_PREVIOUS_KEY_ID: ${INTERNAL_AUTH_PREVIOUS_KEY_ID:-}
+      INTERNAL_AUTH_PREVIOUS_SECRET: ${INTERNAL_AUTH_PREVIOUS_SECRET:-}
       AUTH_ASSERTION_ISSUER: ${AUTH_ASSERTION_ISSUER:-flight-tracker-web}
       AUTH_ASSERTION_AUDIENCE: ${AUTH_ASSERTION_AUDIENCE:-flight-tracker-api}
       DEV_AUTH_OPERATOR_ID: ${DEV_AUTH_OPERATOR_ID:-9c704a09-a62c-43d5-bac6-94ea2fd53b32}
@@ -69,6 +72,7 @@ services:
       API_BASE_URL: http://api:8080
       AUTH_MODE: ${AUTH_MODE:-development}
       INTERNAL_AUTH_SECRET: ${INTERNAL_AUTH_SECRET:-local-development-internal-auth-secret-change-me}
+      INTERNAL_AUTH_KEY_ID: ${INTERNAL_AUTH_KEY_ID:-local-primary}
       AUTH_ASSERTION_ISSUER: ${AUTH_ASSERTION_ISSUER:-flight-tracker-web}
       AUTH_ASSERTION_AUDIENCE: ${AUTH_ASSERTION_AUDIENCE:-flight-tracker-api}
       DEV_AUTH_TENANT_ID: ${DEV_AUTH_TENANT_ID:-local-flight-tracker}
