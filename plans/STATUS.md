@@ -7,10 +7,10 @@ Last updated: 2026-07-20
 - Current milestone: M1 — Simulated operations console
 - Active ticket: FT-103 — Build map, flight board, and flight detail experience
 - Branch: `feat/ft-103-operations-console`
-- Pull request: Pending
+- Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (draft; checks pending)
 - Owner: Frontend engineering with product-design review
 - Overall status: M0, FT-101, and FT-102 are merged; FT-103 operations console is in progress
-- Next action: Implement the synchronized map, flight board, detail panel, operational states, and accessible keyboard behavior.
+- Next action: Wait for PR #7 required checks, resolve any findings, then record the green result and move the verified PR to ready for human review.
 
 ## Milestone checklist
 
@@ -43,6 +43,7 @@ Last updated: 2026-07-20
 - FT-003 is merged through PR #2 at `7edfa2a`; M0 is complete.
 - FT-101 is merged through PR #5 at `efc2cf6` with all required checks passing.
 - FT-102 is merged through PR #6 at `aed432d` with all required checks passing.
+- FT-103 is implemented at `160f5f6` on PR #7; synchronized console behavior and responsive browser verification are complete, with required PR checks pending.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
