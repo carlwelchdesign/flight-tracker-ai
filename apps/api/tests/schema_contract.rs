@@ -20,8 +20,8 @@ use flight_tracker_api::{
     },
     replay::ReplayScenario,
     retention::{
-        CreateRetentionPolicy, PreviewRetentionRun, RetentionDataClass, RetentionError,
-        RetentionStore,
+        CreateRetentionPolicy, CreateRetentionSchedule, PreviewRetentionRun, RetentionDataClass,
+        RetentionError, RetentionStore,
     },
     weather::noaa::{
         NoaaFeed, NoaaPayload, NoaaStore, PersistedNoaaRecord, SourceHealthTracker, prepare_records,
@@ -57,6 +57,8 @@ const REQUIRED_TABLES: &[&str] = &[
     "lifecycle_deletion_tombstones",
     "alert_history_tombstones",
     "operational_fact_tombstones",
+    "retention_schedules",
+    "retention_schedule_attempts",
 ];
 
 async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthService, String) {
@@ -1198,6 +1200,140 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
     .await
     .unwrap();
     assert_eq!(restored_observation.rows_affected(), 0);
+
+    let scheduled_audit_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO authorization_audit_events (
+            id, operator_id, actor_identity_id, action, target_type,
+            target_id, occurred_at, metadata
+        ) VALUES ($1,$2,$3,'membership.updated','operator_membership',$4,$5,'{}')
+        "#,
+    )
+    .bind(scheduled_audit_id)
+    .bind(operator_id.as_uuid())
+    .bind(requester.identity_id)
+    .bind(scheduled_audit_id.to_string())
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    let schedule = store
+        .create_schedule(
+            &requester,
+            &CreateRetentionSchedule {
+                policy_id: audit_run.policy_id,
+                cadence_seconds: 3_600,
+                first_run_at: now,
+                approval_reference: "legal:FT-401/audit-schedule-v1".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    assert!(matches!(
+        store.approve_schedule(&requester, schedule.id, now).await,
+        Err(RetentionError::SeparationOfDuties)
+    ));
+    assert!(
+        store
+            .list_schedules(other.operator_id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let schedule = store
+        .approve_schedule(&approver, schedule.id, now)
+        .await
+        .unwrap();
+    assert_eq!(schedule.status, "active");
+    assert_eq!(store.run_due_schedules(now, 10).await.unwrap(), 1);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM authorization_audit_events WHERE id = $1",
+        )
+        .bind(scheduled_audit_id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(store.run_due_schedules(now, 10).await.unwrap(), 0);
+    let completed_attempts = store
+        .list_schedule_attempts(operator_id, schedule.id)
+        .await
+        .unwrap();
+    assert_eq!(completed_attempts.len(), 1);
+    assert_eq!(completed_attempts[0].status, "completed");
+    assert!(completed_attempts[0].retention_run_id.is_some());
+    let advanced = store
+        .list_schedules(operator_id)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|item| item.id == schedule.id)
+        .unwrap();
+    assert_eq!(advanced.next_run_at, now + Duration::hours(1));
+    assert_eq!(advanced.consecutive_failures, 0);
+    store
+        .pause_schedule(&approver, schedule.id, now)
+        .await
+        .unwrap();
+
+    let inactive_actor_schedule = store
+        .create_schedule(
+            &requester,
+            &CreateRetentionSchedule {
+                policy_id: audit_run.policy_id,
+                cadence_seconds: 3_600,
+                first_run_at: now,
+                approval_reference: "legal:FT-401/audit-schedule-inactive-actor".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    store
+        .approve_schedule(&approver, inactive_actor_schedule.id, now)
+        .await
+        .unwrap();
+    sqlx::query(
+        r#"
+        UPDATE operator_memberships
+        SET status = 'revoked', revoked_at = $3, updated_at = $3
+        WHERE operator_id = $1 AND identity_id = $2
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(requester.identity_id)
+    .bind(now)
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(store.run_due_schedules(now, 10).await.unwrap(), 1);
+    let failed_schedule = store
+        .list_schedules(operator_id)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|item| item.id == inactive_actor_schedule.id)
+        .unwrap();
+    assert_eq!(failed_schedule.status, "paused");
+    assert_eq!(failed_schedule.consecutive_failures, 1);
+    assert_eq!(
+        failed_schedule.last_error_code.as_deref(),
+        Some("schedule_authorization_inactive")
+    );
+    let failed_attempts = store
+        .list_schedule_attempts(operator_id, inactive_actor_schedule.id)
+        .await
+        .unwrap();
+    assert_eq!(failed_attempts.len(), 1);
+    assert_eq!(failed_attempts[0].status, "failed");
+    assert_eq!(
+        failed_attempts[0].error_code.as_deref(),
+        Some("schedule_authorization_inactive")
+    );
 }
 
 async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool) {

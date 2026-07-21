@@ -14,7 +14,7 @@ const ALLOWED_PATHS = [
   /^api\/alerts(?:\/[^/]+(?:\/actions)?)?$/,
   /^api\/events\/stream$/,
   /^api\/auth\/context$/,
-  /^api\/admin\/(?:memberships(?:\/[^/]+)?|sessions\/revoke|audit-events(?:\/export)?|audit-alerts|retention\/(?:policies(?:\/[^/]+\/approve)?|runs\/(?:preview|[^/]+\/(?:approve|execute))))$/,
+  /^api\/admin\/(?:memberships(?:\/[^/]+)?|sessions\/revoke|audit-events(?:\/export)?|audit-alerts|retention\/(?:policies(?:\/[^/]+\/approve)?|runs\/(?:preview|[^/]+\/(?:approve|execute))|schedules(?:\/[^/]+\/(?:approve|pause|attempts))?))$/,
   /^api\/dev\/replay(?:\/(?:pause|resume|reset|speed|outage))?$/,
   /^metrics$/,
 ];

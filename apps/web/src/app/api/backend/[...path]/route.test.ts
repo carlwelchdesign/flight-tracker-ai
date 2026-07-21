@@ -75,5 +75,21 @@ describe("backend audit proxy", () => {
       expect.objectContaining({ pathname: "/api/admin/retention/runs/preview" }),
       expect.objectContaining({ method: "POST" }),
     );
+
+    const scheduleResponse = await POST(
+      new NextRequest("http://localhost/api/backend/api/admin/retention/schedules/schedule-1/pause", {
+        method: "POST",
+      }),
+      {
+        params: Promise.resolve({
+          path: ["api", "admin", "retention", "schedules", "schedule-1", "pause"],
+        }),
+      },
+    );
+    expect(scheduleResponse.status).toBe(200);
+    expect(backendFetch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pathname: "/api/admin/retention/schedules/schedule-1/pause" }),
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 });

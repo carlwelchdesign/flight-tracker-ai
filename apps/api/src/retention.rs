@@ -17,6 +17,13 @@ use crate::{
     domain::OperatorId,
 };
 
+mod schedule;
+
+pub use schedule::{
+    CreateRetentionSchedule, RetentionScheduleAttemptView, RetentionScheduleView,
+    spawn_retention_scheduler,
+};
+
 const MIN_RETENTION_SECONDS: i64 = 3_600;
 const MAX_RETENTION_SECONDS: i64 = 315_576_000;
 const MAX_DELETE_RECORDS: i64 = 10_000;
@@ -345,6 +352,26 @@ impl RetentionStore {
         .await?;
         sqlx::query(
             r#"
+            UPDATE retention_schedules schedule
+            SET status = 'retired', paused_at = $4
+            FROM retention_policies policy
+            WHERE schedule.operator_id = $1
+              AND schedule.status = 'active'
+              AND schedule.policy_id = policy.id
+              AND policy.operator_id = $1
+              AND policy.data_class = $2
+              AND policy.provider = $3
+              AND policy.status = 'retired'
+            "#,
+        )
+        .bind(actor.operator_id.as_uuid())
+        .bind(&policy.data_class)
+        .bind(&policy.provider)
+        .bind(now)
+        .execute(&mut *transaction)
+        .await?;
+        sqlx::query(
+            r#"
             UPDATE retention_policies
             SET status = 'approved', approved_by_identity_id = $3, approved_at = $4
             WHERE operator_id = $1 AND id = $2
@@ -487,7 +514,15 @@ impl RetentionStore {
         .bind(now)
         .execute(&mut *transaction)
         .await?;
-        insert_completion_audit(&mut transaction, actor, &run, &deletion_counts, now).await?;
+        insert_completion_audit(
+            &mut transaction,
+            actor.operator_id,
+            actor.identity_id,
+            &run,
+            &deletion_counts,
+            now,
+        )
+        .await?;
         transaction.commit().await?;
         self.run(actor.operator_id, run_id).await
     }
@@ -532,6 +567,7 @@ pub fn retention_router(store: RetentionStore) -> Router {
             "/api/admin/retention/runs/{run_id}/execute",
             post(execute_run),
         )
+        .merge(schedule::schedule_router())
         .with_state(store)
 }
 
@@ -1365,7 +1401,8 @@ async fn lock_run(
 
 async fn insert_completion_audit(
     transaction: &mut Transaction<'_, Postgres>,
-    actor: &AuthContext,
+    operator_id: OperatorId,
+    actor_identity_id: Uuid,
     run: &RetentionRunView,
     deletion_counts: &Value,
     now: DateTime<Utc>,
@@ -1379,8 +1416,8 @@ async fn insert_completion_audit(
         "#,
     )
     .bind(Uuid::new_v4())
-    .bind(actor.operator_id.as_uuid())
-    .bind(actor.identity_id)
+    .bind(operator_id.as_uuid())
+    .bind(actor_identity_id)
     .bind(run.id.to_string())
     .bind(now)
     .bind(json!({
