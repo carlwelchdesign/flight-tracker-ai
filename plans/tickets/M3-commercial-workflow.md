@@ -9,9 +9,12 @@ Status: In progress
 Preparation branch: `docs/ft-301-commercial-provider-selection`
 Preparation commit: `fadb4ea`
 Preparation pull request: [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) (merged at `c8d8a78`)
-Active evidence branch: `docs/ft-301-procurement-handoff`
+Procurement handoff branch: `docs/ft-301-procurement-handoff`
+Procurement handoff commit: `7013020`
+Procurement handoff pull request: [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
+Final evidence branch: Pending external evidence
 Final commit: Pending
-Pull request: [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16) (draft)
+Final pull request: Pending
 Owner: Product, legal, and engineering
 
 Resolve the provider feasibility work with a documented selection appropriate for the intended use.
