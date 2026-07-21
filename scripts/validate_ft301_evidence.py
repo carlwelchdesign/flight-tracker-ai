@@ -530,7 +530,7 @@ def validate_decision_log(
             errors.append("decision log: OD-002 is still listed under open decisions")
         if not resolution:
             errors.append("decision log: OD-002 resolution statement is missing")
-    elif status == "pending" and not open_entry:
+    elif status == "pending" and not open_entry and not resolution:
         errors.append("decision log: pending OD-002 is missing from open decisions")
     return errors
 

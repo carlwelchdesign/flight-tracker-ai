@@ -18,10 +18,9 @@ it is no longer a gate for the portfolio release.
 2. Keep deterministic simulation and replay as the only flight-position source
    through M1. Do not add a live position provider merely to make the demo look
    live.
-3. Evaluate free, best-effort aircraft-position sources in FT-301 using their
-   official terms. A source is eligible only when server-side access and public,
-   hosted, non-commercial display are permitted and attribution, rate limits,
-   caching, retention, and redistribution rules are implementable.
+3. Use ADSB.lol as an optional, best-effort live position layer under the
+   ephemeral, attributed, `no-store` controls in `ADSBLOL_INTEGRATION.md`.
+   Deterministic replay remains the reliable default and only fallback.
 4. Do not integrate OpenSky into an automated or hosted product without a
    written commercial and operational license. Its default terms do not permit
    this project's intended use.
@@ -37,6 +36,20 @@ it is no longer a gate for the portfolio release.
 Commercial provider selection is deferred, not blocked work on the active
 roadmap. Cirium Sky Stream and FlightAware Firehose remain the researched
 production candidates if the project is ever re-scoped for operational use.
+
+## Free position-source selection
+
+| Source | Public portfolio rights | Limits and service behavior | Data boundary | Decision |
+| --- | --- | --- | --- | --- |
+| ADSB.lol | API and public data are ODbL 1.0. Public Produced Works are permitted with attribution; adapted databases can trigger share-alike and machine-readable distribution duties. | Dynamic load-based rate limits, no published SLA, and a possible future feeder-backed API key. A sampled response said `Cache-Control: no-store`; an OpenAPI request returned `503` while regional point requests remained available. | Ephemeral regional positions only. No persistence, caching, export, LLM use, or route/schedule/status claims. Poll at most every 30 seconds and show linked attribution. | **Selected** as an optional layer; replay is the only fallback. See `ADSBLOL_INTEGRATION.md`. |
+| Airplanes.live | Official API guide states non-commercial use, but reviewed public pages did not provide equally precise attribution, retention, redistribution, or database-license terms. | One request per second; no SLA or uptime guarantee; regional point radius up to 250 nautical miles. | Would require a separate terms decision and adapter. | **Not selected** and not used as an automatic secondary source. |
+| OpenSky | Default terms do not authorize this automated hosted use without prior written licensing. | Crowdsourced, quota-bound, as-is service. | External agreement required. | **Ineligible** for the portfolio path. |
+
+The 2026-07-21 bounded sample inspected 71 records around SFO, 110 around JFK,
+and 86 around LHR. All sampled records had positions, while callsigns were
+missing in each region and observed position age reached about 60 seconds. The
+sample is evidence of schema, incompleteness, freshness variation, and partial
+failure behavior—not a coverage promise.
 
 ## Evaluation context
 
@@ -192,6 +205,15 @@ the exact display and measured target-fleet performance are pass/fail gates.
 
 All sources below are provider or government primary sources and were checked on
 2026-07-21.
+
+### ADSB.lol and free-source comparison
+
+- [ADSB.lol API documentation](https://api.adsb.lol/docs)
+- [ADSB.lol API source, dynamic limits, and future key notes](https://github.com/adsblol/api)
+- [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/)
+- [Airplanes.live API guide](https://airplanes.live/api-guide/)
+- [Airplanes.live data fields](https://airplanes.live/rest-api-adsb-data-field-descriptions/)
+- [Airplanes.live terms page](https://airplanes.live/terms-of-use/)
 
 ### NOAA/NWS
 

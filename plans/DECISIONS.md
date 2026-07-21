@@ -71,12 +71,20 @@
 - Data path: Deterministic replay and NOAA weather are the reliable baseline. A free aircraft-position feed is optional and may be integrated only after its official terms are verified for public, hosted, non-commercial display and its attribution and retention rules are implemented.
 - Future production: The FT-301 procurement package and ADR-007 research are retained as optional evidence if the product is later re-scoped for commercial or operational use; they no longer gate the portfolio roadmap.
 
+### ADR-011 — ADSB.lol is the optional portfolio live-position source
+
+- Date: 2026-07-21
+- Decision: Use ADSB.lol only as an optional, best-effort live aircraft-position layer. Deterministic replay remains the guaranteed demonstration path and the only fallback.
+- Reason: ADSB.lol publishes its API and public data under ODbL 1.0, which permits public use and states an attribution path that this hosted non-commercial portfolio can implement. A bounded sample confirmed useful position data as well as missing callsigns, stale positions, and partial service failure.
+- Constraint: Fetch only through a bounded Rust regional adapter; poll no faster than every 30 seconds; do not persist, cache, export, or send ADSB.lol data to an LLM; preserve `no-store`; show ODbL attribution whenever the live layer is visible; and revalidate terms and headers before public deployment.
+- Product boundary: ADSB.lol supplies identity, position, motion, and source-quality facts only. Routes, schedules, delays, cancellations, and operational statuses remain visibly simulated unless a future source independently proves those facts.
+- Resolution: OD-002 is resolved in favor of ADSB.lol under the controls in `ADSBLOL_INTEGRATION.md`; replay-only remains a valid deployment mode.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |
 | --- | --- | --- | --- |
 | OD-001 | Monorepo package manager and local orchestration approach | FT-001 | Working local setup and contributor ergonomics |
-| OD-002 | Which free best-effort aircraft-position source, if any, is eligible for the public portfolio demo | FT-301 | Official terms for hosted non-commercial display, attribution/retention rules, limits, sample coverage, and replay-fallback decision in `PROVIDER_FEASIBILITY.md` |
 | OD-003 | SSE versus WebSockets at production scale | M3 | Measured interaction and fan-out requirements |
 | OD-005 | Whether numerical optimization warrants Python | FT-501 | Benchmark against Rust implementation and library needs |
 | OD-006 | FAA NMS API or successor path for production NOTAM distribution | Before any post-MVP NOTAM integration | Granted API access, current transition status, schema/coverage validation, service terms, lead time, and permitted operator-facing use |
