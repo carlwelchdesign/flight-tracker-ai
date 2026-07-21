@@ -4,8 +4,9 @@ Status: Complete
 
 Branch: `feat/ft-406-flight-trajectories`
 Latest implementation commit: `8bce8aa`
-Final commit: `8bce8aa`
-Pull request: [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26)
+Final ticket commit: `e089a3e`
+Merge commit: `2df6deb`
+Pull request: [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26) (merged)
 Owner: Frontend product engineering
 
 ## Outcome
@@ -19,8 +20,9 @@ The observed trail is not a persisted flight history. It exists only in page
 memory and is discarded on reload. The projected line is not a filed route,
 destination prediction, safety recommendation, or new ADS-B observation.
 
-Dependency: FT-405 live navigable tracker. This ticket is intentionally stacked
-on its feature branch until FT-405 merges.
+Dependency: FT-405 live navigable tracker. This ticket was intentionally stacked
+and has merged into the FT-405 feature branch while that parent ticket remains
+under review.
 
 ## Acceptance checklist
 
@@ -100,3 +102,16 @@ on its feature branch until FT-405 merges.
   `8bce8aa`. The ready preview deployment is
   `https://flight-tracker-qyece7zgf-carlwelchdesigns-projects.vercel.app` and
   remains protected by the project's preview-access policy.
+- Final CI run [29875004160](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875004160)
+  passes all five checks for ticket commit `e089a3e`. PR #26 merged into the
+  FT-405 feature branch at `2df6deb`.
+- Production deployment `dpl_6NHNmJBCJPiaFHrtURRJ8zv8832E` is ready and served
+  at `https://flight-tracker-ai-one.vercel.app`. Its integration gate still
+  reports the previously known Clerk DNS configuration warning; the application
+  build and deployment completed successfully.
+- Public-production browser verification selected live aircraft `N4828P` and
+  first showed `Starts after next refresh` with a 9.4 NM five-minute estimate.
+  After the next source refresh it showed two accepted source points, updated
+  position/motion evidence, a solid observed trail, and a dashed 9.6 NM
+  five-minute estimate. At `390x844`, the aircraft panel remains bounded to 560
+  pixels and horizontal overflow is zero.

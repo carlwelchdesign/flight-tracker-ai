@@ -24,7 +24,7 @@ Last updated: 2026-07-21
 
 ## Current product correction
 
-- FT-406 is complete in stacked PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26). It adds a selected live
+- FT-406 is complete and merged through stacked PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26). It adds a selected live
   aircraft's ten-minute observed trail and a separately labeled estimated
   five-minute motion projection without persisting provider positions or
   claiming a filed route, destination, ETA, or authoritative prediction. See
@@ -50,14 +50,18 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
-- FT-406 is delivered in stacked PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26)
-  at implementation commit `8bce8aa`. CI run
-  [29874867026](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29874867026)
-  passes all five checks. Selected live aircraft now show a bounded ten-minute
+- FT-406 is merged into the FT-405 feature branch through PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26)
+  at merge commit `2df6deb`. Final CI run
+  [29875004160](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875004160)
+  passes all five checks. Production deployment
+  `dpl_6NHNmJBCJPiaFHrtURRJ8zv8832E` is live at
+  `https://flight-tracker-ai-one.vercel.app`. Selected live aircraft now show a bounded ten-minute
   page-memory trail and a separately styled deterministic five-minute motion
   estimate; neither is persisted or represented as a route, destination, ETA,
   or new observation. Live desktop/mobile browser verification captured two
-  accepted source points and an 11.1 NM projection after one provider refresh.
+  accepted source points and a 9.6 NM projection after one provider refresh on
+  the public production site. Mobile verification confirms a bounded 560-pixel
+  aircraft panel and zero horizontal overflow at `390x844`.
 - GitHub repository: `carlwelchdesign/flight-tracker-ai`.
 - `main` and `origin` are established; planning baseline commit: `8feb57d`.
 - FT-001 is merged through PR #1 at `c8e0bb4`.
