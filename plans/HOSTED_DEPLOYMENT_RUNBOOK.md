@@ -96,8 +96,15 @@ deployment `dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` serves the public signed-out state
 and production Clerk sign-in flow without exposing configuration details.
 The pooled and direct database URLs both require TLS, target AWS `us-east-1`,
 and differ as expected by pooler usage. The direct connection enabled and
-reported PostGIS `3.5.0`. No secret value is recorded here. Snapshot and
-isolated-restore evidence remain pending.
+reported PostGIS `3.5.0`. On 2026-07-21, Neon retained the manual production
+snapshot `main at 2026-07-21 20:46:51 UTC (manual)` with no expiry. An isolated
+point-in-time branch restored production `main` from 13:45 PDT and matched the
+source with PostGIS `3.5.0`, 14 successful SQLx migrations, one operator, and
+zero identities, memberships, alerts, or alert actions. The temporary restore
+branch was deleted after verification; production `main` was not modified. An
+earlier 13:05 PDT candidate correctly failed the migration gate because it
+predated the application schema and was also deleted. No secret value or
+connection string is recorded here.
 
 Render Blueprint `exs-d9ft018okrbs738q5r60` created production service
 `srv-d9ft2gn7f7vs739ass40` at `https://flight-tracker-api-cpxg.onrender.com`
@@ -161,7 +168,7 @@ into an isolated branch, verify PostGIS and migration state, and follow
 - [x] Vercel Git connection creates a distinct pull-request preview.
 - [x] Staging and production Render deployment IDs, commits, health, readiness,
       and worker status pass.
-- [ ] Neon region, PostGIS version, pooling path, snapshot, and isolated restore
+- [x] Neon region, PostGIS version, pooling path, snapshot, and isolated restore
       are recorded without exposing its connection string.
 - [x] Vercel and Render use matching active key IDs and distinct preview versus
       production secret references.

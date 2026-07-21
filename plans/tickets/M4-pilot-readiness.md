@@ -139,7 +139,7 @@ Acceptance checklist:
 - [x] Vercel project is connected to GitHub and creates isolated preview deployments for pull requests.
 - [x] Production Next.js environment calls the Rust API through a server-only configured URL.
 - [x] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
-- [ ] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
+- [x] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
 - [x] Secrets and environment variables are separated across development, preview, and production.
 - [x] Public domain, TLS, security headers, bounded logging, and basic availability monitoring are verified.
 - [ ] Deployment, migration, rollback, and incident runbooks are tested.
@@ -229,5 +229,14 @@ in both environments; their temporary verifier identities were removed.
 Vercel preview `dpl_FNbngNWmbKNSafY5rvNypHjPaPzS` passes the sanitized protected
 preview contract, and refreshed production deployment
 `dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` is the current public alias and passes the
-publication-ready public-boundary verifier. Reviewer enrollment, the managed
-snapshot/isolated restore, and authenticated browser/FT-401 smoke remain open.
+publication-ready public-boundary verifier. Reviewer enrollment and
+authenticated browser/FT-401 smoke remain open.
+
+On 2026-07-21, Neon retained the manual production snapshot
+`main at 2026-07-21 20:46:51 UTC (manual)` with no expiry. A temporary isolated
+branch restored `main` from 13:45 PDT and matched production with PostGIS
+`3.5.0`, 14 successful SQLx migrations, one operator, and zero identities,
+memberships, alerts, or alert actions. An earlier 13:05 PDT restore candidate
+predated the application schema and therefore failed the migration release
+gate as designed. Both temporary branches were deleted after verification;
+production `main` was not modified and no connection string was recorded.
