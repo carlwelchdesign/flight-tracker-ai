@@ -49,11 +49,12 @@ Verification evidence: Pending.
 
 ## FT-303 — Add identity, roles, and tenant isolation
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-303-identity-tenant-isolation`
 Final commit: Pending
 Pull request: Pending
+Owner: Security and full-stack engineering
 
 Protect real operational data and actions with authenticated, scoped access.
 
