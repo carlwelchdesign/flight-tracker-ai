@@ -147,6 +147,51 @@ impl FleetStore {
         }
     }
 
+    /// Returns the bounded, current projection for one operator and provider.
+    ///
+    /// This deliberately exposes less capability than the authenticated fleet
+    /// queries: callers cannot page across operators or inspect timelines.
+    pub async fn list_provider_positions(
+        &self,
+        operator_id: OperatorId,
+        provider: &str,
+        observed_after: chrono::DateTime<chrono::Utc>,
+        limit: usize,
+    ) -> Vec<FlightView> {
+        let state = self.state.read().await;
+        let mut flights = state
+            .flights
+            .values()
+            .filter(|projected| {
+                projected.flight.operator_id == operator_id
+                    && projected.flight.source.provider == provider
+                    && projected.latest_position.as_ref().is_some_and(|position| {
+                        position.source.provider == provider
+                            && position.times.event_time >= observed_after
+                    })
+            })
+            .map(|projected| FlightView {
+                flight: projected.flight.clone(),
+                latest_position: projected.latest_position.clone(),
+            })
+            .collect::<Vec<_>>();
+        flights.sort_by(|left, right| {
+            right
+                .latest_position
+                .as_ref()
+                .map(|position| position.times.event_time)
+                .cmp(
+                    &left
+                        .latest_position
+                        .as_ref()
+                        .map(|position| position.times.event_time),
+                )
+                .then_with(|| left.flight.callsign.cmp(&right.flight.callsign))
+        });
+        flights.truncate(limit);
+        flights
+    }
+
     pub async fn detail(&self, operator_id: OperatorId, flight_id: FlightId) -> Option<FlightView> {
         self.state
             .read()

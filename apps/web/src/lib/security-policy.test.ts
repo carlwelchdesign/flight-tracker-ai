@@ -36,11 +36,13 @@ describe("browser security policy", () => {
       strict: true,
       directives: {
         "base-uri": ["self"],
+        "connect-src": ["self", "https://tiles.openfreemap.org"],
         "font-src": ["self", "data:"],
         "frame-ancestors": ["none"],
-        "img-src": ["self", "blob:", "data:"],
+        "img-src": ["self", "blob:", "data:", "https://tiles.openfreemap.org"],
         "media-src": ["none"],
         "object-src": ["none"],
+        "worker-src": ["self", "blob:"],
       },
     });
   });

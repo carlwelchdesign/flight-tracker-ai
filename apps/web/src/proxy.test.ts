@@ -36,8 +36,14 @@ describe("hosted identity proxy", () => {
     await proxy(new NextRequest("https://example.test/"), {} as never);
     await proxy(new NextRequest("https://example.test/sign-in"), {} as never);
     await proxy(new NextRequest("https://example.test/sign-up"), {} as never);
+    await proxy(new NextRequest("https://example.test/api/public/live-positions"), {} as never);
 
-    expect(clerk.publicPatterns).toEqual(["/", "/sign-in(.*)", "/sign-up(.*)"]);
+    expect(clerk.publicPatterns).toEqual([
+      "/",
+      "/api/public/live-positions",
+      "/sign-in(.*)",
+      "/sign-up(.*)",
+    ]);
     expect(clerk.protect).not.toHaveBeenCalled();
   });
 

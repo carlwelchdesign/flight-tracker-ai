@@ -22,9 +22,11 @@ export const HOSTED_IDENTITY_CSP: NonNullable<
     "base-uri": ["self"],
     "font-src": ["self", "data:"],
     "frame-ancestors": ["none"],
-    "img-src": ["self", "blob:", "data:"],
+    "connect-src": ["self", "https://tiles.openfreemap.org"],
+    "img-src": ["self", "blob:", "data:", "https://tiles.openfreemap.org"],
     "media-src": ["none"],
     "object-src": ["none"],
+    "worker-src": ["self", "blob:"],
   },
 };
 

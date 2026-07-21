@@ -372,6 +372,101 @@ a:focus-visible {
 .weather-partial-banner button { border: 0; border-bottom: 1px solid currentColor; background: transparent; cursor: pointer; }
 
 .ops-map { position: relative; flex: 1; min-height: 440px; overflow: hidden; background: #07141b; }
+.live-tracker-shell { min-height: 100vh; }
+.live-tracker-grid {
+  display: grid;
+  grid-template-columns: minmax(560px, 1.65fr) minmax(280px, .72fr);
+  grid-template-rows: minmax(580px, calc(100vh - 205px)) auto;
+  gap: 8px;
+  padding: 8px;
+}
+.live-map-panel { min-width: 0; display: flex; flex-direction: column; grid-row: 1 / span 2; }
+.live-map-heading { gap: 16px; }
+.live-map-actions { display: flex; align-items: center; gap: 9px; }
+.live-map-actions button,
+.live-state-banner button {
+  border: 1px solid #34515c;
+  border-radius: 3px;
+  background: #10252d;
+  color: #d7e9ed;
+  padding: 7px 10px;
+  font: 600 10px/1 "Geist Mono", monospace;
+  cursor: pointer;
+}
+.live-map-actions button:disabled { opacity: .45; cursor: default; }
+.live-source-pill { display: inline-flex; align-items: center; gap: 6px; color: #a8c0c6; font: 600 9px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .07em; }
+.live-source-pill i { width: 7px; height: 7px; border-radius: 50%; background: #f2a65a; box-shadow: 0 0 9px currentColor; }
+.live-source-pill.source-live { color: #5ce1b9; }
+.live-source-pill.source-replay { color: #9aaeb4; }
+.live-map-stage { position: relative; flex: 1; min-height: 540px; overflow: hidden; background: #061117; }
+.maplibre-canvas { position: absolute; inset: 0; }
+.map-loading,
+.map-error,
+.map-help { position: absolute; z-index: 2; border: 1px solid #28434d; background: rgb(5 17 23 / 88%); color: #a9c0c6; font: 500 9px/1.2 "Geist Mono", monospace; }
+.map-loading { inset: 50% auto auto 50%; transform: translate(-50%, -50%); padding: 11px 14px; }
+.map-error { top: 12px; left: 12px; padding: 8px; }
+.map-help { bottom: 25px; left: 10px; padding: 6px 8px; }
+.live-aircraft-marker {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #0c1c23;
+  border-radius: 50%;
+  background: #1be0c1;
+  color: #031012;
+  box-shadow: 0 0 0 2px rgb(27 224 193 / 16%), 0 3px 14px #000b;
+  cursor: pointer;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+.live-aircraft-marker span { display: block; transform: rotate(var(--aircraft-heading)); transition: transform 1.4s cubic-bezier(.2,.7,.2,1); font: 700 16px/1 sans-serif; }
+.live-aircraft-marker:hover,
+.live-aircraft-marker.is-selected { background: #fff; box-shadow: 0 0 0 4px rgb(27 224 193 / 40%), 0 4px 18px #000; z-index: 3; }
+.live-aircraft-marker.is-stale { background: #f0a45c; }
+.live-state-banner { min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 7px 14px; border-bottom: 1px solid #493923; background: #201810; color: #e4c99d; font: 500 10px/1.35 "Geist Mono", monospace; }
+.live-state-banner.state-replay { border-color: #34464c; background: #101c21; color: #b2c1c5; }
+.live-traffic-panel { display: flex; min-height: 0; flex-direction: column; }
+.traffic-count,
+.source-badge { border: 1px solid #34515c; border-radius: 999px; padding: 4px 7px; color: #83d8c7; font: 600 9px/1 "Geist Mono", monospace; text-transform: uppercase; }
+.live-aircraft-list { min-height: 0; overflow: auto; }
+.live-flight-row { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 11px 13px; border: 0; border-bottom: 1px solid #192e36; background: transparent; color: #d9e7e9; text-align: left; cursor: pointer; }
+.live-flight-row:hover,
+.live-flight-row.is-selected { background: #102830; box-shadow: inset 2px 0 #1be0c1; }
+.live-flight-row strong { font: 680 12px/1.2 "Geist Mono", monospace; }
+.live-flight-row span,
+.live-flight-row time { color: #89a1a7; font: 500 9px/1.25 "Geist Mono", monospace; }
+.live-flight-row time { grid-column: 2; grid-row: 1; }
+.live-inspector { align-self: start; }
+.aircraft-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
+.aircraft-facts div { padding: 12px 13px; border-right: 1px solid #193039; border-bottom: 1px solid #193039; }
+.aircraft-facts dt { margin-bottom: 5px; color: #6e8990; font: 600 8px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .08em; }
+.aircraft-facts dd { margin: 0; color: #dce8ea; font: 570 11px/1.35 "Geist Mono", monospace; text-transform: capitalize; }
+.truth-note,
+.empty-traffic { margin: 0; padding: 12px 13px; color: #789198; font: 500 9px/1.45 "Geist Mono", monospace; }
+.live-footer { padding-inline: 12px; }
+.maplibregl-ctrl-group { background: #0c2028 !important; border: 1px solid #2a4650; }
+.maplibregl-ctrl-group button { filter: invert(1) opacity(.78); }
+.maplibregl-ctrl-attrib { background: rgb(5 17 23 / 78%) !important; color: #90a9af; }
+.maplibregl-ctrl-attrib a { color: #b6c9cd; }
+
+@media (prefers-reduced-motion: reduce) {
+  .live-aircraft-marker,
+  .live-aircraft-marker span { transition: none; }
+}
+
+@media (max-width: 980px) {
+  .live-tracker-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+  .live-map-panel { grid-row: auto; }
+  .live-map-stage { min-height: 540px; }
+}
+
+@media (max-width: 620px) {
+  .live-tracker-grid { padding: 5px; gap: 5px; }
+  .live-map-stage { min-height: 460px; }
+  .live-map-actions { align-items: flex-end; flex-direction: column; }
+  .map-help { display: none; }
+  .aircraft-facts { grid-template-columns: 1fr; }
+}
 .ops-map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .map-grid-line { stroke: rgba(89, 132, 142, 0.12); stroke-width: 1; }
 .map-coast { fill: none; stroke: rgba(110, 154, 162, 0.3); stroke-width: 2; }

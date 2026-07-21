@@ -6,7 +6,7 @@ use config::{Config, ReplayConfig};
 use flight_tracker_api::{
     alerting::spawn_alert_worker,
     auth::{AuthService, AuthStore, InternalAssertionVerifier},
-    build_router_with_runtime_and_live_positions,
+    build_router_with_runtime_and_public_live_positions,
     health::CriticalWorkerRegistry,
     ingestion::{IngestionHub, IngestionSubscription},
     live_positions::{
@@ -127,6 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("NOAA aviation weather ingestion enabled");
     }
 
+    let public_live_operator = config.adsb_lol.as_ref().map(|value| value.operator_id);
     if let Some(adsb_lol_config) = config.adsb_lol {
         let operator_exists =
             sqlx::query_scalar::<_, bool>("SELECT EXISTS (SELECT 1 FROM operators WHERE id = $1)")
@@ -178,12 +179,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(address = %config.bind_address, "API listening");
     axum::serve(
         listener,
-        build_router_with_runtime_and_live_positions(
+        build_router_with_runtime_and_public_live_positions(
             database,
             replay,
             workers,
             ingestion_subscriptions,
             live_position_statuses,
+            public_live_operator,
             auth,
         ),
     )
