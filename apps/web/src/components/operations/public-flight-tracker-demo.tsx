@@ -55,6 +55,7 @@ export function PublicFlightTrackerDemo() {
   const useReplay = !hasAcceptedLivePicture && !loading;
   const aircraft = useReplay ? REPLAY_AIRCRAFT : snapshot?.data ?? [];
   const mode = useReplay ? "replay" : refreshFailed || snapshot?.status.state !== "current" ? "stale" : "live";
+  const sourceState = loading ? "connecting" : snapshot?.status.state ?? (refreshFailed ? "unavailable" : "connecting");
   const selected = aircraft.find((item) => item.id === selectedId) ?? aircraft[0] ?? null;
 
   return (
@@ -83,14 +84,16 @@ export function PublicFlightTrackerDemo() {
         </div>
       </header>
 
-      {(mode !== "live" || loading) && (
+      {(sourceState !== "current" || useReplay) && (
         <div className={`live-state-banner state-${mode}`} role="status">
           <span>
             {loading
               ? "Connecting to ADSB.lol…"
-              : mode === "replay"
-                ? "Live traffic is unavailable, so the map is showing a clearly labeled replay demonstration."
-                : "The last accepted live picture is retained while the source reconnects."}
+              : sourceState === "disabled"
+                ? "Live traffic is disabled, so the map is showing a clearly labeled replay demonstration."
+                : mode === "replay"
+                  ? `Live traffic is ${sourceState}, so the map is showing a clearly labeled replay demonstration.`
+                  : `The provider is ${sourceState}; the last accepted live picture is retained while it reconnects.`}
           </span>
           {!loading && <button type="button" onClick={() => void refresh()}>Try live again</button>}
         </div>
@@ -119,13 +122,15 @@ export function PublicFlightTrackerDemo() {
               >
                 <strong>{displayCallsign(item)}</strong>
                 <span>{formatAltitude(item)} · {formatSpeed(item)}</span>
-                <time dateTime={item.observed_at}>{formatAge(item.observed_at)}</time>
+                <time dateTime={item.observed_at}>
+                  {isAircraftStale(item, snapshot?.status ?? null) ? "Stale · " : ""}{formatAge(item.observed_at)}
+                </time>
               </button>
             ))}
             {!loading && aircraft.length === 0 && <p className="empty-traffic">No aircraft are visible in this regional snapshot.</p>}
           </div>
         </section>
-        <AircraftInspector aircraft={selected} mode={mode} />
+        <AircraftInspector aircraft={selected} mode={mode} status={snapshot?.status ?? null} />
       </div>
 
       <footer className="operations-footer live-footer">
@@ -137,7 +142,15 @@ export function PublicFlightTrackerDemo() {
   );
 }
 
-function AircraftInspector({ aircraft, mode }: { aircraft: PublicAircraft | null; mode: string }) {
+function AircraftInspector({
+  aircraft,
+  mode,
+  status,
+}: {
+  aircraft: PublicAircraft | null;
+  mode: string;
+  status: PublicLiveSnapshot["status"] | null;
+}) {
   return (
     <section className="ops-panel live-inspector" aria-labelledby="aircraft-detail-title">
       <div className="ops-panel-heading">
@@ -151,10 +164,16 @@ function AircraftInspector({ aircraft, mode }: { aircraft: PublicAircraft | null
           <Fact label="Heading" value={aircraft.heading_true_degrees == null ? "Not supplied" : `${Math.round(aircraft.heading_true_degrees)}° true`} />
           <Fact label="Position" value={`${aircraft.latitude_degrees.toFixed(4)}, ${aircraft.longitude_degrees.toFixed(4)}`} />
           <Fact label="Observed" value={formatTimestamp(aircraft.observed_at)} />
+          <Fact label="Received" value={formatTimestamp(aircraft.received_at)} />
+          <Fact label="Snapshot age" value={formatAge(aircraft.observed_at)} />
+          <Fact label="Freshness" value={mode === "replay" ? "Simulated" : isAircraftStale(aircraft, status) ? "Stale" : "Fresh"} />
+          <Fact label="Provider state" value={mode === "replay" ? "Replay fallback" : status?.state ?? "Connecting"} />
           <Fact label="Source quality" value={mode === "replay" ? "Simulated" : aircraft.quality} />
         </dl>
       ) : <p className="empty-traffic">Choose an aircraft to inspect its supplied position and motion facts.</p>}
-      <p className="truth-note">Routes, schedules, delays, and airline identity are not inferred when the source does not supply them.</p>
+      <p className="truth-note">
+        Markers animate between accepted snapshots; timestamps remain the source evidence. Routes, schedules, delays, and airline identity are not inferred when the source does not supply them.
+      </p>
     </section>
   );
 }
@@ -204,4 +223,9 @@ function formatTimestamp(value: string) {
     month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit",
     hour12: false, timeZone: "UTC", timeZoneName: "short",
   }).format(new Date(value));
+}
+
+function isAircraftStale(item: PublicAircraft, status: PublicLiveSnapshot["status"] | null) {
+  if (!status) return false;
+  return Date.now() - Date.parse(item.observed_at) > status.stale_after_seconds * 1_000;
 }
