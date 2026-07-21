@@ -13,6 +13,13 @@ export function describeConsoleFailure(
       message: "Your operations data remains protected until a valid session is available.",
     };
   }
+  if (identityFailure?.status === 500 && operationsMode === "evaluation") {
+    return {
+      signedOut: false,
+      message:
+        "The portfolio configuration is not ready yet. Access remains closed while setup is completed.",
+    };
+  }
   if (identityFailure) {
     return { signedOut: false, message: identityFailure.message };
   }

@@ -21,6 +21,19 @@ describe("console availability copy", () => {
     });
   });
 
+  it("does not expose hosted configuration details", () => {
+    expect(
+      describeConsoleFailure(
+        { status: 500, message: "INTERNAL_AUTH_SECRET must contain at least 32 bytes" },
+        "evaluation",
+      ),
+    ).toEqual({
+      signedOut: false,
+      message:
+        "The portfolio configuration is not ready yet. Access remains closed while setup is completed.",
+    });
+  });
+
   it("describes the portfolio cold start without leaking a backend error", () => {
     expect(describeConsoleFailure(null, "evaluation")).toEqual({
       signedOut: false,

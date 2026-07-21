@@ -172,3 +172,13 @@ bootstrap, Neon snapshot/isolated restore, Render deployment, cross-service
 secrets, and hosted smoke remain pending.
 Provisioning and region-alignment evidence is recorded in commit `f897532` and
 draft PR [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24).
+
+The first public-alias observation exposed two controlled setup defects rather
+than a usable candidate: the original deployment predated the Clerk variables,
+and the five non-secret production/preview runtime settings had been stored as
+the literal placeholder `[SENSITIVE]` by noninteractive CLI input. The Vercel
+values are corrected and verified by an environment pull. The portfolio root
+now remains public long enough to present a safe sign-in state while operational
+and backend routes stay behind Clerk, and hosted 500-level configuration errors
+are replaced with bounded evaluation copy instead of disclosing variable names.
+Production Clerk keys, Render, and the full hosted smoke remain pending.
