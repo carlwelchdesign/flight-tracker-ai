@@ -61,7 +61,9 @@ Last updated: 2026-07-21
 - FT-409 is complete and merged into FT-405 through PR [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
   at `a99c47f`. The selected-aircraft evidence panel now precedes the current
   aircraft list in visual and document order, while the list retains its own
-  scrolling region. All five checks and live-API browser verification pass.
+  scrolling region. All five checks pass. Vercel production deployment
+  `dpl_GL7BncuJF6ptg8aeBmDXpSvLxLK1` is live, and the public browser check
+  confirms the intended order with no application errors or overflow.
 - FT-408 is merged into the FT-405 feature branch through PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28)
   at merge commit `d222094`; hosted-enablement commit `1ed490c` passes all five
   checks. Render staging and production return a sanitized no-store NOAA

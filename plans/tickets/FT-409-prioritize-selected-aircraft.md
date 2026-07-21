@@ -39,6 +39,11 @@ Dependency: FT-405 live navigable tracker.
   is absent, and no application errors or framework overlay are present.
 - Delivery: stacked PR [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
   passed all five required checks and merged into FT-405 at `a99c47f`.
+  Vercel production deployment `dpl_GL7BncuJF6ptg8aeBmDXpSvLxLK1` is assigned
+  to `https://flight-tracker-ai-one.vercel.app`; a post-promotion browser probe
+  confirmed the selected panel ends before the current-picture panel begins,
+  with no overflow, framework overlay, or application errors. The unchanged
+  Clerk Marketplace DNS advisory was force-bypassed as previously documented.
 
 ## Non-goals
 
