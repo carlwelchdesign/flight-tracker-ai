@@ -93,3 +93,25 @@ Verification evidence:
 - Decision and downstream gate: ADR-007 and OD-002 in `../DECISIONS.md`; R-01, R-11, and R-12 in `../RISKS.md`
 - Local gate: changed-document Markdown lint, `git diff --check`, NOAA response-hash verification, and `make verify`
 - CI gate: Rust checks, web checks, and API/PostGIS smoke test passed in `https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29777448092`
+
+## FT-004 — Modernize GitHub Actions runtime
+
+Status: In progress
+
+Branch: `chore/ft-004-modernize-ci-actions`
+Final commit: Pending
+Pull request: Pending
+Owner: Engineering
+
+Remove the deprecated Node 20 action-runtime warnings without changing the application Node.js version or CI behavior.
+
+Dependencies: FT-001
+
+Acceptance checklist:
+
+- [ ] Every checkout step uses the current official Node 24 action runtime.
+- [ ] The web setup action uses the current official Node 24 action runtime while preserving Node.js `20.20.1` for the application build.
+- [ ] Rust, web, and API/PostGIS jobs still pass.
+- [ ] The final CI run has no Node 20 action-runtime deprecation annotation.
+
+Verification evidence: Pending.

@@ -5,16 +5,17 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M3 — Commercial flight data and operational workflow
-- Active ticket: FT-301 — Select and contract a commercial flight-data provider
-- Branch: None — external procurement evidence pending after handoff PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
-- Pull request: None active after the procurement handoff merges
-- Owner: Product, legal, and engineering
-- Overall status: M0, M1, and M2 are complete; FT-303 and FT-304 are complete while FT-301 remains externally gated
-- Next action: Assign the named Product/Legal/Engineering/operator owners in the controlled tracker, approve the intended-use questionnaire, and submit both provider requests using `provider-evaluation/PROCUREMENT_HANDOFF.md`.
+- External gate: FT-301 — provider procurement evidence pending after handoff PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
+- Active engineering ticket: FT-004 — Modernize GitHub Actions runtime
+- Branch: `chore/ft-004-modernize-ci-actions`
+- Pull request: Pending
+- Owner: Engineering
+- Overall status: M0 maintenance is in progress; M1 and M2 are complete; FT-301 remains externally gated
+- Next action: Upgrade the official checkout and setup-node actions to their Node 24 runtime releases, then verify all three CI jobs without the deprecation annotation.
 
 ## Milestone checklist
 
-- [x] M0 — Foundation and feasibility
+- [ ] M0 — Foundation and feasibility (maintenance in progress)
 - [x] M1 — Simulated operations console
 - [x] M2 — Live weather and hazard intelligence
 - [ ] M3 — Commercial flight data and operational workflow
@@ -25,7 +26,7 @@ Last updated: 2026-07-21
 
 | Milestone | Complete | Total |
 | --- | ---: | ---: |
-| M0 | 3 | 3 |
+| M0 | 3 | 4 |
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
 | M3 | 2 | 4 |
