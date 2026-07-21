@@ -115,3 +115,28 @@ Acceptance checklist:
 - [x] The final CI run has no Node 20 action-runtime deprecation annotation.
 
 Verification evidence: official release and action-manifest checks confirmed checkout v7.0.1 and setup-node v7.0.0 use `node24`; CI run [29832129375](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29832129375) passed Rust, web, and API/PostGIS jobs; the three resulting check runs each returned zero annotations; web continued to build and test with application Node.js `20.20.1`.
+
+## FT-005 — Rebaseline the roadmap for a portfolio demonstration
+
+Status: In progress
+
+Branch: `docs/ft-005-portfolio-scope`
+Final commit: Pending
+Pull request: Pending
+Owner: Product and engineering
+
+Make the durable plans reflect the actual goal: a public, non-commercial demonstration for recruiters and hiring managers, with free best-effort data and deterministic replay instead of commercial procurement.
+
+Dependencies: FT-004
+
+Acceptance checklist:
+
+- [x] Product definition names recruiters and hiring managers as the primary audience and prohibits operational-use claims.
+- [x] M3 uses an officially eligible free source or replay-only outcome without a commercial provider, paid trial, price, or SLA gate.
+- [x] FT-301 and FT-302 preserve a provider-independent Rust boundary, explicit provenance, freshness, rate-limit behavior, and replay fallback.
+- [x] M4 targets public portfolio security, reliability, usability, and deployment rather than a real-operator pilot.
+- [x] Commercial procurement research remains available only as an optional future production track.
+- [x] Status, ticket index, decisions, and risks reflect the same scope.
+- [ ] Dedicated branch, intentional commit, pull request, and required checks are recorded.
+
+Verification evidence: `python3 scripts/validate_ft301_evidence.py` and its five-test regression suite pass after the commercial package is moved off the active gate; `git diff --check` and scope-language searches pass; native Rust formatting, strict Clippy, and 74 tests pass; web audit reports zero vulnerabilities, and lint, typecheck, 28 tests, and the production build pass. The local Docker daemon did not respond to the Compose-based wrapper, so Compose configuration and fresh PostGIS verification are delegated to required CI. Final branch, commit, PR, and CI evidence remain pending.

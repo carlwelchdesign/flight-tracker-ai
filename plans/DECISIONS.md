@@ -39,13 +39,13 @@
 - Reason: Ticket-level isolation preserves context across contributors and models, makes acceptance evidence reviewable, and provides a durable delivery history.
 - Constraint: Merging remains human-controlled unless the user explicitly authorizes it.
 
-### ADR-007 — Gate live providers by exact operational rights
+### ADR-007 — Gate future operational providers by exact rights
 
 - Date: 2026-07-20
 - Decision: Use NOAA Aviation Weather Center data for MVP weather, continue deterministic flight simulation through M1, and evaluate Cirium Sky Stream and FlightAware Firehose as the commercial flight-data finalists.
 - Reason: NOAA is technically and legally suitable for advisory weather with explicit freshness handling. Cirium Sky Stream and FlightAware Firehose are marketed for situational or airline operational use, but their decisive rights, target-fleet coverage, SLA, retention, and price are contractual.
 - Constraint: Do not integrate OpenSky into an automated or commercial product without a written commercial/operational license. Do not use FlightAware AeroAPI for the dispatcher display under its published self-service license because that license prohibits commercial aircraft situational displays. Do not use FAA SCDS or NMS as a sole operational source without the applicable access agreement and written confirmation of permitted use.
-- Gate: Select a commercial provider only after the competitive trial and contract checklist in `PROVIDER_FEASIBILITY.md` passes. Until then OD-002 remains blocked by procurement evidence.
+- Gate: If the project is re-scoped for commercial or operational use, select a commercial provider only after the competitive trial and contract checklist in `PROVIDER_FEASIBILITY.md` passes. ADR-010 supersedes this gate for the active portfolio release.
 
 ### ADR-008 — Repository commits do not require signing
 
@@ -62,12 +62,21 @@
 - Constraint: Production requests must use verified hosted sessions. Development uses the same signed-assertion and membership path and is forbidden when `APP_ENV=production`.
 - Resolution: OD-004 is resolved in favor of a multi-tenant foundation with a single active operator per verified hosted organization/session.
 
+### ADR-010 — The first release is a non-commercial portfolio demonstration
+
+- Date: 2026-07-21
+- Decision: Optimize the current roadmap for a public portfolio demonstration viewed by recruiters and hiring managers, not for airline operations or a commercial SaaS launch.
+- Reason: The project exists to demonstrate product and engineering capability. Commercial-provider procurement, an SLA, a 14-day operator trial, and production-operations approval add cost and delay without improving that goal.
+- Constraint: Every hosted surface must state that it is a portfolio demonstration and not for operational use. Simulated, live, stale, and unavailable sources must remain distinguishable.
+- Data path: Deterministic replay and NOAA weather are the reliable baseline. A free aircraft-position feed is optional and may be integrated only after its official terms are verified for public, hosted, non-commercial display and its attribution and retention rules are implemented.
+- Future production: The FT-301 procurement package and ADR-007 research are retained as optional evidence if the product is later re-scoped for commercial or operational use; they no longer gate the portfolio roadmap.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |
 | --- | --- | --- | --- |
 | OD-001 | Monorepo package manager and local orchestration approach | FT-001 | Working local setup and contributor ergonomics |
-| OD-002 | Cirium Sky Stream or FlightAware Firehose for commercial flight data | FT-301 | Written display/retention/combination rights, 14-day target-fleet scorecard, SLA, and priced proposal using `PROVIDER_FEASIBILITY.md` |
+| OD-002 | Which free best-effort aircraft-position source, if any, is eligible for the public portfolio demo | FT-301 | Official terms for hosted non-commercial display, attribution/retention rules, limits, sample coverage, and replay-fallback decision in `PROVIDER_FEASIBILITY.md` |
 | OD-003 | SSE versus WebSockets at production scale | M3 | Measured interaction and fan-out requirements |
 | OD-005 | Whether numerical optimization warrants Python | FT-501 | Benchmark against Rust implementation and library needs |
 | OD-006 | FAA NMS API or successor path for production NOTAM distribution | Before any post-MVP NOTAM integration | Granted API access, current transition status, schema/coverage validation, service terms, lead time, and permitted operator-facing use |

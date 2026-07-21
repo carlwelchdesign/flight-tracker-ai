@@ -1,28 +1,29 @@
-# M4 — Pilot Readiness and Operational Hardening
+# M4 — Portfolio Launch and Demonstration Hardening
 
-Default owner: Product/operations lead, supported by engineering and security.
+Default owner: Product and engineering, supported by security.
 
 ## FT-401 — Complete security, privacy, and trust review
 
-Status: Not started
+Status: In progress
 
 Branch: `docs/ft-401-security-trust-review`
+Latest implementation commit: `4649408`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; rebase and re-evaluate against portfolio scope after FT-005)
 
-Review data handling, permissions, auditability, advisory language, and external-provider obligations before a real-operations evaluation.
+Review data handling, permissions, auditability, portfolio language, and source obligations before making the demonstration public.
 
-Dependencies: FT-301, FT-303, FT-304
+Dependencies: FT-303, FT-304
 
 Acceptance checklist:
 
 - [ ] Threat model covers credentials, tenant isolation, ingestion abuse, and privileged actions.
 - [ ] Retention, deletion, backup, and incident-response policies are documented.
-- [ ] Advisory-only product language is reviewed and consistent.
-- [ ] Provider attribution and licensing obligations are implemented.
+- [ ] Portfolio-only and not-for-operational-use language is consistent across normal, loading, empty, degraded, and error states.
+- [ ] Any enabled free source's attribution, rate-limit, caching, and retention obligations are implemented; replay-only deployment remains valid.
 - [ ] Security findings have owners and deadlines.
 
-Verification evidence: Pending.
+Verification evidence: draft PR [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) contains the implemented threat model, trust controls, retention workflows, audit review, credential rotation, public-probe hardening, and hosted-drill tooling. After FT-005 merges, rebase the branch, remove commercial-provider and real-operator completion gates, and verify the remaining controls against a public portfolio deployment.
 
 ## FT-402 — Run resilience and failure drills
 
@@ -32,44 +33,44 @@ Branch: `feat/ft-402-resilience-drills`
 Final commit: Pending
 Pull request: Pending
 
-Demonstrate safe behavior under provider, database, worker, network, and malformed-data failures.
+Demonstrate a reliable recruiter-facing experience under feed, database, worker, network, and malformed-data failures.
 
 Dependencies: FT-302, FT-304
 
 Acceptance checklist:
 
-- [ ] Provider outage and high-latency drills produce visible degraded states.
+- [ ] Free-feed outage and high-latency checks produce visible degraded states and leave replay available.
 - [ ] Worker restart does not duplicate or lose lifecycle history beyond documented guarantees.
 - [ ] Database recovery procedure is tested.
 - [ ] Malformed and adversarial provider payloads are rejected or quarantined.
 - [ ] Alert backlog recovery behavior is measured.
-- [ ] Operator and developer runbooks are updated from drill findings.
+- [ ] Demo and developer runbooks are updated from the findings.
 
 Verification evidence: Pending.
 
-## FT-403 — Validate a limited advisory pilot
+## FT-403 — Validate the recruiter and hiring-manager demo
 
 Status: Not started
 
-Branch: `docs/ft-403-advisory-pilot-validation`
+Branch: `docs/ft-403-portfolio-demo-validation`
 Final commit: Pending
 Pull request: Pending
 
-Run a controlled evaluation with representative users and explicit success/failure criteria.
+Run a focused usability evaluation with representative recruiters, hiring managers, or neutral reviewers and explicit success/failure criteria.
 
 Dependencies: FT-401, FT-402
 
 Acceptance checklist:
 
-- [ ] Pilot scope, users, duration, data, and prohibited uses are written and approved.
-- [ ] Baseline measures include detection time, response time, duplicate rate, dismissal rate, and data availability.
+- [ ] Demo scope, viewers, tasks, data modes, and prohibited operational uses are written.
+- [ ] Measures include time to understand the product, task completion, source-mode comprehension, and data availability.
 - [ ] Users complete core workflows without facilitator intervention.
-- [ ] False positives, false negatives, and confusing evidence are reviewed.
-- [ ] Go, revise, or stop decision is recorded with supporting data.
+- [ ] Confusing copy, evidence, controls, and source labeling are reviewed.
+- [ ] Publish, revise, or stop decision is recorded with supporting observations.
 
 Verification evidence: Pending.
 
-## FT-404 — Deploy the production system and preview environments
+## FT-404 — Deploy the public portfolio and preview environments
 
 Status: Not started
 
@@ -77,7 +78,7 @@ Branch: `feat/ft-404-production-deployment`
 Final commit: Pending
 Pull request: Pending
 
-Deploy the public Next.js interface on Vercel while placing persistent Rust ingestion and API workloads on appropriate container infrastructure with managed PostgreSQL/PostGIS.
+Deploy the public Next.js interface on Vercel while placing the Rust API, optional continuous ingestion, and PostgreSQL/PostGIS on infrastructure suited to those persistent workloads.
 
 Dependencies: FT-401, FT-402
 
@@ -88,8 +89,9 @@ Acceptance checklist:
 - [ ] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
 - [ ] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
 - [ ] Secrets and environment variables are separated across development, preview, and production.
-- [ ] Production domain, TLS, security headers, logging, tracing, and alerting are verified.
+- [ ] Public domain, TLS, security headers, bounded logging, and basic availability monitoring are verified.
 - [ ] Deployment, migration, rollback, and incident runbooks are tested.
-- [ ] End-to-end smoke checks prove browser, API, database, and degraded-state behavior.
+- [ ] End-to-end smoke checks prove browser, API, database, replay fallback, source labeling, and degraded-state behavior.
+- [ ] The public deployment contains no claim of certification, operational authority, commercial SLA, or real-operator endorsement.
 
 Verification evidence: Pending.

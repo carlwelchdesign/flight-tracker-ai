@@ -3,10 +3,11 @@
 Last verified: 2026-07-21
 
 This document is the decision record for flight positions, schedules, aviation
-weather, hazards, airport observations, and NOTAM data. Public product pages are
-not treated as contractual promises. A value marked **quote required** or
-**not published** remains an open procurement item. This is product and technical
-due diligence, not legal advice; counsel must approve production data terms.
+weather, hazards, airport observations, and NOTAM data. The active product scope
+is a public, non-commercial portfolio demonstration for recruiters and hiring
+managers. Public product pages are not treated as contractual promises. The
+commercial research below is retained for a possible future production track;
+it is no longer a gate for the portfolio release.
 
 ## Decision summary
 
@@ -17,10 +18,10 @@ due diligence, not legal advice; counsel must approve production data terms.
 2. Keep deterministic simulation and replay as the only flight-position source
    through M1. Do not add a live position provider merely to make the demo look
    live.
-3. Evaluate **Cirium Sky Stream** and **FlightAware Firehose** as the commercial
-   flight-data finalists. Both are explicitly positioned for operational or
-   situational-awareness applications; final selection is blocked on written
-   rights, an operator-specific coverage trial, SLA, retention terms, and price.
+3. Evaluate free, best-effort aircraft-position sources in FT-301 using their
+   official terms. A source is eligible only when server-side access and public,
+   hosted, non-commercial display are permitted and attribution, rate limits,
+   caching, retention, and redistribution rules are implementable.
 4. Do not integrate OpenSky into an automated or hosted product without a
    written commercial and operational license. Its default terms do not permit
    this project's intended use.
@@ -33,16 +34,19 @@ due diligence, not legal advice; counsel must approve production data terms.
    sole operational source. The NMS API requires an access request and has no
    public approval-time commitment.
 
-The commercial flight-provider decision is therefore **intentionally blocked**,
-not missing: procurement evidence cannot be inferred from public marketing.
+Commercial provider selection is deferred, not blocked work on the active
+roadmap. Cirium Sky Stream and FlightAware Firehose remain the researched
+production candidates if the project is ever re-scoped for operational use.
 
 ## Evaluation context
 
-The intended product is a business-to-business dispatcher console for an airline
-or charter operator. It displays active aircraft, correlates positions with
-hazards, and influences human attention during day-of-operations. Although the
-MVP is advisory and not certified, provider terms for internal business use,
-redistribution to operator users, and aircraft situational displays apply.
+The active release is a portfolio demonstration that models a dispatcher console
+without being used by an airline or charter operator. It may display simulated
+aircraft and, if FT-301 confirms eligibility, best-effort live positions. The UI
+must identify every source and state that it is not for operational use.
+
+The commercial workload and rights analysis below applies only to a future
+business-to-business or operational re-scope.
 
 Cost comparisons use this transparent reference workload unless noted:
 
@@ -120,10 +124,11 @@ Implementation constraints:
 Observed payloads and hashes are recorded in
 [`evidence/ft-003/NOAA_API_FIXTURES.md`](evidence/ft-003/NOAA_API_FIXTURES.md).
 
-## Commercial evaluation gate
+## Optional future commercial evaluation gate
 
-Before FT-301 selects Cirium Sky Stream or FlightAware Firehose, obtain written
-answers and contract language for every item below.
+Before any future ticket selects Cirium Sky Stream or FlightAware Firehose for
+commercial or operational use, obtain written answers and contract language for
+every item below. These requirements do not apply to the active portfolio roadmap.
 
 Use the executable procurement package in [`provider-evaluation/`](provider-evaluation/README.md). It defines the common questionnaire, evidence register, paired trial protocol, scorecard, cost model, decision gates, and structural validator. Confidential contracts, credentials, target tails, quotes, and raw licensed payloads remain outside Git.
 

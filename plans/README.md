@@ -4,7 +4,7 @@ This folder is the durable source of truth for the project. A new contributor or
 
 ## Goal
 
-Build an operations-intelligence console inspired by Flight Science: live fleet monitoring, aviation weather and hazard correlation, prioritized dispatcher alerts, and human-reviewed operational messages. The first release is an advisory tool, not a certified flight-planning or autonomous decision system.
+Build a portfolio demonstration inspired by Flight Science: fleet monitoring, aviation weather and hazard correlation, prioritized alerts, and human-reviewed operational workflows. The primary audience is recruiters and hiring managers evaluating the product thinking and engineering. It is not a certified, commercial, or operational flight-planning system.
 
 ## Read order
 
@@ -50,3 +50,5 @@ Build an operations-intelligence console inspired by Flight Science: live fleet 
 ## Current recommendation
 
 Use a TypeScript/Next.js frontend and a Rust backend. Rust is a strong fit for continuously running ingestion, geospatial alert evaluation, predictable resource usage, and typed event processing. Keep optimization behind a later research gate; Python can be introduced as a separate numerical service only if its ecosystem materially accelerates validated trajectory modeling.
+
+Ship the portfolio release with deterministic replay, live NOAA weather, and an optional free best-effort aircraft-position feed whose official terms permit this exact public, non-commercial use. The interface must identify simulated and live sources, expose freshness, and retain replay as the reliable demonstration fallback. Commercial provider procurement, contractual SLAs, and real-operations certification are optional future work and do not block the portfolio release.
