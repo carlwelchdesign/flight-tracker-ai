@@ -26,6 +26,9 @@ pub fn transition_lifecycle(
     }
 
     match (lifecycle, action) {
+        (AlertLifecycle::Open | AlertLifecycle::Acknowledged, AlertActionKind::Assign) => {
+            Ok(lifecycle)
+        }
         (AlertLifecycle::Open, AlertActionKind::Acknowledge) => Ok(AlertLifecycle::Acknowledged),
         (AlertLifecycle::Open | AlertLifecycle::Acknowledged, AlertActionKind::Dismiss) => {
             Ok(AlertLifecycle::Dismissed)

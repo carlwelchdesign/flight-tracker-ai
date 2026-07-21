@@ -5,7 +5,8 @@ use axum::{
 use chrono::{Duration, TimeZone, Utc};
 use flight_tracker_api::{
     alerting::{
-        AlertActionRequest, AlertStore, CreateAlertResult, RouteHazardInput, RouteHazardRule,
+        AlertActionRequest, AlertQueueFilter, AlertStore, AlertStoreError, AssignmentFilter,
+        CreateAlertResult, DismissalReason, RouteHazardInput, RouteHazardRule,
         candidate_from_route_hazard,
     },
     auth::{
@@ -352,6 +353,19 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
         .unwrap();
     let candidate = candidate_from_route_hazard(route, hazard, decision).unwrap();
     let store = AlertStore::new(pool.clone());
+    AuthStore::new(pool.clone())
+        .bootstrap_development(&DevelopmentIdentity {
+            operator_id: scenario.operator_id,
+            operator_code: "ALERT".into(),
+            operator_name: "Alert Test".into(),
+            external_tenant_id: format!("alert-test-{}", scenario.operator_id.as_uuid()),
+            subject: "dispatcher:queue-test".into(),
+            display_name: "Queue Test Dispatcher".into(),
+            role: AuthRole::Dispatcher,
+        })
+        .await
+        .unwrap();
+    let assignee = store.list_assignees(scenario.operator_id).await.unwrap()[0].clone();
     let created_id = match store
         .create_from_candidate(&candidate, evaluated_at)
         .await
@@ -385,7 +399,16 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
     .execute(pool)
     .await
     .unwrap();
-    let ranked = store.list_queue(scenario.operator_id, false).await.unwrap();
+    let ranked = store
+        .list_queue(
+            scenario.operator_id,
+            &AlertQueueFilter {
+                limit: 200,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
     assert_eq!(ranked[0].id, created_id);
     assert_eq!(ranked[1].id, low_priority_id);
 
@@ -423,7 +446,10 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
         action: AlertActionKind::Acknowledge,
         actor_id: "dispatcher:test".into(),
         idempotency_key: "ack-revised-alert".into(),
+        expected_workflow_version: 1,
         comment: None,
+        assigned_identity_id: None,
+        dismissal_reason: None,
     };
     let acknowledged = store
         .apply_action(revised_id, &acknowledge, evaluated_at)
@@ -436,26 +462,121 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
         .unwrap();
     assert_eq!(retried.actions.len(), 1);
 
+    let other_operator_id = OperatorId::from_uuid(Uuid::new_v4());
+    AuthStore::new(pool.clone())
+        .bootstrap_development(&DevelopmentIdentity {
+            operator_id: other_operator_id,
+            operator_code: format!(
+                "Q{}",
+                &other_operator_id.as_uuid().simple().to_string()[..6]
+            ),
+            operator_name: "Other Queue Tenant".into(),
+            external_tenant_id: format!("other-queue-{}", other_operator_id.as_uuid()),
+            subject: "dispatcher:other-tenant".into(),
+            display_name: "Other Tenant Dispatcher".into(),
+            role: AuthRole::Dispatcher,
+        })
+        .await
+        .unwrap();
+    let other_assignee = store.list_assignees(other_operator_id).await.unwrap()[0].clone();
+    let cross_tenant_assign = AlertActionRequest {
+        operator_id: scenario.operator_id,
+        action: AlertActionKind::Assign,
+        actor_id: "dispatcher:test".into(),
+        idempotency_key: "cross-tenant-assign".into(),
+        expected_workflow_version: 2,
+        comment: None,
+        assigned_identity_id: Some(other_assignee.identity_id),
+        dismissal_reason: None,
+    };
+    assert!(matches!(
+        store
+            .apply_action(revised_id, &cross_tenant_assign, evaluated_at)
+            .await,
+        Err(AlertStoreError::InvalidAssignee)
+    ));
+
+    let assign = AlertActionRequest {
+        operator_id: scenario.operator_id,
+        action: AlertActionKind::Assign,
+        actor_id: "dispatcher:test".into(),
+        idempotency_key: "assign-revised-alert".into(),
+        expected_workflow_version: 2,
+        comment: None,
+        assigned_identity_id: Some(assignee.identity_id),
+        dismissal_reason: None,
+    };
+    let assigned = store
+        .apply_action(revised_id, &assign, evaluated_at)
+        .await
+        .unwrap();
+    assert_eq!(
+        assigned.alert.assigned_identity_id,
+        Some(assignee.identity_id)
+    );
+    assert_eq!(assigned.alert.workflow_version, 3);
+
+    let stale_comment = AlertActionRequest {
+        operator_id: scenario.operator_id,
+        action: AlertActionKind::Comment,
+        actor_id: "dispatcher:stale".into(),
+        idempotency_key: "stale-comment-revised-alert".into(),
+        expected_workflow_version: 2,
+        comment: Some("This copy is stale".into()),
+        assigned_identity_id: None,
+        dismissal_reason: None,
+    };
+    assert!(matches!(
+        store
+            .apply_action(revised_id, &stale_comment, evaluated_at)
+            .await,
+        Err(AlertStoreError::ConcurrentModification)
+    ));
+
+    let assigned_filter = store
+        .list_queue(
+            scenario.operator_id,
+            &AlertQueueFilter {
+                severity: Some("warning".into()),
+                flight: flight.callsign.clone(),
+                event_from: Some(evaluated_at - Duration::seconds(1)),
+                event_to: Some(evaluated_at + Duration::seconds(1)),
+                assignment: Some(AssignmentFilter::Identity(assignee.identity_id)),
+                limit: 200,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(assigned_filter.len(), 1);
+    assert_eq!(assigned_filter[0].id, revised_id);
+
     let comment = AlertActionRequest {
         operator_id: scenario.operator_id,
         action: AlertActionKind::Comment,
         actor_id: "dispatcher:test".into(),
         idempotency_key: "comment-revised-alert".into(),
+        expected_workflow_version: 3,
         comment: Some("Coordinating with the flight crew".into()),
+        assigned_identity_id: None,
+        dismissal_reason: None,
     };
     let commented = store
         .apply_action(revised_id, &comment, evaluated_at)
         .await
         .unwrap();
     assert_eq!(commented.alert.lifecycle, "acknowledged");
-    assert_eq!(commented.actions.len(), 2);
+    assert_eq!(commented.actions.len(), 3);
 
     let missing_reason = AlertActionRequest {
         operator_id: scenario.operator_id,
         action: AlertActionKind::Dismiss,
         actor_id: "dispatcher:test".into(),
         idempotency_key: "invalid-dismiss-revised-alert".into(),
+        expected_workflow_version: 4,
         comment: None,
+        assigned_identity_id: None,
+        dismissal_reason: None,
     };
     assert!(
         store
@@ -469,21 +590,97 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
         action: AlertActionKind::Dismiss,
         actor_id: "dispatcher:test".into(),
         idempotency_key: "dismiss-revised-alert".into(),
+        expected_workflow_version: 4,
         comment: Some("Duplicate dispatch information".into()),
+        assigned_identity_id: None,
+        dismissal_reason: Some(DismissalReason::DuplicateAlert),
     };
     let dismissed = store
         .apply_action(revised_id, &dismiss, evaluated_at)
         .await
         .unwrap();
     assert_eq!(dismissed.alert.lifecycle, "dismissed");
-    assert_eq!(dismissed.actions.len(), 3);
+    assert_eq!(dismissed.actions.len(), 4);
 
-    let current = store.list_queue(scenario.operator_id, false).await.unwrap();
+    let current = store
+        .list_queue(
+            scenario.operator_id,
+            &AlertQueueFilter {
+                limit: 200,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
     assert_eq!(current.len(), 1);
     assert_eq!(current[0].id, low_priority_id);
-    let history = store.list_queue(scenario.operator_id, true).await.unwrap();
+    let history = store
+        .list_queue(
+            scenario.operator_id,
+            &AlertQueueFilter {
+                include_terminal: true,
+                limit: 200,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
     assert!(history.iter().any(|alert| alert.id == revised_id));
     assert!(!history.iter().any(|alert| alert.id == created_id));
+
+    let dismissed_only = store
+        .list_queue(
+            scenario.operator_id,
+            &AlertQueueFilter {
+                lifecycle: Some("dismissed".into()),
+                limit: 200,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(dismissed_only.len(), 1);
+    assert_eq!(dismissed_only[0].id, revised_id);
+
+    for ordinal in 0..120 {
+        let id = Uuid::new_v4();
+        let series_key = format!("representative-volume-{ordinal}-{id}");
+        sqlx::query(
+            r#"
+            INSERT INTO alerts (
+                id,operator_id,schema_version,event_time,received_at,processed_at,
+                alert_type,severity,lifecycle,rule_id,rule_version,dedupe_key,
+                series_key,alert_revision,attention_score,score_version,evidence
+            ) VALUES ($1,$2,1,$3,$3,$3,'volume_test','information','open',
+                      'volume_rule',1,$4,$4,1,5,1,'{}')
+            "#,
+        )
+        .bind(id)
+        .bind(scenario.operator_id.as_uuid())
+        .bind(evaluated_at + Duration::seconds(i64::from(ordinal)))
+        .bind(series_key)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    let representative_page = store
+        .list_queue(
+            scenario.operator_id,
+            &AlertQueueFilter {
+                severity: Some("information".into()),
+                assignment: Some(AssignmentFilter::Unassigned),
+                limit: 100,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(representative_page.len(), 100);
+    assert!(
+        representative_page
+            .iter()
+            .all(|alert| alert.assigned_identity_id.is_none())
+    );
 }
 
 async fn assert_provider_record_revisions_are_allowed_but_identical_retries_are_rejected(

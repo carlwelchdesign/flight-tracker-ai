@@ -432,8 +432,16 @@ a:focus-visible {
 
 .alert-queue-slot { grid-column: 1 / -1; }
 .alert-queue-panel { min-height: 430px; }
+.alert-filter-bar { display: grid; grid-template-columns: repeat(2, minmax(110px, .7fr)) minmax(180px, 1.2fr) minmax(110px, .7fr) minmax(170px, 1fr) auto; align-items: end; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface-muted); }
+.alert-filter-bar label, .alert-assignment-control label, .alert-dismiss-reason { min-width: 0; }
+.alert-filter-bar label > span, .alert-assignment-control label > span, .alert-dismiss-reason > span { display: block; margin-bottom: 5px; color: var(--subtle); font: 550 8px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .07em; }
+.alert-filter-bar input, .alert-filter-bar select, .alert-assignment-control select, .alert-dismiss-reason select { width: 100%; min-height: 32px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--background); color: var(--foreground); font: 500 10px/1 "Geist Mono", monospace; }
+.alert-filter-actions { display: flex; gap: 5px; }
+.alert-filter-actions button, .alert-assignment-control button { min-height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface-raised); color: #d6e5e3; font-size: 10px; cursor: pointer; white-space: nowrap; }
+.alert-filter-actions .button-secondary { background: transparent; color: var(--muted); }
+.alert-filter-actions button:disabled, .alert-assignment-control button:disabled { opacity: .45; cursor: not-allowed; }
 .alert-workspace { display: grid; grid-template-columns: minmax(300px, .7fr) minmax(480px, 1.3fr); min-height: 368px; }
-.alert-list { margin: 0; padding: 0; list-style: none; border-right: 1px solid var(--line); }
+.alert-list { max-height: 620px; margin: 0; padding: 0; overflow-y: auto; list-style: none; border-right: 1px solid var(--line); }
 .alert-list li { border-bottom: 1px solid var(--line); }
 .alert-row { width: 100%; display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px; padding: 12px 14px; border: 0; background: transparent; text-align: left; cursor: pointer; }
 .alert-row:hover, .alert-row-selected { background: var(--surface-raised); }
@@ -456,15 +464,18 @@ a:focus-visible {
 .attention-breakdown dt { color: var(--subtle); font-size: 10px; }
 .attention-breakdown dd { margin: 4px 0 0; color: #dce9e7; font: 650 13px/1 "Geist Mono", monospace; }
 .alert-evidence-summary { color: var(--muted); font: 500 10px/1.6 "Geist Mono", monospace; }
+.alert-assignment-control { display: grid; grid-template-columns: minmax(180px, 1fr) auto; align-items: end; gap: 7px; margin-top: 12px; }
 .alert-note-field { display: block; margin-top: 12px; }
 .alert-note-field span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; }
 .alert-note-field textarea { width: 100%; resize: vertical; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--background); color: var(--foreground); font: 500 11px/1.5 "Geist Mono", monospace; }
+.alert-dismiss-reason { display: block; max-width: 280px; margin-top: 9px; }
 .alert-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .alert-actions button, .alert-queue-message button { min-height: 30px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface-raised); color: #d6e5e3; font-size: 10px; cursor: pointer; }
 .alert-actions button:hover, .alert-queue-message button:hover { border-color: var(--cyan); }
 .alert-actions button:disabled { opacity: .55; cursor: wait; }
 .alert-actions .alert-dismiss { color: var(--red); }
 .alert-action-error { color: var(--red); font-size: 11px; }
+.alert-action-success { color: var(--cyan); font-size: 11px; }
 .alert-audit { margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--line); }
 .alert-audit h4 { margin: 0 0 8px; font-size: 11px; }
 .alert-audit > p { color: var(--subtle); font-size: 10px; }
@@ -568,6 +579,8 @@ a:focus-visible {
   .ops-board-panel { min-height: 360px; }
   .ops-detail-panel { max-height: none; }
   .alert-workspace { display: block; }
+  .alert-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .alert-filter-actions { grid-column: 1 / -1; }
   .alert-list { border-right: 0; border-bottom: 1px solid var(--line); }
   .attention-breakdown { grid-template-columns: repeat(2, 1fr); }
   .operations-footer { flex-wrap: wrap; justify-content: flex-start; }
@@ -575,6 +588,8 @@ a:focus-visible {
 }
 
 @media (max-width: 520px) {
+  .alert-filter-bar { grid-template-columns: 1fr; }
+  .alert-filter-actions { grid-column: auto; }
   .ops-map-legend { display: none; }
   .aircraft-marker span { display: none; }
   .aircraft-marker { padding: 5px; }
