@@ -7,10 +7,10 @@ Last updated: 2026-07-20
 - Current milestone: M2 — Live weather and hazard intelligence
 - Active ticket: FT-203 — Implement route–hazard intersection rules
 - Branch: `feat/ft-203-route-hazard-rules`
-- Pull request: Pending
+- Pull request: [#11](https://github.com/carlwelchdesign/flight-tracker-ai/pull/11)
 - Owner: Backend/domain engineering with independent fixture review
 - Overall status: M0 and M1 are merged; FT-201 and FT-202 are merged; FT-203 is in progress
-- Next action: Implement deterministic, versioned route–hazard evaluation with geometry, time, altitude, proximity, evidence, and golden replay cases.
+- Next action: Pass the Rust, web, and independent PostGIS fixture-oracle checks on PR #11, record the authoritative evidence, and merge FT-203.
 
 ## Milestone checklist
 
@@ -49,6 +49,7 @@ Last updated: 2026-07-20
 - FT-202 implementation commit `568bd63` and CI correction `225937f` are green in PR #10; Rust, web, and API/PostGIS checks pass, including weather reads and raw-source evidence against PostGIS.
 - FT-202 is merged through PR #10 at `617b337`; local `main` was synchronized before FT-203 began.
 - FT-203 is active on `feat/ft-203-route-hazard-rules`; its pure Rust domain rule will remain independent of Axum, SQLx, provider payloads, and wall-clock time.
+- FT-203 implementation commit `28f227f` is under review in PR #11; local rule, replay, golden-case, build, and web checks pass, with the independent PostGIS oracle pending in CI.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

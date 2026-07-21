@@ -53,8 +53,8 @@ Verification evidence: `plans/WEATHER_LAYERS.md`; 47 passing Rust library tests,
 Status: In progress
 
 Branch: `feat/ft-203-route-hazard-rules`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `28f227f`
+Pull request: [#11](https://github.com/carlwelchdesign/flight-tracker-ai/pull/11)
 Owner: Backend/domain engineering with independent fixture review
 
 Create deterministic, versioned rules that consider geometry, time, altitude, direction, and configurable proximity margins.
@@ -70,7 +70,7 @@ Acceptance checklist:
 - [ ] Rule results are deterministic across replay runs.
 - [ ] Independent fixture review confirms expected outcomes.
 
-Verification evidence: Pending.
+Verification evidence: `plans/ROUTE_HAZARD_RULES.md`; high-latitude great-circle and antimeridian coordinate tests; eight rationale-backed golden cases for intersection, near miss, expiry, cancellation, altitude separation, route direction/progress, and missing-altitude behavior; byte-identical canonical replay batches and serialized decisions across scenario reloads; 54 passing Rust library tests, 5 binary tests, 2 golden/replay contract tests, and the schema contract; strict workspace Clippy; Rust formatting and release build; 15 passing web tests plus lint, typecheck, production build, and dependency audit with 0 vulnerabilities; Compose configuration and diff hygiene; implementation commit `28f227f`; independent PostGIS fixture oracle awaiting required CI on [#11](https://github.com/carlwelchdesign/flight-tracker-ai/pull/11).
 
 ## FT-204 — Add alert ranking, lifecycle, and deduplication
 
