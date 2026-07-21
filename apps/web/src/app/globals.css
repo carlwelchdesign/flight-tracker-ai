@@ -485,6 +485,7 @@ a:focus-visible {
   .live-tracker-grid { padding: 5px; gap: 5px; }
   .live-map-stage { min-height: 460px; }
   .live-map-actions { align-items: flex-end; flex-direction: column; }
+  .live-traffic-panel { max-height: 560px; }
   .map-help { display: none; }
   .trajectory-legend { right: 8px; bottom: 24px; }
   .aircraft-facts { grid-template-columns: 1fr; }
