@@ -73,11 +73,12 @@ Verification evidence: [identity and tenant isolation contract](../IDENTITY_TENA
 
 ## FT-304 — Build the dispatcher review queue
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-304-dispatcher-review-queue`
 Final commit: Pending
 Pull request: Pending
+Owner: Backend and full-stack engineering
 
 Make alert triage fast, prioritized, and auditable for an operations user.
 
