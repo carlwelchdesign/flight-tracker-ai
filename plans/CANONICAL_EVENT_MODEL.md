@@ -31,8 +31,8 @@ provider payload -> ProviderEnvelope -> provider adapter -> CanonicalEvent -> pr
 | `AircraftPosition` | `aircraft_positions` | Position UUID, operator/flight/source-envelope UUIDs |
 | `PlannedRoute` | `planned_routes` | Route UUID, operator/flight/source-envelope UUIDs, route version |
 | `WeatherHazard` | `weather_hazards` | Hazard UUID, operator/source-envelope UUIDs |
-| `Alert` | `alerts` and `alert_evidence` | Alert UUID, operator UUID, optional flight/hazard UUIDs, evidence envelopes |
-| `AlertAction` | `alert_actions` | Action UUID, operator/alert UUIDs, human actor ID |
+| `Alert` | `alerts` and `alert_evidence` | Alert UUID, operator UUID, series/revision, material dedupe key, evidence envelopes |
+| `AlertAction` | `alert_actions` | Action UUID, operator/alert UUIDs, human actor and idempotency key |
 | `SourceHealth` | `source_health` | Health UUID, operator UUID, provider/feed identity |
 
 Every operational table includes a non-null `operator_id`. Composite foreign

@@ -10,7 +10,7 @@ Last updated: 2026-07-21
 - Pull request: Pending
 - Owner: Full-stack engineering with dispatcher-workflow review
 - Overall status: M0 and M1 are merged; FT-201, FT-202, and FT-203 are merged; FT-204 is in progress
-- Next action: Implement explainable alert creation and ranking, stable deduplication, append-only lifecycle actions, and a recoverable dispatcher queue.
+- Next action: Complete PostGIS/live replay verification, review the dispatcher workflow, then open and merge the FT-204 pull request after green CI.
 
 ## Milestone checklist
 
@@ -52,6 +52,7 @@ Last updated: 2026-07-21
 - FT-203 implementation commit `28f227f` is green in PR #11; Rust, web, and API/PostGIS checks pass, and the PostGIS 3.5 oracle independently confirmed all eight golden cases in CI run `29809973027`.
 - FT-203 is merged through PR #11 at `848af8f`; local `main` was synchronized before FT-204 began.
 - FT-204 is active on `feat/ft-204-alert-lifecycle`; deterministic Rust policy will own ranking, dedupe, transitions, and audit evidence while the web app exposes human-controlled actions.
+- FT-204 implementation now includes score version 1, series/material identities, transactional supersession and append-only actions, simulation fact persistence, typed alert APIs, and the dispatcher queue. Local unit, lint, type, component, and production-build checks pass; PostGIS and live replay verification remain before delivery.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

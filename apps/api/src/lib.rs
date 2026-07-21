@@ -14,6 +14,7 @@ pub mod observability;
 pub mod replay;
 pub mod weather;
 
+use alerting::{AlertStore, alert_router, spawn_alert_worker};
 use fleet::{FleetStore, fleet_router, spawn_projection_worker};
 use health::{CriticalWorkerRegistry, WorkerSnapshot};
 use ingestion::IngestionSubscription;
@@ -117,6 +118,11 @@ pub fn build_router_with_runtime_and_ingestion(
 ) -> Router {
     let fleet = FleetStore::new(2_048);
     if let Some(handle) = replay.as_ref() {
+        spawn_alert_worker(
+            database.clone(),
+            handle.subscribe(),
+            workers.register("alert_projection"),
+        );
         spawn_projection_worker(
             fleet.clone(),
             handle.subscribe(),
@@ -155,6 +161,7 @@ fn build_router_with_services_and_health(
     let metrics = ApiMetrics::default();
     let fleet_routes = fleet_router(fleet.clone(), metrics.clone());
     let weather_routes = weather_router(database.clone());
+    let alert_routes = alert_router(AlertStore::new(database.clone()));
     let mut router = Router::new()
         .route("/health", get(health))
         .route("/readiness", get(readiness))
@@ -179,6 +186,7 @@ fn build_router_with_services_and_health(
         })
         .merge(fleet_routes)
         .merge(weather_routes)
+        .merge(alert_routes)
         .layer(middleware::from_fn_with_state(metrics, observe_request))
         .layer(middleware::from_fn(correlate_request))
 }
@@ -459,7 +467,7 @@ mod tests {
         let body = status.into_body().collect().await.unwrap().to_bytes();
         let payload: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(payload["phase"], "paused");
-        assert_eq!(payload["total_events"], 12);
+        assert_eq!(payload["total_events"], 13);
 
         let speed = app
             .clone()
@@ -564,7 +572,7 @@ mod tests {
         let payload = health.into_body().collect().await.unwrap().to_bytes();
         let payload: Value = serde_json::from_slice(&payload).unwrap();
         assert_eq!(payload["status"], "ok");
-        assert_eq!(payload["workers"].as_array().unwrap().len(), 2);
+        assert_eq!(payload["workers"].as_array().unwrap().len(), 3);
 
         app.clone()
             .oneshot(

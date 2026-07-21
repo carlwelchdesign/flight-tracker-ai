@@ -11,6 +11,7 @@ The M1 console helps a dispatcher or operations analyst scan a simulated fleet, 
 3. Select a flight from either the board or the map.
 4. Review route, position, timing, nearby hazards, and source-attributed timeline evidence in the detail panel.
 5. Use replay controls to pause, reset, or change simulation speed during development.
+6. Scan the ranked dispatcher queue, inspect its score and evidence, then acknowledge, comment, dismiss with a reason, or resolve the alert.
 
 Selection is a single shared state. A selection made on the map or board updates the map emphasis, board row, and detail panel together.
 
@@ -19,6 +20,7 @@ Selection is a single shared state. A selection made on the map or board updates
 - The header carries product identity, distinct service and stream states, last event and receipt times, and development-only replay/outage controls.
 - The map and board are equal primary surfaces for spatial and comparative scanning.
 - The detail panel is the evidence surface for the selected flight.
+- The dispatcher queue is a separate evidence and action surface. It shows score components, rule/score/route/hazard versions, proximity, lifecycle, and audit history.
 - Attention language remains descriptive (`watch`, `normal`) and never claims to be a safety determination.
 - Timeline entries retain their source and event time so operators can distinguish observation from receipt.
 
@@ -33,6 +35,9 @@ Selection is a single shared state. A selection made on the map or board updates
 - **Stale:** flights whose last observation exceeds the freshness threshold are labeled stale in the board and detail panel.
 - **Partial data:** a warning identifies when the initial fleet or a later refresh failed while retained data remains usable.
 - **Fatal error:** the route-level error view provides a retry action.
+- **Alert empty:** the queue explains that clear and indeterminate route–hazard cases are intentionally suppressed.
+- **Alert unavailable:** the queue preserves the rest of the operational picture and offers a retry.
+- **Action pending/error:** controls are disabled while a command is in flight; validation and server errors remain visible without discarding the selected evidence.
 
 ## Accessibility and interaction
 

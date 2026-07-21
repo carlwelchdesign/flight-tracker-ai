@@ -22,6 +22,7 @@ import { attentionLevel, fleetReferenceTime, fleetTiming, formatZulu } from "./o
 import { OperationsBadges } from "./operations-badges";
 import type { ConnectionState, ServiceHealthState } from "./operations-health-model";
 import { OperationsStatusRegion } from "./operations-status";
+import { AlertQueue } from "./alert-queue";
 
 type ReplayPhase = "running" | "paused" | "completed" | "unavailable";
 
@@ -456,6 +457,12 @@ export function OperationsConsole({ initialFleet, initialWeather }: OperationsCo
           timeline={timeline}
           timelineState={timelineState}
         />
+        <div className="alert-queue-slot">
+          <AlertQueue
+            operatorId={selected?.flight.operator_id ?? flights[0]?.flight.operator_id ?? null}
+            refreshRevision={eventRevision}
+          />
+        </div>
       </div>
 
       <footer className="operations-footer">

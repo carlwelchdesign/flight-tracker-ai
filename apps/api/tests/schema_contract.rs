@@ -4,8 +4,16 @@ use axum::{
 };
 use chrono::{TimeZone, Utc};
 use flight_tracker_api::{
+    alerting::{
+        AlertActionRequest, AlertStore, CreateAlertResult, RouteHazardInput, RouteHazardRule,
+        candidate_from_route_hazard,
+    },
     build_router,
-    domain::OperatorId,
+    domain::{
+        AlertActionKind, Altitude, AltitudeBand, AltitudeReference, AltitudeUnit, CanonicalEvent,
+        OperatorId,
+    },
+    replay::ReplayScenario,
     weather::noaa::{
         NoaaFeed, NoaaPayload, NoaaStore, PersistedNoaaRecord, SourceHealthTracker, prepare_records,
     },
@@ -85,6 +93,262 @@ async fn canonical_schema_migrates_with_spatial_and_tenant_invariants() {
     assert_provider_record_revisions_are_allowed_but_identical_retries_are_rejected(&pool).await;
     assert_cross_operator_source_reference_is_rejected(&pool).await;
     assert_noaa_records_are_transactional_idempotent_and_revisioned(&pool).await;
+    assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(&pool).await;
+}
+
+async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: &PgPool) {
+    let scenario = ReplayScenario::from_json(include_str!(
+        "../../../fixtures/replay/m2-route-hazard-v1.json"
+    ))
+    .unwrap();
+    let batches = scenario
+        .events
+        .iter()
+        .map(|event| scenario.batch_for(event).unwrap())
+        .collect::<Vec<_>>();
+    let CanonicalEvent::Flight(flight) = &batches[0].events[0] else {
+        panic!("fixture must begin with a flight")
+    };
+    let CanonicalEvent::PlannedRoute(route) = &batches[1].events[0] else {
+        panic!("fixture must include a route")
+    };
+    let CanonicalEvent::WeatherHazard(hazard) = &batches[2].events[0] else {
+        panic!("fixture must include a hazard")
+    };
+
+    sqlx::query(
+        "INSERT INTO operators (id, code, display_name) VALUES ($1, 'ALERT', 'Alert Test') ON CONFLICT (id) DO NOTHING",
+    )
+    .bind(scenario.operator_id.as_uuid())
+    .execute(pool)
+    .await
+    .unwrap();
+    for batch in &batches {
+        sqlx::query(
+            r#"
+            INSERT INTO provider_envelopes (
+                id, operator_id, schema_version, provider, feed, provider_record_id,
+                event_time, received_at, processed_at, raw_payload_sha256, raw_payload
+            ) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8,$9,$10)
+            ON CONFLICT DO NOTHING
+            "#,
+        )
+        .bind(batch.envelope.id.as_uuid())
+        .bind(batch.envelope.operator_id.as_uuid())
+        .bind(&batch.envelope.provider)
+        .bind(&batch.envelope.feed)
+        .bind(&batch.envelope.provider_record_id)
+        .bind(batch.envelope.event_time)
+        .bind(batch.envelope.received_at)
+        .bind(batch.envelope.processed_at)
+        .bind(&batch.envelope.raw_payload_sha256)
+        .bind(&batch.envelope.raw_payload)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    sqlx::query(
+        r#"
+        INSERT INTO flights (
+            id,operator_id,source_envelope_id,schema_version,event_time,received_at,processed_at,
+            callsign,status
+        ) VALUES ($1,$2,$3,1,$4,$5,$6,$7,'active')
+        ON CONFLICT (operator_id,id) DO NOTHING
+        "#,
+    )
+    .bind(flight.id.as_uuid())
+    .bind(flight.operator_id.as_uuid())
+    .bind(flight.source.envelope_id.as_uuid())
+    .bind(flight.times.event_time)
+    .bind(flight.times.received_at)
+    .bind(flight.times.processed_at)
+    .bind(&flight.callsign)
+    .execute(pool)
+    .await
+    .unwrap();
+    let footprint = serde_json::json!({
+        "type":"Polygon",
+        "coordinates":[hazard.footprint.exterior.iter().map(|point| point.as_geojson_position()).collect::<Vec<_>>()]
+    });
+    sqlx::query(
+        r#"
+        INSERT INTO weather_hazards (
+            id,operator_id,source_envelope_id,schema_version,event_time,received_at,processed_at,
+            hazard_type,severity,valid_from,valid_to,footprint,external_series_id,revision,
+            status,issued_at
+        ) VALUES ($1,$2,$3,1,$4,$5,$6,$7,'significant',$8,$9,
+            ST_SetSRID(ST_GeomFromGeoJSON($10),4326),$11,1,'active',$4)
+        ON CONFLICT (operator_id,id) DO NOTHING
+        "#,
+    )
+    .bind(hazard.id.as_uuid())
+    .bind(hazard.operator_id.as_uuid())
+    .bind(hazard.source.envelope_id.as_uuid())
+    .bind(hazard.times.event_time)
+    .bind(hazard.times.received_at)
+    .bind(hazard.times.processed_at)
+    .bind(&hazard.hazard_type)
+    .bind(hazard.valid_from)
+    .bind(hazard.valid_to)
+    .bind(footprint.to_string())
+    .bind(&hazard.external_series_id)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let altitude = Altitude {
+        value: 20_000,
+        unit: AltitudeUnit::Feet,
+        reference: AltitudeReference::MeanSeaLevel,
+    };
+    let altitude_band = AltitudeBand {
+        lower: Some(altitude),
+        upper: Some(altitude),
+    };
+    let evaluated_at = scenario.start_time + chrono::Duration::minutes(1);
+    let decision = RouteHazardRule::default()
+        .evaluate(RouteHazardInput {
+            route,
+            hazard,
+            evaluated_at,
+            route_altitude_band: Some(&altitude_band),
+            progress: None,
+        })
+        .unwrap();
+    let candidate = candidate_from_route_hazard(route, hazard, decision).unwrap();
+    let store = AlertStore::new(pool.clone());
+    let created_id = match store
+        .create_from_candidate(&candidate, evaluated_at)
+        .await
+        .unwrap()
+    {
+        CreateAlertResult::Created(id) => id,
+        CreateAlertResult::Duplicate(_) => panic!("first candidate must create an alert"),
+    };
+    assert_eq!(
+        store
+            .create_from_candidate(&candidate, evaluated_at)
+            .await
+            .unwrap(),
+        CreateAlertResult::Duplicate(created_id)
+    );
+
+    let low_priority_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO alerts (
+            id,operator_id,schema_version,event_time,received_at,processed_at,alert_type,severity,
+            lifecycle,rule_id,rule_version,dedupe_key,series_key,alert_revision,
+            attention_score,score_version,evidence
+        ) VALUES ($1,$2,1,$3,$3,$3,'test_information','information','open','test_rule',1,$4,$4,1,5,1,'{}')
+        "#,
+    )
+    .bind(low_priority_id)
+    .bind(scenario.operator_id.as_uuid())
+    .bind(evaluated_at)
+    .bind(format!("low-priority-{low_priority_id}"))
+    .execute(pool)
+    .await
+    .unwrap();
+    let ranked = store.list_queue(scenario.operator_id, false).await.unwrap();
+    assert_eq!(ranked[0].id, created_id);
+    assert_eq!(ranked[1].id, low_priority_id);
+
+    let mut revised_route = route.clone();
+    revised_route.route_version += 1;
+    let revised_decision = RouteHazardRule::default()
+        .evaluate(RouteHazardInput {
+            route: &revised_route,
+            hazard,
+            evaluated_at,
+            route_altitude_band: Some(&altitude_band),
+            progress: None,
+        })
+        .unwrap();
+    let revised_candidate = candidate_from_route_hazard(&revised_route, hazard, revised_decision)
+        .expect("revised matching evidence creates a candidate");
+    let revised_id = match store
+        .create_from_candidate(&revised_candidate, evaluated_at)
+        .await
+        .unwrap()
+    {
+        CreateAlertResult::Created(id) => id,
+        CreateAlertResult::Duplicate(_) => panic!("material route revision must create an alert"),
+    };
+    let prior = store
+        .detail(scenario.operator_id, created_id)
+        .await
+        .unwrap();
+    assert_eq!(prior.alert.lifecycle, "resolved");
+    assert_eq!(prior.actions.len(), 1);
+    assert_eq!(prior.actions[0].actor_id, "system:alert-supersession");
+
+    let acknowledge = AlertActionRequest {
+        operator_id: scenario.operator_id,
+        action: AlertActionKind::Acknowledge,
+        actor_id: "dispatcher:test".into(),
+        idempotency_key: "ack-revised-alert".into(),
+        comment: None,
+    };
+    let acknowledged = store
+        .apply_action(revised_id, &acknowledge, evaluated_at)
+        .await
+        .unwrap();
+    assert_eq!(acknowledged.alert.lifecycle, "acknowledged");
+    let retried = store
+        .apply_action(revised_id, &acknowledge, evaluated_at)
+        .await
+        .unwrap();
+    assert_eq!(retried.actions.len(), 1);
+
+    let comment = AlertActionRequest {
+        operator_id: scenario.operator_id,
+        action: AlertActionKind::Comment,
+        actor_id: "dispatcher:test".into(),
+        idempotency_key: "comment-revised-alert".into(),
+        comment: Some("Coordinating with the flight crew".into()),
+    };
+    let commented = store
+        .apply_action(revised_id, &comment, evaluated_at)
+        .await
+        .unwrap();
+    assert_eq!(commented.alert.lifecycle, "acknowledged");
+    assert_eq!(commented.actions.len(), 2);
+
+    let missing_reason = AlertActionRequest {
+        operator_id: scenario.operator_id,
+        action: AlertActionKind::Dismiss,
+        actor_id: "dispatcher:test".into(),
+        idempotency_key: "invalid-dismiss-revised-alert".into(),
+        comment: None,
+    };
+    assert!(
+        store
+            .apply_action(revised_id, &missing_reason, evaluated_at)
+            .await
+            .is_err()
+    );
+
+    let dismiss = AlertActionRequest {
+        operator_id: scenario.operator_id,
+        action: AlertActionKind::Dismiss,
+        actor_id: "dispatcher:test".into(),
+        idempotency_key: "dismiss-revised-alert".into(),
+        comment: Some("Duplicate dispatch information".into()),
+    };
+    let dismissed = store
+        .apply_action(revised_id, &dismiss, evaluated_at)
+        .await
+        .unwrap();
+    assert_eq!(dismissed.alert.lifecycle, "dismissed");
+    assert_eq!(dismissed.actions.len(), 3);
+
+    let current = store.list_queue(scenario.operator_id, false).await.unwrap();
+    assert_eq!(current.len(), 1);
+    assert_eq!(current[0].id, low_priority_id);
+    let history = store.list_queue(scenario.operator_id, true).await.unwrap();
+    assert!(history.iter().any(|alert| alert.id == revised_id));
+    assert!(!history.iter().any(|alert| alert.id == created_id));
 }
 
 async fn assert_provider_record_revisions_are_allowed_but_identical_retries_are_rejected(
