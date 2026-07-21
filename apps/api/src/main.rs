@@ -147,7 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             base_url: adsb_lol_config.base_url,
             user_agent: adsb_lol_config.user_agent,
             connect_timeout: Duration::from_secs(3),
-            request_timeout: Duration::from_secs(5),
+            request_timeout: Duration::from_secs(12),
             retry: AdsbLolRetryPolicy::default(),
         })?;
         spawn_adsb_lol_runtime(
