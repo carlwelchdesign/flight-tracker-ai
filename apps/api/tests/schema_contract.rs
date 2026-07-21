@@ -371,6 +371,73 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
             .is_empty()
     );
 
+    let substituted_run = store
+        .preview_run(
+            &requester,
+            &PreviewRetentionRun {
+                policy_id: policy.id,
+                evidence_reference: "incident:FT-401/raw-substitution-probe".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    let substituted_fingerprint = substituted_run.preview_fingerprint.as_deref().unwrap();
+    assert_eq!(substituted_fingerprint.len(), 64);
+    assert!(
+        substituted_fingerprint
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    );
+    sqlx::query(
+        r#"
+        UPDATE provider_envelopes
+        SET received_at = CASE id WHEN $1 THEN $3 WHEN $2 THEN $4 END
+        WHERE id = ANY($5)
+        "#,
+    )
+    .bind(old_id)
+    .bind(current_id)
+    .bind(now - Duration::minutes(30))
+    .bind(now - Duration::hours(2))
+    .bind(vec![old_id, current_id])
+    .execute(pool)
+    .await
+    .unwrap();
+    store
+        .approve_run(&approver, substituted_run.id, now)
+        .await
+        .unwrap();
+    assert!(matches!(
+        store.execute_run(&requester, substituted_run.id, now).await,
+        Err(RetentionError::InventoryChanged)
+    ));
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM provider_envelopes WHERE id = ANY($1) AND raw_payload_deleted_at IS NULL",
+        )
+        .bind(vec![old_id, current_id])
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        2
+    );
+    sqlx::query(
+        r#"
+        UPDATE provider_envelopes
+        SET received_at = CASE id WHEN $1 THEN $3 WHEN $2 THEN $4 END
+        WHERE id = ANY($5)
+        "#,
+    )
+    .bind(old_id)
+    .bind(current_id)
+    .bind(now - Duration::hours(2))
+    .bind(now - Duration::minutes(30))
+    .bind(vec![old_id, current_id])
+    .execute(pool)
+    .await
+    .unwrap();
+
     let run = store
         .preview_run(
             &requester,
@@ -383,6 +450,10 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
         .await
         .unwrap();
     assert_eq!(run.preview_counts["provider_envelopes"], 1);
+    assert_ne!(
+        run.preview_fingerprint.as_deref(),
+        Some(substituted_fingerprint)
+    );
     assert!(matches!(
         store.approve_run(&requester, run.id, now).await,
         Err(RetentionError::SeparationOfDuties)
@@ -1266,6 +1337,13 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
     assert_eq!(completed_attempts.len(), 1);
     assert_eq!(completed_attempts[0].status, "completed");
     assert!(completed_attempts[0].retention_run_id.is_some());
+    assert_eq!(
+        completed_attempts[0]
+            .preview_fingerprint
+            .as_deref()
+            .map(str::len),
+        Some(64)
+    );
     let advanced = store
         .list_schedules(operator_id)
         .await

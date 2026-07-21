@@ -18,8 +18,8 @@ use crate::{auth::AuthContext, domain::OperatorId, health::WorkerProbe};
 use super::{
     MAX_DELETE_RECORDS, RetentionDataClass, RetentionError, RetentionHttpError,
     RetentionPolicyView, RetentionRunView, RetentionStore, authorize, bounded_reference,
-    execute_data_class, insert_completion_audit, inventory_counts_transaction, inventory_total,
-    lock_policy,
+    execute_data_class, insert_completion_audit, inventory_counts_transaction,
+    inventory_fingerprint_transaction, inventory_total, lock_policy, set_repeatable_read,
 };
 
 const MIN_CADENCE_SECONDS: i64 = 3_600;
@@ -66,6 +66,7 @@ pub struct RetentionScheduleAttemptView {
     pub status: String,
     pub error_code: Option<String>,
     pub preview_counts: Value,
+    pub preview_fingerprint: Option<String>,
     pub attempted_at: DateTime<Utc>,
     pub completed_at: DateTime<Utc>,
 }
@@ -217,6 +218,7 @@ impl RetentionStore {
             r#"
             SELECT id, operator_id, schedule_id, scheduled_for,
                    retention_run_id, status, error_code, preview_counts,
+                   preview_fingerprint,
                    attempted_at, completed_at
             FROM retention_schedule_attempts
             WHERE operator_id = $1 AND schedule_id = $2
@@ -265,6 +267,7 @@ impl RetentionStore {
         now: DateTime<Utc>,
     ) -> Result<bool, RetentionError> {
         let mut transaction = self.database.begin().await?;
+        set_repeatable_read(&mut transaction).await?;
         let Some(schedule) = lock_due_schedule(&mut transaction, schedule_id, now).await? else {
             return Ok(false);
         };
@@ -281,6 +284,7 @@ impl RetentionStore {
                 &schedule,
                 "policy_not_approved",
                 &json!({}),
+                None,
                 next_run_at,
                 now,
             )
@@ -294,6 +298,7 @@ impl RetentionStore {
                 &schedule,
                 "schedule_authorization_inactive",
                 &json!({}),
+                None,
                 next_run_at,
                 now,
             )
@@ -319,6 +324,7 @@ impl RetentionStore {
                 &schedule,
                 "retention_scope_too_large",
                 &preview_counts,
+                None,
                 next_run_at,
                 now,
             )
@@ -326,6 +332,14 @@ impl RetentionStore {
             transaction.commit().await?;
             return Ok(true);
         }
+        let preview_fingerprint = inventory_fingerprint_transaction(
+            &mut transaction,
+            operator_id,
+            data_class,
+            &policy.provider,
+            cutoff_at,
+        )
+        .await?;
 
         sqlx::query("SAVEPOINT scheduled_retention_execution")
             .execute(&mut *transaction)
@@ -336,6 +350,7 @@ impl RetentionStore {
             &policy,
             cutoff_at,
             &preview_counts,
+            &preview_fingerprint,
             now,
         )
         .await?;
@@ -351,6 +366,7 @@ impl RetentionStore {
                 &schedule,
                 "retention_inventory_changed",
                 &preview_counts,
+                Some(&preview_fingerprint),
                 next_run_at,
                 now,
             )
@@ -390,8 +406,8 @@ impl RetentionStore {
             r#"
             INSERT INTO retention_schedule_attempts (
                 id, operator_id, schedule_id, scheduled_for, retention_run_id,
-                status, preview_counts, attempted_at, completed_at
-            ) VALUES ($1,$2,$3,$4,$5,'completed',$6,$7,$7)
+                status, preview_counts, preview_fingerprint, attempted_at, completed_at
+            ) VALUES ($1,$2,$3,$4,$5,'completed',$6,$7,$8,$8)
             "#,
         )
         .bind(Uuid::new_v4())
@@ -400,6 +416,7 @@ impl RetentionStore {
         .bind(schedule.next_run_at)
         .bind(run.id)
         .bind(&preview_counts)
+        .bind(&preview_fingerprint)
         .bind(now)
         .execute(&mut *transaction)
         .await?;
@@ -438,6 +455,7 @@ async fn insert_scheduled_run(
     policy: &RetentionPolicyView,
     cutoff_at: DateTime<Utc>,
     preview_counts: &Value,
+    preview_fingerprint: &str,
     now: DateTime<Utc>,
 ) -> Result<RetentionRunView, sqlx::Error> {
     let id = Uuid::new_v4();
@@ -450,9 +468,10 @@ async fn insert_scheduled_run(
         r#"
         INSERT INTO retention_runs (
             id, operator_id, policy_id, policy_version, data_class, provider,
-            cutoff_at, status, preview_counts, requested_by_identity_id,
-            approved_by_identity_id, evidence_reference, requested_at, approved_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'approved',$8,$9,$10,$11,$12,$12)
+            cutoff_at, status, preview_counts, preview_fingerprint,
+            requested_by_identity_id, approved_by_identity_id,
+            evidence_reference, requested_at, approved_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'approved',$8,$9,$10,$11,$12,$13,$13)
         "#,
     )
     .bind(id)
@@ -463,6 +482,7 @@ async fn insert_scheduled_run(
     .bind(&policy.provider)
     .bind(cutoff_at)
     .bind(preview_counts)
+    .bind(preview_fingerprint)
     .bind(schedule.created_by_identity_id)
     .bind(schedule.approved_by_identity_id)
     .bind(&evidence_reference)
@@ -479,6 +499,7 @@ async fn insert_scheduled_run(
         cutoff_at,
         status: "approved".into(),
         preview_counts: preview_counts.clone(),
+        preview_fingerprint: Some(preview_fingerprint.into()),
         deletion_counts: None,
         requested_by_identity_id: schedule.created_by_identity_id,
         approved_by_identity_id: schedule.approved_by_identity_id,
@@ -496,6 +517,7 @@ async fn record_schedule_failure(
     schedule: &RetentionScheduleView,
     error_code: &str,
     preview_counts: &Value,
+    preview_fingerprint: Option<&str>,
     next_run_at: DateTime<Utc>,
     now: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -503,8 +525,8 @@ async fn record_schedule_failure(
         r#"
         INSERT INTO retention_schedule_attempts (
             id, operator_id, schedule_id, scheduled_for, status, error_code,
-            preview_counts, attempted_at, completed_at
-        ) VALUES ($1,$2,$3,$4,'failed',$5,$6,$7,$7)
+            preview_counts, preview_fingerprint, attempted_at, completed_at
+        ) VALUES ($1,$2,$3,$4,'failed',$5,$6,$7,$8,$8)
         "#,
     )
     .bind(Uuid::new_v4())
@@ -513,6 +535,7 @@ async fn record_schedule_failure(
     .bind(schedule.next_run_at)
     .bind(error_code)
     .bind(preview_counts)
+    .bind(preview_fingerprint)
     .bind(now)
     .execute(&mut **transaction)
     .await?;

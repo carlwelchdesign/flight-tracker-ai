@@ -8,6 +8,7 @@ use axum::{
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use sqlx::{PgPool, Postgres, Transaction};
 use thiserror::Error;
 use uuid::Uuid;
@@ -127,6 +128,7 @@ pub struct RetentionRunView {
     pub cutoff_at: DateTime<Utc>,
     pub status: String,
     pub preview_counts: Value,
+    pub preview_fingerprint: Option<String>,
     pub deletion_counts: Option<Value>,
     pub requested_by_identity_id: Uuid,
     pub approved_by_identity_id: Option<Uuid>,
@@ -398,14 +400,16 @@ impl RetentionStore {
         now: DateTime<Utc>,
     ) -> Result<RetentionRunView, RetentionError> {
         let evidence_reference = bounded_reference(&request.evidence_reference)?;
-        let policy = self.policy(actor.operator_id, request.policy_id).await?;
+        let mut transaction = self.database.begin().await?;
+        set_repeatable_read(&mut transaction).await?;
+        let policy = lock_policy(&mut transaction, actor.operator_id, request.policy_id).await?;
         if policy.status != "approved" {
             return Err(RetentionError::InvalidState);
         }
         let cutoff_at = now - Duration::seconds(policy.retention_seconds);
         let data_class = RetentionDataClass::try_from(policy.data_class.as_str())?;
-        let preview_counts = inventory_counts(
-            &self.database,
+        let preview_counts = inventory_counts_transaction(
+            &mut transaction,
             actor.operator_id,
             data_class,
             &policy.provider,
@@ -415,14 +419,22 @@ impl RetentionStore {
         if inventory_total(&preview_counts)? > MAX_DELETE_RECORDS {
             return Err(RetentionError::ScopeTooLarge);
         }
+        let preview_fingerprint = inventory_fingerprint_transaction(
+            &mut transaction,
+            actor.operator_id,
+            data_class,
+            &policy.provider,
+            cutoff_at,
+        )
+        .await?;
         let id = Uuid::new_v4();
         sqlx::query(
             r#"
             INSERT INTO retention_runs (
                 id, operator_id, policy_id, policy_version, data_class, provider,
-                cutoff_at, status, preview_counts, requested_by_identity_id,
-                evidence_reference, requested_at
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,'awaiting_approval',$8,$9,$10,$11)
+                cutoff_at, status, preview_counts, preview_fingerprint,
+                requested_by_identity_id, evidence_reference, requested_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,'awaiting_approval',$8,$9,$10,$11,$12)
             "#,
         )
         .bind(id)
@@ -432,12 +444,14 @@ impl RetentionStore {
         .bind(&policy.data_class)
         .bind(&policy.provider)
         .bind(cutoff_at)
-        .bind(preview_counts)
+        .bind(&preview_counts)
+        .bind(&preview_fingerprint)
         .bind(actor.identity_id)
         .bind(evidence_reference)
         .bind(now)
-        .execute(&self.database)
+        .execute(&mut *transaction)
         .await?;
+        transaction.commit().await?;
         self.run(actor.operator_id, id).await
     }
 
@@ -480,6 +494,7 @@ impl RetentionStore {
         now: DateTime<Utc>,
     ) -> Result<RetentionRunView, RetentionError> {
         let mut transaction = self.database.begin().await?;
+        set_repeatable_read(&mut transaction).await?;
         let run = lock_run(&mut transaction, actor.operator_id, run_id).await?;
         if run.status != "approved" {
             return Err(RetentionError::InvalidState);
@@ -494,6 +509,17 @@ impl RetentionStore {
         )
         .await?;
         if current_counts != run.preview_counts {
+            return Err(RetentionError::InventoryChanged);
+        }
+        let current_fingerprint = inventory_fingerprint_transaction(
+            &mut transaction,
+            actor.operator_id,
+            data_class,
+            &run.provider,
+            run.cutoff_at,
+        )
+        .await?;
+        if run.preview_fingerprint.as_deref() != Some(current_fingerprint.as_str()) {
             return Err(RetentionError::InventoryChanged);
         }
         let affected =
@@ -741,79 +767,13 @@ fn inventory_total(counts: &Value) -> Result<i64, RetentionError> {
     })
 }
 
-async fn inventory_counts(
-    database: &PgPool,
-    operator_id: OperatorId,
-    data_class: RetentionDataClass,
-    provider: &str,
-    cutoff_at: DateTime<Utc>,
-) -> Result<Value, sqlx::Error> {
-    if data_class == RetentionDataClass::NormalizedOperationalFact {
-        let inventory =
-            sqlx::query_as::<_, OperationalFactInventory>(OPERATIONAL_FACT_INVENTORY_SQL)
-                .bind(operator_id.as_uuid())
-                .bind(provider)
-                .bind(cutoff_at)
-                .fetch_one(database)
-                .await?;
-        return Ok(operational_fact_inventory_json(inventory));
-    }
-    if data_class == RetentionDataClass::TerminalAlertHistory {
-        let inventory = sqlx::query_as::<_, AlertHistoryInventory>(ALERT_HISTORY_INVENTORY_SQL)
-            .bind(operator_id.as_uuid())
-            .bind(cutoff_at)
-            .fetch_one(database)
-            .await?;
-        return Ok(json!({
-            "alerts": inventory.alerts,
-            "alert_actions": inventory.alert_actions,
-            "alert_evidence": inventory.alert_evidence,
-        }));
-    }
-    let count = match data_class {
-        RetentionDataClass::ProviderRawPayload => {
-            sqlx::query_scalar::<_, i64>(
-                r#"
-                SELECT COUNT(*) FROM provider_envelopes
-                WHERE operator_id = $1 AND provider = $2
-                  AND received_at < $3 AND raw_payload_deleted_at IS NULL
-                "#,
-            )
-            .bind(operator_id.as_uuid())
-            .bind(provider)
-            .bind(cutoff_at)
-            .fetch_one(database)
-            .await?
-        }
-        RetentionDataClass::AuthorizationAudit => {
-            sqlx::query_scalar::<_, i64>(
-                "SELECT COUNT(*) FROM authorization_audit_events WHERE operator_id = $1 AND occurred_at < $2",
-            )
-            .bind(operator_id.as_uuid())
-            .bind(cutoff_at)
-            .fetch_one(database)
-            .await?
-        }
-        RetentionDataClass::SessionRevocation => {
-            sqlx::query_scalar::<_, i64>(
-                "SELECT COUNT(*) FROM auth_session_revocations WHERE operator_id = $1 AND expires_at < $2",
-            )
-            .bind(operator_id.as_uuid())
-            .bind(cutoff_at)
-            .fetch_one(database)
-            .await?
-        }
-        RetentionDataClass::IdentityMapping => {
-            sqlx::query_scalar::<_, i64>(identity_candidate_count_sql())
-                .bind(operator_id.as_uuid())
-                .bind(cutoff_at)
-                .fetch_one(database)
-                .await?
-        }
-        RetentionDataClass::TerminalAlertHistory => unreachable!(),
-        RetentionDataClass::NormalizedOperationalFact => unreachable!(),
-    };
-    Ok(json!({ data_class.inventory_key(): count }))
+async fn set_repeatable_read(
+    transaction: &mut Transaction<'_, Postgres>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        .execute(&mut **transaction)
+        .await?;
+    Ok(())
 }
 
 async fn inventory_counts_transaction(
@@ -924,6 +884,171 @@ fn identity_candidate_count_sql() -> &'static str {
             )
       )
     "#
+}
+
+async fn inventory_fingerprint_transaction(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    data_class: RetentionDataClass,
+    provider: &str,
+    cutoff_at: DateTime<Utc>,
+) -> Result<String, sqlx::Error> {
+    let mut keys = match data_class {
+        RetentionDataClass::ProviderRawPayload => {
+            sqlx::query_scalar::<_, String>(
+                r#"
+                SELECT 'provider_envelopes:' || id::text
+                FROM provider_envelopes
+                WHERE operator_id = $1 AND provider = $2
+                  AND received_at < $3 AND raw_payload_deleted_at IS NULL
+                "#,
+            )
+            .bind(operator_id.as_uuid())
+            .bind(provider)
+            .bind(cutoff_at)
+            .fetch_all(&mut **transaction)
+            .await?
+        }
+        RetentionDataClass::AuthorizationAudit => {
+            sqlx::query_scalar::<_, String>(
+                r#"
+                SELECT 'authorization_audit_events:' || id::text
+                FROM authorization_audit_events
+                WHERE operator_id = $1 AND occurred_at < $2
+                "#,
+            )
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_all(&mut **transaction)
+            .await?
+        }
+        RetentionDataClass::SessionRevocation => {
+            sqlx::query_scalar::<_, String>(
+                r#"
+                SELECT 'auth_session_revocations:' || id::text
+                FROM auth_session_revocations
+                WHERE operator_id = $1 AND expires_at < $2
+                "#,
+            )
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_all(&mut **transaction)
+            .await?
+        }
+        RetentionDataClass::IdentityMapping => {
+            sqlx::query_scalar::<_, String>(
+                r#"
+                SELECT 'auth_identities:' || identity.id::text
+                FROM auth_identities identity
+                WHERE identity.subject NOT LIKE 'deleted:%'
+                  AND EXISTS (
+                      SELECT 1 FROM operator_memberships own_membership
+                      WHERE own_membership.identity_id = identity.id
+                        AND own_membership.operator_id = $1
+                        AND own_membership.status = 'revoked'
+                        AND own_membership.revoked_at < $2
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM operator_memberships any_membership
+                      WHERE any_membership.identity_id = identity.id
+                        AND (
+                            any_membership.operator_id <> $1
+                            OR any_membership.status <> 'revoked'
+                            OR any_membership.revoked_at IS NULL
+                            OR any_membership.revoked_at >= $2
+                        )
+                  )
+                "#,
+            )
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_all(&mut **transaction)
+            .await?
+        }
+        RetentionDataClass::TerminalAlertHistory => {
+            sqlx::query_scalar::<_, String>(
+                r#"
+                WITH eligible_series AS (
+                    SELECT alert.series_key
+                    FROM alerts alert
+                    LEFT JOIN alert_actions action
+                      ON action.operator_id = alert.operator_id AND action.alert_id = alert.id
+                    WHERE alert.operator_id = $1
+                    GROUP BY alert.series_key
+                    HAVING BOOL_AND(alert.lifecycle IN ('dismissed', 'resolved'))
+                       AND MAX(GREATEST(
+                           alert.event_time,
+                           alert.received_at,
+                           alert.processed_at,
+                           COALESCE(action.occurred_at, alert.processed_at)
+                       )) < $2
+                ), eligible_alerts AS (
+                    SELECT alert.id
+                    FROM alerts alert
+                    JOIN eligible_series series ON series.series_key = alert.series_key
+                    WHERE alert.operator_id = $1
+                )
+                SELECT inventory_key FROM (
+                    SELECT 'alerts:' || alert.id::text AS inventory_key
+                    FROM eligible_alerts alert
+                    UNION ALL
+                    SELECT 'alert_actions:' || action.id::text
+                    FROM alert_actions action
+                    JOIN eligible_alerts alert ON alert.id = action.alert_id
+                    WHERE action.operator_id = $1
+                    UNION ALL
+                    SELECT 'alert_evidence:' || evidence.alert_id::text || ':' || evidence.source_envelope_id::text
+                    FROM alert_evidence evidence
+                    JOIN eligible_alerts alert ON alert.id = evidence.alert_id
+                    WHERE evidence.operator_id = $1
+                ) inventory
+                "#,
+            )
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_all(&mut **transaction)
+            .await?
+        }
+        RetentionDataClass::NormalizedOperationalFact => {
+            sqlx::query_scalar::<_, String>(
+                r#"
+                SELECT fact_type || ':' || record_id::text
+                FROM eligible_normalized_fact_ids($1, $2, $3)
+                "#,
+            )
+            .bind(operator_id.as_uuid())
+            .bind(provider)
+            .bind(cutoff_at)
+            .fetch_all(&mut **transaction)
+            .await?
+        }
+    };
+    keys.sort_unstable();
+    Ok(fingerprint_inventory(
+        data_class, provider, cutoff_at, &keys,
+    ))
+}
+
+fn fingerprint_inventory(
+    data_class: RetentionDataClass,
+    provider: &str,
+    cutoff_at: DateTime<Utc>,
+    keys: &[String],
+) -> String {
+    fn add_component(hasher: &mut Sha256, value: &[u8]) {
+        hasher.update((value.len() as u64).to_be_bytes());
+        hasher.update(value);
+    }
+
+    let mut hasher = Sha256::new();
+    add_component(&mut hasher, b"retention-inventory-v1");
+    add_component(&mut hasher, data_class.as_str().as_bytes());
+    add_component(&mut hasher, provider.as_bytes());
+    add_component(&mut hasher, &cutoff_at.timestamp_micros().to_be_bytes());
+    for key in keys {
+        add_component(&mut hasher, key.as_bytes());
+    }
+    format!("{:x}", hasher.finalize())
 }
 
 async fn execute_data_class(
@@ -1344,7 +1469,7 @@ async fn fetch_run(
     sqlx::query_as(
         r#"
         SELECT id, operator_id, policy_id, policy_version, data_class, provider,
-               cutoff_at, status, preview_counts, deletion_counts,
+               cutoff_at, status, preview_counts, preview_fingerprint, deletion_counts,
                requested_by_identity_id, approved_by_identity_id,
                executed_by_identity_id, evidence_reference, requested_at,
                approved_at, started_at, completed_at
@@ -1388,7 +1513,7 @@ async fn lock_run(
     sqlx::query_as(
         r#"
         SELECT id, operator_id, policy_id, policy_version, data_class, provider,
-               cutoff_at, status, preview_counts, deletion_counts,
+               cutoff_at, status, preview_counts, preview_fingerprint, deletion_counts,
                requested_by_identity_id, approved_by_identity_id,
                executed_by_identity_id, evidence_reference, requested_at,
                approved_at, started_at, completed_at
@@ -1432,6 +1557,7 @@ async fn insert_completion_audit(
         "provider": run.provider,
         "cutoff_at": run.cutoff_at,
         "counts": deletion_counts,
+        "preview_fingerprint": run.preview_fingerprint,
         "requested_by_identity_id": run.requested_by_identity_id,
         "approved_by_identity_id": run.approved_by_identity_id,
         "evidence_reference": run.evidence_reference,
@@ -1467,5 +1593,47 @@ mod tests {
             RetentionDataClass::NormalizedOperationalFact
         );
         assert!(RetentionDataClass::try_from("passenger_records").is_err());
+    }
+
+    #[test]
+    fn inventory_fingerprint_binds_scope_cutoff_and_exact_record_keys() {
+        let cutoff = DateTime::from_timestamp_micros(1_750_000_000_123_456).unwrap();
+        let first = vec!["provider_envelopes:00000000-0000-0000-0000-000000000001".into()];
+        let replacement = vec!["provider_envelopes:00000000-0000-0000-0000-000000000002".into()];
+
+        let fingerprint = fingerprint_inventory(
+            RetentionDataClass::ProviderRawPayload,
+            "provider-a",
+            cutoff,
+            &first,
+        );
+        assert_eq!(fingerprint.len(), 64);
+        assert_ne!(
+            fingerprint,
+            fingerprint_inventory(
+                RetentionDataClass::ProviderRawPayload,
+                "provider-a",
+                cutoff,
+                &replacement,
+            )
+        );
+        assert_ne!(
+            fingerprint,
+            fingerprint_inventory(
+                RetentionDataClass::ProviderRawPayload,
+                "provider-b",
+                cutoff,
+                &first,
+            )
+        );
+        assert_ne!(
+            fingerprint,
+            fingerprint_inventory(
+                RetentionDataClass::AuthorizationAudit,
+                "provider-a",
+                cutoff,
+                &first,
+            )
+        );
     }
 }
