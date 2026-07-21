@@ -6,12 +6,12 @@ Last updated: 2026-07-21
 
 - Current milestone: M3 — Commercial flight data and operational workflow
 - External gate: FT-301 — provider procurement evidence pending after handoff PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
-- Active engineering ticket: FT-401 — Complete security, privacy, and trust review
+- Active engineering ticket: FT-401 — Blocked on provider, hosted-environment, drill, and owner-approval evidence
 - Branch: `docs/ft-401-security-trust-review`
 - Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; completion gate remains open)
 - Owner: Security, legal/privacy, product, and engineering
-- Overall status: M0, M1, and M2 are complete; M3 remains externally gated while dependency-safe FT-401 review preparation is in progress
-- Next action: Execute the documented security, audit/retention, backup/restore, and hosted-identity drills in managed environments; shared-identity disposition and hosted reviews remain owner dependent, while commercial provider values remain blocked on FT-301.
+- Overall status: M0, M1, and M2 are complete; M3 and the remaining delivery path are externally blocked after dependency-safe FT-401 controls and verifier preparation
+- Next action: Accountable Product/Legal/operator/Platform owners provide terminal FT-301 provider evidence, managed preview/database/secret infrastructure, shared-identity and wording decisions, and controlled hosted drill results. Resume FT-401/FT-302 only when their recorded dependencies are satisfied.
 
 ## Milestone checklist
 
@@ -73,6 +73,7 @@ Last updated: 2026-07-21
 - Bounded-write commit `cd08649` enforces matching Rust/PostgreSQL limits for dispatcher notes, action identifiers, and session-revocation reasons, normalizes idempotency, and surfaces the note limit in the console. CI run [29844162906](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29844162906) passes all three jobs including API and direct-database rejection.
 - Sensitive-write monitoring commit `d975ac3` detects controlled credential/email patterns in dispatcher comments and session-revocation reasons while returning only redacted tenant-scoped signals. CI run [29845085036](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29845085036) passes all three jobs and proves detection, non-leakage, ordinary-text rejection, and cross-tenant isolation against fresh PostGIS. F401-007 remains open only for the representative hosted audit/retention incident drill.
 - Hosted-drill verifier commits `943bb65` and `f3d3e08` add sanitized fail-closed checks for administrator audit/export/monitoring/integrity access, viewer/operator denial, marker redaction, expected signal severities, cross-tenant exclusion, and exact retention disposition counts. CI run [29846123252](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29846123252) passes the ten-case verifier suite and all Rust, web, and PostGIS jobs. The hosted execution itself remains open under F401-007.
+- The 2026-07-21 dependency audit leaves FT-401 blocked: the complete FT-301 validator still fails on all provider rights/SLA/price/trial evidence and the final decision; the complete FT-401 validator still fails on F401-001/002/003/005/006/007/008/009; draft PR #18 has green code checks but no deployment/drill evidence; and FT-302, FT-402, FT-403, and FT-404 remain chained behind those gates. Do not start a downstream feature branch or merge PR #18 until the corresponding external evidence exists.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
