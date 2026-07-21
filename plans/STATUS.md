@@ -7,10 +7,10 @@ Last updated: 2026-07-20
 - Current milestone: M2 — Live weather and hazard intelligence
 - Active ticket: FT-201 — Ingest and normalize NOAA aviation weather
 - Branch: `feat/ft-201-noaa-weather-ingestion`
-- Pull request: Pending (branch depends on [#8](https://github.com/carlwelchdesign/flight-tracker-ai/pull/8))
+- Pull request: Pending
 - Owner: Backend/data engineering
-- Overall status: M0 and M1 implementation are complete; FT-201 is in progress while FT-104 awaits merge
-- Next action: Implement the rate-disciplined NOAA client, METAR/SIGMET normalization, transactional persistence, and source-health policy; open the FT-201 PR after #8 merges.
+- Overall status: M0 and M1 are merged; FT-201 is in progress
+- Next action: Finish FT-201 database/runtime verification, record its acceptance evidence, and open the ticket PR.
 
 ## Milestone checklist
 
@@ -44,7 +44,7 @@ Last updated: 2026-07-20
 - FT-101 is merged through PR #5 at `efc2cf6` with all required checks passing.
 - FT-102 is merged through PR #6 at `aed432d` with all required checks passing.
 - FT-103 is merged through PR #7 at `18a5a23` with all required checks passing.
-- FT-104 implementation is complete at `c03c4f0` through PR #8; Rust, web, and API/PostGIS smoke checks pass, and the PR awaits human review and merge.
+- FT-104 is merged through PR #8 at `da1a6ad` with all required checks passing.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

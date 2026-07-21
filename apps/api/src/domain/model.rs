@@ -4,8 +4,9 @@ use serde_json::Value;
 use thiserror::Error;
 
 use super::{
-    AircraftPositionId, AlertActionId, AlertId, FlightId, GeoLineString, GeoPoint, GeoPolygon,
-    OperatorId, PlannedRouteId, ProviderEnvelopeId, SourceHealthId, WeatherHazardId,
+    AircraftPositionId, AirportObservationId, AlertActionId, AlertId, FlightId, GeoLineString,
+    GeoPoint, GeoPolygon, OperatorId, PlannedRouteId, ProviderEnvelopeId, SourceHealthId,
+    WeatherHazardId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -238,11 +239,49 @@ pub struct PlannedRoute {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum FlightCategory {
+    Visual,
+    MarginalVisual,
+    Instrument,
+    LowInstrument,
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AirportObservation {
+    pub id: AirportObservationId,
+    pub operator_id: OperatorId,
+    pub schema_version: SchemaVersion,
+    pub source: SourceAttribution,
+    pub times: EventTimes,
+    pub station_code: String,
+    pub report_type: String,
+    pub raw_text: String,
+    pub provider_received_at: DateTime<Utc>,
+    pub point: GeoPoint,
+    pub wind_direction_true_degrees: Option<HeadingDegrees>,
+    pub wind_speed: Option<Speed>,
+    pub wind_gust: Option<Speed>,
+    pub visibility_statute_miles: Option<f64>,
+    pub visibility_greater_than: bool,
+    pub ceiling: Option<Altitude>,
+    pub flight_category: FlightCategory,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum HazardSeverity {
     Advisory,
     Significant,
     Severe,
     Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WeatherHazardStatus {
+    Active,
+    Cancelled,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -252,6 +291,12 @@ pub struct WeatherHazard {
     pub schema_version: SchemaVersion,
     pub source: SourceAttribution,
     pub times: EventTimes,
+    pub external_series_id: String,
+    pub revision: u32,
+    pub supersedes_id: Option<WeatherHazardId>,
+    pub status: WeatherHazardStatus,
+    pub issued_at: DateTime<Utc>,
+    pub provider_received_at: Option<DateTime<Utc>>,
     pub hazard_type: String,
     pub severity: HazardSeverity,
     pub valid_from: DateTime<Utc>,
@@ -335,7 +380,10 @@ pub struct SourceHealth {
     pub feed: String,
     pub state: SourceHealthState,
     pub observed_at: DateTime<Utc>,
+    pub last_attempt_at: DateTime<Utc>,
     pub last_success_at: Option<DateTime<Utc>>,
+    pub newest_event_at: Option<DateTime<Utc>>,
+    pub consecutive_failures: u32,
     pub delay_seconds: Option<u64>,
     pub stale_after_seconds: u64,
     pub last_error_code: Option<String>,
@@ -349,6 +397,7 @@ pub enum CanonicalEvent {
     Flight(Flight),
     AircraftPosition(AircraftPosition),
     PlannedRoute(PlannedRoute),
+    AirportObservation(AirportObservation),
     WeatherHazard(WeatherHazard),
     Alert(Alert),
     AlertAction(AlertAction),

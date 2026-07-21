@@ -43,6 +43,7 @@ macro_rules! define_id {
 
 define_id!(OperatorId);
 define_id!(ProviderEnvelopeId);
+define_id!(AirportObservationId);
 define_id!(FlightId);
 define_id!(AircraftPositionId);
 define_id!(PlannedRouteId);

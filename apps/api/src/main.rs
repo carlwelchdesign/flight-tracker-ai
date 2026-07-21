@@ -4,9 +4,13 @@ use std::time::Duration;
 
 use config::Config;
 use flight_tracker_api::{
-    build_router_with_runtime,
+    build_router_with_runtime_and_ingestion,
     health::CriticalWorkerRegistry,
+    ingestion::{IngestionHub, IngestionSubscription},
     replay::{ReplayHandle, ReplayScenario, spawn_replay_runtime},
+    weather::noaa::{
+        NoaaClient, NoaaClientConfig, NoaaRuntimeConfig, NoaaStore, RetryPolicy, spawn_noaa_runtime,
+    },
 };
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
@@ -32,6 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sqlx::migrate!("../../migrations").run(&database).await?;
 
     let workers = CriticalWorkerRegistry::default();
+    let mut ingestion_subscriptions = Vec::<IngestionSubscription>::new();
     let replay = if let Some(replay_config) = config.replay {
         let scenario = ReplayScenario::load(&replay_config.scenario_path)?;
         let scenario_id = scenario.id.clone();
@@ -51,11 +56,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
+    if let Some(noaa_config) = config.noaa {
+        let operator_exists =
+            sqlx::query_scalar::<_, bool>("SELECT EXISTS (SELECT 1 FROM operators WHERE id = $1)")
+                .bind(noaa_config.operator_id.as_uuid())
+                .fetch_one(&database)
+                .await?;
+        if !operator_exists {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "NOAA_OPERATOR_ID must reference an existing operator",
+            )
+            .into());
+        }
+        let ingestion = IngestionHub::new(256);
+        ingestion_subscriptions.push(ingestion.subscription("noaa_projection"));
+        let client = NoaaClient::new(NoaaClientConfig {
+            base_url: noaa_config.base_url,
+            user_agent: noaa_config.user_agent,
+            connect_timeout: Duration::from_secs(5),
+            request_timeout: Duration::from_secs(10),
+            retry: RetryPolicy::default(),
+        })?;
+        spawn_noaa_runtime(
+            client,
+            NoaaStore::new(database.clone()),
+            ingestion,
+            NoaaRuntimeConfig {
+                operator_id: noaa_config.operator_id,
+                stations: noaa_config.stations,
+                poll_interval: noaa_config.poll_interval,
+                metar_stale_after: noaa_config.metar_stale_after,
+                air_sigmet_stale_after: noaa_config.air_sigmet_stale_after,
+            },
+            workers.register("noaa_weather_ingestion"),
+        )?;
+        tracing::info!("NOAA aviation weather ingestion enabled");
+    }
+
     let listener = TcpListener::bind(config.bind_address).await?;
     tracing::info!(address = %config.bind_address, "API listening");
     axum::serve(
         listener,
-        build_router_with_runtime(database, replay, workers),
+        build_router_with_runtime_and_ingestion(database, replay, workers, ingestion_subscriptions),
     )
     .with_graceful_shutdown(shutdown_signal())
     .await?;

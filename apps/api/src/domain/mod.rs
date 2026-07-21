@@ -12,13 +12,14 @@ pub use geometry::{
     CoordinateError, GeoLineString, GeoPoint, GeoPolygon, LatitudeDegrees, LongitudeDegrees,
 };
 pub use identity::{
-    AircraftPositionId, AlertActionId, AlertId, FlightId, OperatorId, PlannedRouteId,
-    ProviderEnvelopeId, SourceHealthId, WeatherHazardId,
+    AircraftPositionId, AirportObservationId, AlertActionId, AlertId, FlightId, OperatorId,
+    PlannedRouteId, ProviderEnvelopeId, SourceHealthId, WeatherHazardId,
 };
 pub use model::{
-    AircraftPosition, Alert, AlertAction, AlertActionKind, AlertLifecycle, AlertSeverity, Altitude,
-    AltitudeBand, AltitudeReference, AltitudeUnit, CanonicalEvent, EventTimes, Flight,
-    FlightStatus, HazardSeverity, HeadingDegrees, MeasurementError, PlannedRoute, ProviderEnvelope,
-    SchemaVersion, SourceAttribution, SourceHealth, SourceHealthState, SourceQuality, Speed,
-    SpeedUnit, TimeValidationError, WeatherHazard,
+    AircraftPosition, AirportObservation, Alert, AlertAction, AlertActionKind, AlertLifecycle,
+    AlertSeverity, Altitude, AltitudeBand, AltitudeReference, AltitudeUnit, CanonicalEvent,
+    EventTimes, Flight, FlightCategory, FlightStatus, HazardSeverity, HeadingDegrees,
+    MeasurementError, PlannedRoute, ProviderEnvelope, SchemaVersion, SourceAttribution,
+    SourceHealth, SourceHealthState, SourceQuality, Speed, SpeedUnit, TimeValidationError,
+    WeatherHazard, WeatherHazardStatus,
 };

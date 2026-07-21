@@ -1,8 +1,14 @@
-use std::{env, net::SocketAddr, path::PathBuf};
+use std::{env, net::SocketAddr, path::PathBuf, time::Duration};
 
+use flight_tracker_api::domain::OperatorId;
+use reqwest::Url;
 use thiserror::Error;
+use uuid::Uuid;
 
 const DEFAULT_BIND_ADDRESS: &str = "0.0.0.0:8080";
+const DEFAULT_NOAA_BASE_URL: &str = "https://aviationweather.gov/";
+const DEFAULT_NOAA_USER_AGENT: &str =
+    "flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppEnvironment {
@@ -16,10 +22,22 @@ pub struct ReplayConfig {
 }
 
 #[derive(Debug, Clone)]
+pub struct NoaaConfig {
+    pub operator_id: OperatorId,
+    pub stations: Vec<String>,
+    pub base_url: Url,
+    pub user_agent: String,
+    pub poll_interval: Duration,
+    pub metar_stale_after: Duration,
+    pub air_sigmet_stale_after: Duration,
+}
+
+#[derive(Debug, Clone)]
 pub struct Config {
     pub bind_address: SocketAddr,
     pub database_url: String,
     pub replay: Option<ReplayConfig>,
+    pub noaa: Option<NoaaConfig>,
 }
 
 #[derive(Debug, Error)]
@@ -36,6 +54,18 @@ pub enum ConfigError {
     ReplayControlsForbidden,
     #[error("REPLAY_SCENARIO_PATH must be set when replay controls are enabled")]
     MissingReplayScenarioPath,
+    #[error("ENABLE_NOAA_WEATHER must be true or false")]
+    InvalidNoaaToggle,
+    #[error("NOAA_OPERATOR_ID must be a UUID when NOAA ingestion is enabled")]
+    InvalidNoaaOperator,
+    #[error("NOAA_METAR_STATIONS must contain one or more comma-separated ICAO codes")]
+    MissingNoaaStations,
+    #[error("NOAA_API_BASE_URL must be a valid URL")]
+    InvalidNoaaBaseUrl,
+    #[error("NOAA_USER_AGENT must identify the application")]
+    MissingNoaaUserAgent,
+    #[error("NOAA_POLL_INTERVAL_SECONDS must be an integer of at least 60")]
+    InvalidNoaaPollInterval,
 }
 
 impl Config {
@@ -74,12 +104,70 @@ impl Config {
         } else {
             None
         };
+        let noaa_enabled = parse_bool(
+            lookup("ENABLE_NOAA_WEATHER").as_deref().unwrap_or("false"),
+            ConfigError::InvalidNoaaToggle,
+        )?;
+        let noaa = if noaa_enabled {
+            let operator_id = lookup("NOAA_OPERATOR_ID")
+                .and_then(|value| Uuid::parse_str(&value).ok())
+                .map(OperatorId::from_uuid)
+                .ok_or(ConfigError::InvalidNoaaOperator)?;
+            let stations = lookup("NOAA_METAR_STATIONS")
+                .unwrap_or_default()
+                .split(',')
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_ascii_uppercase)
+                .collect::<Vec<_>>();
+            if stations.is_empty() {
+                return Err(ConfigError::MissingNoaaStations);
+            }
+            let base_url = Url::parse(
+                lookup("NOAA_API_BASE_URL")
+                    .as_deref()
+                    .unwrap_or(DEFAULT_NOAA_BASE_URL),
+            )
+            .map_err(|_| ConfigError::InvalidNoaaBaseUrl)?;
+            let user_agent =
+                lookup("NOAA_USER_AGENT").unwrap_or_else(|| DEFAULT_NOAA_USER_AGENT.into());
+            if user_agent.trim().is_empty() {
+                return Err(ConfigError::MissingNoaaUserAgent);
+            }
+            let poll_interval_seconds = lookup("NOAA_POLL_INTERVAL_SECONDS")
+                .as_deref()
+                .unwrap_or("60")
+                .parse::<u64>()
+                .ok()
+                .filter(|value| *value >= 60)
+                .ok_or(ConfigError::InvalidNoaaPollInterval)?;
+            Some(NoaaConfig {
+                operator_id,
+                stations,
+                base_url,
+                user_agent,
+                poll_interval: Duration::from_secs(poll_interval_seconds),
+                metar_stale_after: Duration::from_secs(15 * 60),
+                air_sigmet_stale_after: Duration::from_secs(3 * 60),
+            })
+        } else {
+            None
+        };
 
         Ok(Self {
             bind_address,
             database_url,
             replay,
+            noaa,
         })
+    }
+}
+
+fn parse_bool(value: &str, error: ConfigError) -> Result<bool, ConfigError> {
+    match value {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err(error),
     }
 }
 
@@ -137,5 +225,36 @@ mod tests {
             .replay
             .is_some()
         );
+    }
+
+    #[test]
+    fn noaa_ingestion_is_disabled_by_default_and_validated_when_enabled() {
+        assert!(config(&[]).unwrap().noaa.is_none());
+        assert!(matches!(
+            config(&[("ENABLE_NOAA_WEATHER", "true")]),
+            Err(ConfigError::InvalidNoaaOperator)
+        ));
+        let configured = config(&[
+            ("ENABLE_NOAA_WEATHER", "true"),
+            ("NOAA_OPERATOR_ID", "00000000-0000-0000-0000-000000000001"),
+            ("NOAA_METAR_STATIONS", "ksfo, koak"),
+        ])
+        .unwrap()
+        .noaa
+        .unwrap();
+        assert_eq!(configured.stations, vec!["KSFO", "KOAK"]);
+        assert_eq!(configured.poll_interval, Duration::from_secs(60));
+    }
+
+    #[test]
+    fn noaa_poll_interval_cannot_violate_provider_rate_discipline() {
+        let error = config(&[
+            ("ENABLE_NOAA_WEATHER", "true"),
+            ("NOAA_OPERATOR_ID", "00000000-0000-0000-0000-000000000001"),
+            ("NOAA_METAR_STATIONS", "KSFO"),
+            ("NOAA_POLL_INTERVAL_SECONDS", "59"),
+        ])
+        .unwrap_err();
+        assert!(matches!(error, ConfigError::InvalidNoaaPollInterval));
     }
 }
