@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { parseBackendHealth } from "@/lib/backend-health";
+import { parseAuthContext, type AuthContext } from "@/lib/auth-model";
 import type { FleetEvent, FleetLoadResult, FlightPage, FlightView, TimelinePage } from "@/lib/fleet-api";
 import { parseFleetEvent, parseFlightPage, parseTimelinePage } from "@/lib/fleet-api";
 import type {
@@ -27,11 +29,13 @@ import { AlertQueue } from "./alert-queue";
 type ReplayPhase = "running" | "paused" | "completed" | "unavailable";
 
 type OperationsConsoleProps = {
+  authContext: AuthContext;
   initialFleet: FleetLoadResult;
   initialWeather: WeatherLoadResult;
 };
 
-export function OperationsConsole({ initialFleet, initialWeather }: OperationsConsoleProps) {
+export function OperationsConsole({ authContext, initialFleet, initialWeather }: OperationsConsoleProps) {
+  const [sessionActive, setSessionActive] = useState(true);
   const [flights, setFlights] = useState<FlightView[]>(
     initialFleet.state === "ready" ? initialFleet.page.data : [],
   );
@@ -77,6 +81,30 @@ export function OperationsConsole({ initialFleet, initialWeather }: OperationsCo
   );
   const [eventRevision, setEventRevision] = useState(0);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function verifySession() {
+      try {
+        const response = await fetch("/api/backend/api/auth/context", { cache: "no-store" });
+        if (response.status === 401 || response.status === 403) {
+          if (!cancelled) setSessionActive(false);
+          return;
+        }
+        if (!response.ok) return;
+        parseAuthContext(await response.json());
+        if (!cancelled) setSessionActive(true);
+      } catch {
+        // A transient network error is surfaced by the existing service-health UI.
+      }
+    }
+    void verifySession();
+    const interval = setInterval(() => void verifySession(), 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const selected = flights.find((view) => view.flight.id === selectedId) ?? null;
   const referenceTime = fleetReferenceTime(flights);
@@ -355,6 +383,17 @@ export function OperationsConsole({ initialFleet, initialWeather }: OperationsCo
     }
   }
 
+  if (!sessionActive) {
+    return (
+      <main className="session-state">
+        <p className="section-kicker">Session ended</p>
+        <h1>Operations data has been cleared from view</h1>
+        <p>Your session expired or was revoked. Sign in again to restore authorized access.</p>
+        <Link href="/sign-in">Open secure sign in</Link>
+      </main>
+    );
+  }
+
   return (
     <main className="operations-shell">
       <a className="skip-link" href="#flight-board">Skip to flight board</a>
@@ -363,7 +402,7 @@ export function OperationsConsole({ initialFleet, initialWeather }: OperationsCo
           <span className="product-mark" aria-hidden="true"><i /><i /><i /></span>
           <div>
             <p>Flight Tracker AI</p>
-            <span>Operations intelligence · advisory</span>
+            <span>{authContext.operator_name} · {authContext.role}</span>
           </div>
         </div>
 
@@ -459,7 +498,7 @@ export function OperationsConsole({ initialFleet, initialWeather }: OperationsCo
         />
         <div className="alert-queue-slot">
           <AlertQueue
-            operatorId={selected?.flight.operator_id ?? flights[0]?.flight.operator_id ?? null}
+            canManage={authContext.role !== "viewer"}
             refreshRevision={eventRevision}
           />
         </div>

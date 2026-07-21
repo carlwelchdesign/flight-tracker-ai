@@ -5,6 +5,7 @@ use std::time::Duration;
 use config::Config;
 use flight_tracker_api::{
     alerting::spawn_alert_worker,
+    auth::{AuthService, AuthStore, InternalAssertionVerifier},
     build_router_with_runtime_and_ingestion,
     health::CriticalWorkerRegistry,
     ingestion::{IngestionHub, IngestionSubscription},
@@ -35,6 +36,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     sqlx::migrate!("../../migrations").run(&database).await?;
+
+    let auth_store = AuthStore::new(database.clone());
+    if let Some(identity) = config.auth.development_identity.as_ref() {
+        auth_store.bootstrap_development(identity).await?;
+    }
+    let auth = AuthService::new(
+        InternalAssertionVerifier::new(config.auth.assertion.clone())?,
+        auth_store,
+    );
 
     let workers = CriticalWorkerRegistry::default();
     let mut ingestion_subscriptions = Vec::<IngestionSubscription>::new();
@@ -104,7 +114,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(address = %config.bind_address, "API listening");
     axum::serve(
         listener,
-        build_router_with_runtime_and_ingestion(database, replay, workers, ingestion_subscriptions),
+        build_router_with_runtime_and_ingestion(
+            database,
+            replay,
+            workers,
+            ingestion_subscriptions,
+            auth,
+        ),
     )
     .with_graceful_shutdown(shutdown_signal())
     .await?;

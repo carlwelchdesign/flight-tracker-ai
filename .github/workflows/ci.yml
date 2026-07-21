@@ -42,6 +42,11 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+        env:
+          AUTH_MODE: development
+          INTERNAL_AUTH_SECRET: ci-internal-auth-secret-at-least-thirty-two-bytes
+          DEV_AUTH_TENANT_ID: ci-flight-tracker
+          DEV_AUTH_SUBJECT: ci-admin
 
   integration:
     name: API and PostGIS smoke test
@@ -73,6 +78,14 @@ jobs:
           DATABASE_URL: postgres://flight_tracker:flight_tracker@127.0.0.1:5432/flight_tracker
           API_BIND_ADDRESS: 127.0.0.1:8080
           APP_ENV: development
+          AUTH_MODE: development
+          INTERNAL_AUTH_SECRET: ci-internal-auth-secret-at-least-thirty-two-bytes
+          AUTH_ASSERTION_ISSUER: flight-tracker-web
+          AUTH_ASSERTION_AUDIENCE: flight-tracker-api
+          DEV_AUTH_OPERATOR_ID: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+          DEV_AUTH_TENANT_ID: ci-flight-tracker
+          DEV_AUTH_SUBJECT: ci-admin
+          DEV_AUTH_ROLE: administrator
           ENABLE_REPLAY_CONTROLS: "true"
           REPLAY_SCENARIO_PATH: fixtures/replay/m1-operations-v1.json
         run: target/debug/flight-tracker-api > /tmp/flight-tracker-api.log 2>&1 &
@@ -92,15 +105,36 @@ jobs:
           grep '"postgis":"ok"' /tmp/readiness.json
       - name: Verify replay alert lifecycle
         run: |
+          assertion="$(python3 - <<'PY'
+          import base64, hashlib, hmac, json, time, uuid
+          def encode(value):
+              return base64.urlsafe_b64encode(json.dumps(value, separators=(',', ':')).encode()).decode().rstrip('=')
+          now = int(time.time())
+          header = encode({'alg': 'HS256', 'typ': 'JWT'})
+          payload = encode({
+              'iss': 'flight-tracker-web', 'aud': 'flight-tracker-api', 'sub': 'ci-admin',
+              'provider': 'development', 'tenant': 'ci-flight-tracker', 'sid': 'ci-session',
+              'jti': str(uuid.uuid4()), 'iat': now, 'nbf': now, 'exp': now + 60,
+          })
+          unsigned = f'{header}.{payload}'
+          signature = base64.urlsafe_b64encode(hmac.new(
+              b'ci-internal-auth-secret-at-least-thirty-two-bytes', unsigned.encode(), hashlib.sha256
+          ).digest()).decode().rstrip('=')
+          print(f'{unsigned}.{signature}')
+          PY
+          )"
           curl --fail --silent --request POST \
+            --header "authorization: Bearer ${assertion}" \
             --header 'content-type: application/json' \
             --data '{"speed":"8x"}' \
             http://127.0.0.1:8080/api/dev/replay/speed > /dev/null
           curl --fail --silent --request POST \
+            --header "authorization: Bearer ${assertion}" \
             http://127.0.0.1:8080/api/dev/replay/resume > /dev/null
           for attempt in {1..30}; do
             curl --fail --silent \
-              'http://127.0.0.1:8080/api/alerts?operator_id=9c704a09-a62c-43d5-bac6-94ea2fd53b32' \
+              --header "authorization: Bearer ${assertion}" \
+              'http://127.0.0.1:8080/api/alerts' \
               > /tmp/alerts.json
             if grep --quiet '"alert_type":"route_hazard_proximity"' /tmp/alerts.json; then
               break
@@ -126,12 +160,13 @@ jobs:
           PY
           alert_id="$(< /tmp/alert-id)"
           curl --fail --silent --request POST \
+            --header "authorization: Bearer ${assertion}" \
             --header 'content-type: application/json' \
-            --data '{"operator_id":"9c704a09-a62c-43d5-bac6-94ea2fd53b32","action":"acknowledge","actor_id":"dispatcher:ci","idempotency_key":"ci-replay-ack","comment":null}' \
+            --data '{"action":"acknowledge","idempotency_key":"ci-replay-ack","comment":null}' \
             "http://127.0.0.1:8080/api/alerts/${alert_id}/actions" \
             > /tmp/alert-detail.json
           grep --quiet '"lifecycle":"acknowledged"' /tmp/alert-detail.json
-          grep --quiet '"actor_id":"dispatcher:ci"' /tmp/alert-detail.json
+          grep --quiet '"actor_id":"ci-admin"' /tmp/alert-detail.json
       - name: Verify schema and route-rule contracts
         env:
           TEST_DATABASE_URL: postgres://flight_tracker:flight_tracker@127.0.0.1:5432/flight_tracker?sslmode=disable

@@ -82,12 +82,12 @@ type WeatherPage<T> = { data: T[]; generated_at: string };
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
 
-export async function getInitialWeather(): Promise<WeatherLoadResult> {
+export async function getInitialWeather(assertion: string): Promise<WeatherLoadResult> {
   try {
     const [hazards, observations, health] = await Promise.all([
-      fetchJson("/api/hazards"),
-      fetchJson("/api/airport-observations"),
-      fetchJson("/api/source-health"),
+      fetchJson("/api/hazards", assertion),
+      fetchJson("/api/airport-observations", assertion),
+      fetchJson("/api/source-health", assertion),
     ]);
     return { state: "ready", snapshot: parseWeatherSnapshot(hazards, observations, health) };
   } catch (error) {
@@ -199,8 +199,9 @@ function parseSourceHealth(value: unknown): WeatherSourceHealth {
   return value as WeatherSourceHealth;
 }
 
-async function fetchJson(path: string): Promise<unknown> {
+async function fetchJson(path: string, assertion: string): Promise<unknown> {
   const response = await fetch(`${apiBaseUrl()}${path}`, {
+    headers: { authorization: `Bearer ${assertion}` },
     cache: "no-store",
     signal: AbortSignal.timeout(2_500),
   });

@@ -3,6 +3,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::{sync::Mutex, task::JoinHandle};
 
 use crate::{
+    domain::OperatorId,
     health::WorkerProbe,
     ingestion::{IngestionHub, NormalizedEventBatch},
 };
@@ -29,6 +30,10 @@ impl ReplayHandle {
 
     pub async fn status(&self) -> ReplayStatus {
         self.engine.lock().await.status()
+    }
+
+    pub async fn operator_id(&self) -> OperatorId {
+        self.engine.lock().await.operator_id()
     }
 
     pub async fn pause(&self) -> ReplayStatus {

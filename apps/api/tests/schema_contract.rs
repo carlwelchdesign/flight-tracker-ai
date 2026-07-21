@@ -2,11 +2,15 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use chrono::{TimeZone, Utc};
+use chrono::{Duration, TimeZone, Utc};
 use flight_tracker_api::{
     alerting::{
         AlertActionRequest, AlertStore, CreateAlertResult, RouteHazardInput, RouteHazardRule,
         candidate_from_route_hazard,
+    },
+    auth::{
+        AssertionClaims, AssertionConfig, AuthRole, AuthService, AuthStore, DevelopmentIdentity,
+        InternalAssertionVerifier, SessionRevocation,
     },
     build_router,
     domain::{
@@ -19,6 +23,7 @@ use flight_tracker_api::{
     },
 };
 use http_body_util::BodyExt;
+use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use serde_json::Value;
 use sqlx::PgPool;
 use tower::ServiceExt;
@@ -37,7 +42,55 @@ const REQUIRED_TABLES: &[&str] = &[
     "alert_actions",
     "source_health",
     "ingestion_failures",
+    "auth_identities",
+    "operator_memberships",
+    "auth_session_revocations",
+    "authorization_audit_events",
 ];
+
+async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthService, String) {
+    const SECRET: &str = "schema-contract-internal-secret-at-least-32-bytes";
+    let store = AuthStore::new(pool.clone());
+    store
+        .bootstrap_development(&DevelopmentIdentity {
+            operator_id,
+            operator_code: format!("T{}", &operator_id.as_uuid().simple().to_string()[..6]),
+            operator_name: "NOAA Test".into(),
+            external_tenant_id: format!("test-{}", operator_id.as_uuid()),
+            subject: "schema-contract-admin".into(),
+            display_name: "Schema Contract Administrator".into(),
+            role: AuthRole::Administrator,
+        })
+        .await
+        .unwrap();
+    let now = Utc::now();
+    let claims = AssertionClaims {
+        iss: "schema-contract-web".into(),
+        aud: "schema-contract-api".into(),
+        sub: "schema-contract-admin".into(),
+        provider: "development".into(),
+        tenant: format!("test-{}", operator_id.as_uuid()),
+        sid: "schema-contract-session".into(),
+        jti: Uuid::new_v4().to_string(),
+        iat: now.timestamp() as u64,
+        nbf: now.timestamp() as u64,
+        exp: (now + Duration::seconds(60)).timestamp() as u64,
+    };
+    let token = encode(
+        &Header::new(Algorithm::HS256),
+        &claims,
+        &EncodingKey::from_secret(SECRET.as_bytes()),
+    )
+    .unwrap();
+    let verifier = InternalAssertionVerifier::new(AssertionConfig {
+        secret: SECRET.into(),
+        issuer: "schema-contract-web".into(),
+        audience: "schema-contract-api".into(),
+        leeway_seconds: 0,
+    })
+    .unwrap();
+    (AuthService::new(verifier, store), format!("Bearer {token}"))
+}
 
 /// This contract test is enabled in the integration job by TEST_DATABASE_URL.
 /// Unit-only environments skip it because a real PostGIS instance is required.
@@ -94,6 +147,88 @@ async fn canonical_schema_migrates_with_spatial_and_tenant_invariants() {
     assert_cross_operator_source_reference_is_rejected(&pool).await;
     assert_noaa_records_are_transactional_idempotent_and_revisioned(&pool).await;
     assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(&pool).await;
+    assert_identity_tenant_revocation_and_audit_are_fail_closed(&pool).await;
+}
+
+async fn assert_identity_tenant_revocation_and_audit_are_fail_closed(pool: &PgPool) {
+    let operator_id = OperatorId::from_uuid(Uuid::new_v4());
+    let other_operator_id = Uuid::new_v4();
+    let subject = format!("identity-{}", Uuid::new_v4());
+    let tenant = format!("tenant-{}", Uuid::new_v4());
+    let other_tenant = format!("tenant-{}", Uuid::new_v4());
+    let store = AuthStore::new(pool.clone());
+    store
+        .bootstrap_development(&DevelopmentIdentity {
+            operator_id,
+            operator_code: format!("A{}", &operator_id.as_uuid().simple().to_string()[..6]),
+            operator_name: "Tenant A".into(),
+            external_tenant_id: tenant.clone(),
+            subject: subject.clone(),
+            display_name: "Tenant Administrator".into(),
+            role: AuthRole::Administrator,
+        })
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO operators (id, code, display_name, identity_provider, external_tenant_id) VALUES ($1,$2,'Tenant B','development',$3)",
+    )
+    .bind(other_operator_id)
+    .bind(format!("B{}", &other_operator_id.simple().to_string()[..6]))
+    .bind(&other_tenant)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let now = Utc::now();
+    let claims = AssertionClaims {
+        iss: "test-web".into(),
+        aud: "test-api".into(),
+        sub: subject.clone(),
+        provider: "development".into(),
+        tenant: tenant.clone(),
+        sid: Uuid::new_v4().to_string(),
+        jti: Uuid::new_v4().to_string(),
+        iat: now.timestamp() as u64,
+        nbf: now.timestamp() as u64,
+        exp: (now + Duration::minutes(5)).timestamp() as u64,
+    };
+    let context = store.resolve(&claims).await.unwrap();
+    assert_eq!(context.operator_id, operator_id);
+
+    let mut cross_tenant = claims.clone();
+    cross_tenant.tenant = other_tenant;
+    assert!(store.resolve(&cross_tenant).await.is_err());
+
+    store
+        .revoke_session(
+            &context,
+            &SessionRevocation {
+                provider: "development".into(),
+                session_id: claims.sid.clone(),
+                identity_id: context.identity_id,
+                reason: "contract revocation".into(),
+                expires_at: now + Duration::minutes(5),
+                requested_at: now,
+            },
+        )
+        .await
+        .unwrap();
+    assert!(store.resolve(&claims).await.is_err());
+    let audit = sqlx::query_as::<_, (Uuid, Uuid, String)>(
+        "SELECT operator_id, actor_identity_id, action FROM authorization_audit_events WHERE target_id = $1",
+    )
+    .bind(&claims.sid)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        audit,
+        (
+            operator_id.as_uuid(),
+            context.identity_id,
+            "session.revoked".into()
+        )
+    );
 }
 
 async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: &PgPool) {
@@ -588,10 +723,12 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
         .upsert_source_health(&health.success(received_at, Some(received_at)))
         .await
         .unwrap();
-    let response = build_router(pool.clone())
+    let (auth, authorization) = authenticated_service(pool, operator_id).await;
+    let response = build_router(pool.clone(), auth)
         .oneshot(
             Request::builder()
                 .uri("/api/source-health")
+                .header("authorization", &authorization)
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -618,12 +755,14 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
     .await
     .unwrap();
 
-    let app = build_router(pool.clone());
+    let (auth, authorization) = authenticated_service(pool, operator_id).await;
+    let app = build_router(pool.clone(), auth);
     let observations = app
         .clone()
         .oneshot(
             Request::builder()
                 .uri("/api/airport-observations")
+                .header("authorization", &authorization)
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -642,6 +781,7 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
         .oneshot(
             Request::builder()
                 .uri("/api/hazards")
+                .header("authorization", &authorization)
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -665,6 +805,7 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
         .oneshot(
             Request::builder()
                 .uri(format!("/api/source-records/{metar_source_id}"))
+                .header("authorization", &authorization)
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -675,7 +816,51 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
         serde_json::from_slice(&source.into_body().collect().await.unwrap().to_bytes()).unwrap();
     assert_eq!(body["provider"], "noaa-awc");
     assert_eq!(body["raw_payload"]["icaoId"], "KSFO");
+
+    let other_operator = OperatorId::from_uuid(Uuid::new_v4());
+    let (other_auth, other_authorization) = authenticated_service(pool, other_operator).await;
+    let other_app = build_router(pool.clone(), other_auth);
+    for path in [
+        "/api/source-health",
+        "/api/airport-observations",
+        "/api/hazards",
+        "/api/alerts",
+    ] {
+        let response = other_app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(path)
+                    .header("authorization", &other_authorization)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body: Value =
+            serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes())
+                .unwrap();
+        assert_eq!(
+            body["data"].as_array().unwrap().len(),
+            0,
+            "{path} leaked tenant data"
+        );
+    }
+    let source = other_app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/source-records/{metar_source_id}"))
+                .header("authorization", &other_authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(source.status(), StatusCode::NOT_FOUND);
+
     cleanup_noaa_test_records(pool, operator_uuid).await;
+    cleanup_noaa_test_records(pool, other_operator.as_uuid()).await;
 }
 
 async fn cleanup_noaa_test_records(pool: &PgPool, operator_id: Uuid) {
@@ -692,6 +877,27 @@ async fn cleanup_noaa_test_records(pool: &PgPool, operator_id: Uuid) {
             .await
             .unwrap();
     }
+    sqlx::query("DELETE FROM authorization_audit_events WHERE operator_id = $1")
+        .bind(operator_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM auth_session_revocations WHERE operator_id = $1")
+        .bind(operator_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM operator_memberships WHERE operator_id = $1")
+        .bind(operator_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "DELETE FROM auth_identities identity WHERE NOT EXISTS (SELECT 1 FROM operator_memberships membership WHERE membership.identity_id = identity.id)",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
     sqlx::query("DELETE FROM operators WHERE id = $1")
         .bind(operator_id)
         .execute(pool)

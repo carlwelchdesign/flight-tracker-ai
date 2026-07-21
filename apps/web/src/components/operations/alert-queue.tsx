@@ -6,13 +6,13 @@ import { parseAlertDetail, parseAlertQueue } from "@/lib/alerts-api";
 import { formatZulu } from "./operations-model";
 
 type AlertQueueProps = {
-  operatorId: string | null;
+  canManage: boolean;
   refreshRevision: number;
 };
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
-export function AlertQueue({ operatorId, refreshRevision }: AlertQueueProps) {
+export function AlertQueue({ canManage, refreshRevision }: AlertQueueProps) {
   const [alerts, setAlerts] = useState<AlertQueueItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AlertDetail | null>(null);
@@ -22,17 +22,9 @@ export function AlertQueue({ operatorId, refreshRevision }: AlertQueueProps) {
   const [error, setError] = useState<string | null>(null);
 
   const loadQueue = useCallback(async () => {
-    if (!operatorId) {
-      setAlerts([]);
-      setLoadState("idle");
-      return;
-    }
     setLoadState((current) => current === "ready" ? current : "loading");
     try {
-      const response = await fetch(
-        `/api/backend/api/alerts?operator_id=${encodeURIComponent(operatorId)}`,
-        { cache: "no-store" },
-      );
+      const response = await fetch("/api/backend/api/alerts", { cache: "no-store" });
       if (!response.ok) throw new Error(`Alert queue returned HTTP ${response.status}`);
       const next = parseAlertQueue(await response.json());
       setAlerts(next);
@@ -45,12 +37,11 @@ export function AlertQueue({ operatorId, refreshRevision }: AlertQueueProps) {
       setError(loadError instanceof Error ? loadError.message : "Alert queue is unavailable");
       setLoadState("error");
     }
-  }, [operatorId]);
+  }, []);
 
   useEffect(() => {
-    if (!operatorId) return;
     const controller = new AbortController();
-    fetch(`/api/backend/api/alerts?operator_id=${encodeURIComponent(operatorId)}`, {
+    fetch("/api/backend/api/alerts", {
       cache: "no-store",
       signal: controller.signal,
     })
@@ -72,17 +63,14 @@ export function AlertQueue({ operatorId, refreshRevision }: AlertQueueProps) {
         setLoadState("error");
       });
     return () => controller.abort();
-  }, [operatorId, refreshRevision]);
+  }, [refreshRevision]);
 
   useEffect(() => {
-    if (!operatorId || !selectedId) {
+    if (!selectedId) {
       return;
     }
     const controller = new AbortController();
-    fetch(
-      `/api/backend/api/alerts/${selectedId}?operator_id=${encodeURIComponent(operatorId)}`,
-      { cache: "no-store", signal: controller.signal },
-    )
+    fetch(`/api/backend/api/alerts/${selectedId}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Alert detail returned HTTP ${response.status}`);
         return parseAlertDetail(await response.json());
@@ -96,10 +84,10 @@ export function AlertQueue({ operatorId, refreshRevision }: AlertQueueProps) {
         setError(detailError instanceof Error ? detailError.message : "Alert detail is unavailable");
       });
     return () => controller.abort();
-  }, [operatorId, selectedId]);
+  }, [selectedId]);
 
   async function applyAction(action: "acknowledge" | "comment" | "dismiss" | "resolve") {
-    if (!operatorId || !selectedId) return;
+    if (!selectedId) return;
     const trimmed = message.trim();
     if (action === "dismiss" && !trimmed) {
       setError("Enter a dismissal reason before dismissing this alert.");
@@ -115,9 +103,7 @@ export function AlertQueue({ operatorId, refreshRevision }: AlertQueueProps) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          operator_id: operatorId,
           action,
-          actor_id: "dispatcher:local",
           idempotency_key: crypto.randomUUID(),
           comment: trimmed || null,
         }),
@@ -150,8 +136,7 @@ export function AlertQueue({ operatorId, refreshRevision }: AlertQueueProps) {
         <span className="panel-count">{alerts.length} current</span>
       </div>
 
-      {!operatorId && <QueueMessage title="Waiting for an operator" body="Load a flight picture to scope operational alerts." />}
-      {(loadState === "loading" || (loadState === "idle" && operatorId)) && <QueueMessage title="Loading alert evidence" body="Ranking current route and hazard conditions…" />}
+      {(loadState === "loading" || loadState === "idle") && <QueueMessage title="Loading alert evidence" body="Ranking current route and hazard conditions…" />}
       {loadState === "error" && (
         <QueueMessage title="Alert queue unavailable" body={error ?? "The queue could not be loaded."} actionLabel="Retry" onAction={() => void loadQueue()} />
       )}
@@ -207,20 +192,21 @@ export function AlertQueue({ operatorId, refreshRevision }: AlertQueueProps) {
 
                 <label className="alert-note-field">
                   <span>Comment or dismissal reason</span>
-                  <textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={2} disabled={actionPending} />
+                  <textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={2} disabled={actionPending || !canManage} />
                 </label>
+                {!canManage && <p className="alert-action-error">Viewer access is read-only. A dispatcher, operator, or administrator can act on alerts.</p>}
                 {error && <p className="alert-action-error" role="alert">{error}</p>}
                 <div className="alert-actions" aria-label="Alert actions">
-                  {selectedDetail.lifecycle === "open" && <button type="button" disabled={actionPending} onClick={() => void applyAction("acknowledge")}>Acknowledge</button>}
+                  {selectedDetail.lifecycle === "open" && <button type="button" disabled={actionPending || !canManage} onClick={() => void applyAction("acknowledge")}>Acknowledge</button>}
                   {selectedDetail.lifecycle !== "dismissed" && selectedDetail.lifecycle !== "resolved" && (
                     <>
-                      <button type="button" disabled={actionPending} onClick={() => void applyAction("comment")}>Add comment</button>
-                      <button type="button" disabled={actionPending} onClick={() => void applyAction("resolve")}>Resolve</button>
-                      <button type="button" className="alert-dismiss" disabled={actionPending} onClick={() => void applyAction("dismiss")}>Dismiss with reason</button>
+                      <button type="button" disabled={actionPending || !canManage} onClick={() => void applyAction("comment")}>Add comment</button>
+                      <button type="button" disabled={actionPending || !canManage} onClick={() => void applyAction("resolve")}>Resolve</button>
+                      <button type="button" className="alert-dismiss" disabled={actionPending || !canManage} onClick={() => void applyAction("dismiss")}>Dismiss with reason</button>
                     </>
                   )}
                   {(selectedDetail.lifecycle === "dismissed" || selectedDetail.lifecycle === "resolved") && (
-                    <button type="button" disabled={actionPending} onClick={() => void applyAction("comment")}>Add follow-up comment</button>
+                    <button type="button" disabled={actionPending || !canManage} onClick={() => void applyAction("comment")}>Add follow-up comment</button>
                   )}
                 </div>
 

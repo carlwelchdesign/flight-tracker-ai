@@ -54,6 +54,14 @@
 - Reason: Hardware signing repeatedly interrupted otherwise verified ticket delivery without adding a project-specific requirement.
 - Constraint: Continue using ticket-scoped branches, intentional Conventional Commits, required CI checks, pull requests, and human-controlled merges.
 
+### ADR-009 — Multi-tenant authorization is app-owned behind a hosted identity adapter
+
+- Date: 2026-07-21
+- Decision: Build a multi-tenant foundation now. Use Clerk Organizations as the first web authentication adapter, but keep operator mapping, memberships, roles, session revocation, and authorization policy authoritative in PostgreSQL and Rust.
+- Reason: A single-tenant shortcut would require rewriting every operational repository and audit boundary before a second pilot. A provider-neutral internal assertion prevents hosted-provider types and roles from becoming domain authority.
+- Constraint: Production requests must use verified hosted sessions. Development uses the same signed-assertion and membership path and is forbidden when `APP_ENV=production`.
+- Resolution: OD-004 is resolved in favor of a multi-tenant foundation with a single active operator per verified hosted organization/session.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |
@@ -61,6 +69,5 @@
 | OD-001 | Monorepo package manager and local orchestration approach | FT-001 | Working local setup and contributor ergonomics |
 | OD-002 | Cirium Sky Stream or FlightAware Firehose for commercial flight data | FT-301 | Written display/retention/combination rights, 14-day target-fleet scorecard, SLA, and priced proposal using `PROVIDER_FEASIBILITY.md` |
 | OD-003 | SSE versus WebSockets at production scale | M3 | Measured interaction and fan-out requirements |
-| OD-004 | Single-tenant pilot versus multi-tenant foundation | FT-303 | Pilot customer constraints and isolation review |
 | OD-005 | Whether numerical optimization warrants Python | FT-501 | Benchmark against Rust implementation and library needs |
 | OD-006 | FAA NMS API or successor path for production NOTAM distribution | Before any post-MVP NOTAM integration | Granted API access, current transition status, schema/coverage validation, service terms, lead time, and permitted operator-facing use |

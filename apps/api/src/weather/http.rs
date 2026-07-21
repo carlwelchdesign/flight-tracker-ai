@@ -1,6 +1,6 @@
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
@@ -10,6 +10,8 @@ use serde::Serialize;
 use serde_json::Value;
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
+
+use crate::auth::{AuthContext, Permission, require};
 
 const MAX_HAZARDS: i64 = 500;
 const MAX_OBSERVATIONS: i64 = 200;
@@ -245,7 +247,9 @@ pub fn weather_router(database: PgPool) -> Router {
 
 async fn list_hazards(
     State(state): State<WeatherHttpState>,
-) -> Result<Json<WeatherPage<HazardView>>, WeatherApiError> {
+    Extension(context): Extension<AuthContext>,
+) -> Result<Json<WeatherPage<HazardView>>, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
     let rows = sqlx::query_as::<_, HazardRow>(
         r#"
         WITH latest AS (
@@ -255,6 +259,7 @@ async fn list_hazards(
                        ORDER BY wh.revision DESC, wh.issued_at DESC, wh.id DESC
                    ) AS series_rank
             FROM weather_hazards wh
+            WHERE wh.operator_id = $1
         )
         SELECT latest.id, latest.operator_id, latest.source_envelope_id,
                latest.schema_version, latest.event_time, latest.received_at,
@@ -274,20 +279,22 @@ async fn list_hazards(
         WHERE latest.series_rank = 1
           AND latest.valid_to >= NOW() - INTERVAL '6 hours'
         ORDER BY latest.valid_to DESC, latest.issued_at DESC
-        LIMIT $1
+        LIMIT $2
         "#,
     )
+    .bind(context.operator_id.as_uuid())
     .bind(MAX_HAZARDS)
     .fetch_all(&state.database)
     .await
     .map_err(|error| {
         tracing::warn!(error = %error, "weather hazard read failed");
-        WeatherApiError::Unavailable
+        WeatherApiError::Unavailable.into_response()
     })?;
     let data = rows
         .into_iter()
         .map(HazardView::try_from)
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(IntoResponse::into_response)?;
     Ok(Json(WeatherPage {
         data,
         generated_at: Utc::now(),
@@ -296,7 +303,9 @@ async fn list_hazards(
 
 async fn list_observations(
     State(state): State<WeatherHttpState>,
-) -> Result<Json<WeatherPage<ObservationView>>, WeatherApiError> {
+    Extension(context): Extension<AuthContext>,
+) -> Result<Json<WeatherPage<ObservationView>>, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
     let rows = sqlx::query_as::<_, ObservationRow>(
         r#"
         SELECT * FROM (
@@ -319,20 +328,22 @@ async fn list_observations(
             JOIN provider_envelopes envelope
               ON envelope.operator_id = observation.operator_id
              AND envelope.id = observation.source_envelope_id
-            WHERE observation.event_time >= NOW() - INTERVAL '2 hours'
+            WHERE observation.operator_id = $1
+              AND observation.event_time >= NOW() - INTERVAL '2 hours'
             ORDER BY observation.operator_id, observation.station_code,
                      observation.event_time DESC, observation.id DESC
         ) latest
         ORDER BY event_time DESC
-        LIMIT $1
+        LIMIT $2
         "#,
     )
+    .bind(context.operator_id.as_uuid())
     .bind(MAX_OBSERVATIONS)
     .fetch_all(&state.database)
     .await
     .map_err(|error| {
         tracing::warn!(error = %error, "airport observation read failed");
-        WeatherApiError::Unavailable
+        WeatherApiError::Unavailable.into_response()
     })?;
     Ok(Json(WeatherPage {
         data: rows.into_iter().map(ObservationView::from).collect(),
@@ -342,26 +353,29 @@ async fn list_observations(
 
 async fn source_record(
     State(state): State<WeatherHttpState>,
+    Extension(context): Extension<AuthContext>,
     Path(envelope_id): Path<String>,
-) -> Result<Json<SourceRecordView>, WeatherApiError> {
-    let envelope_id =
-        Uuid::parse_str(&envelope_id).map_err(|_| WeatherApiError::InvalidSourceId)?;
+) -> Result<Json<SourceRecordView>, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
+    let envelope_id = Uuid::parse_str(&envelope_id)
+        .map_err(|_| WeatherApiError::InvalidSourceId.into_response())?;
     let record = sqlx::query_as::<_, SourceRecordView>(
         r#"
         SELECT id, provider, feed, provider_record_id, event_time, received_at,
                processed_at, raw_payload_sha256, raw_payload
         FROM provider_envelopes
-        WHERE id = $1 AND provider = 'noaa-awc'
+        WHERE id = $1 AND operator_id = $2 AND provider = 'noaa-awc'
         "#,
     )
     .bind(envelope_id)
+    .bind(context.operator_id.as_uuid())
     .fetch_optional(&state.database)
     .await
     .map_err(|error| {
         tracing::warn!(error = %error, "NOAA source record read failed");
-        WeatherApiError::Unavailable
+        WeatherApiError::Unavailable.into_response()
     })?
-    .ok_or(WeatherApiError::SourceNotFound)?;
+    .ok_or_else(|| WeatherApiError::SourceNotFound.into_response())?;
     Ok(Json(record))
 }
 

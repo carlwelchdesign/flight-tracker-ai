@@ -74,6 +74,7 @@ export type CanonicalEvent = {
 
 export type FleetEvent = {
   id: number;
+  operator_id: string;
   flight_id: string | null;
   envelope_id: string;
   event_time: string;
@@ -92,11 +93,12 @@ export type FleetLoadResult =
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
 
-export async function getInitialFleet(): Promise<FleetLoadResult> {
+export async function getInitialFleet(assertion: string): Promise<FleetLoadResult> {
   try {
     const response = await fetch(
       `${getApiBaseUrl()}/api/flights?page=1&page_size=100`,
       {
+        headers: { authorization: `Bearer ${assertion}` },
         cache: "no-store",
         signal: AbortSignal.timeout(2_500),
       },
@@ -139,6 +141,7 @@ export function parseFleetEvent(value: unknown): FleetEvent {
   if (
     !isRecord(value) ||
     typeof value.id !== "number" ||
+    typeof value.operator_id !== "string" ||
     (value.flight_id !== null && typeof value.flight_id !== "string") ||
     typeof value.envelope_id !== "string" ||
     typeof value.event_time !== "string" ||

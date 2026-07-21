@@ -5,12 +5,12 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M3 — Commercial flight data and operational workflow
-- Active ticket: None; FT-301 requires external provider contracting, while FT-303 is the next actionable engineering ticket
-- Branch: `main` after PR #12 merge
-- Pull request: [#12](https://github.com/carlwelchdesign/flight-tracker-ai/pull/12)
-- Owner: Product for provider selection; security and full-stack engineering for FT-303
-- Overall status: M0, M1, and M2 are complete; M3 is ready to begin
-- Next action: Begin FT-303 identity, role, and tenant-isolation design while product runs the external FT-301 provider trial and contracting gate.
+- Active ticket: None
+- Branch: `main`
+- Pull request: None
+- Owner: Unassigned
+- Overall status: M0, M1, and M2 are complete; FT-303 is complete while FT-301 remains externally gated
+- Next action: Begin FT-304 on its dedicated branch, using FT-303 authenticated tenant context for the expanded dispatcher review queue.
 
 ## Milestone checklist
 
@@ -28,7 +28,7 @@ Last updated: 2026-07-21
 | M0 | 3 | 3 |
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
-| M3 | 0 | 4 |
+| M3 | 1 | 4 |
 | M4 | 0 | 4 |
 | M5 | 0 | 3 |
 
@@ -54,6 +54,7 @@ Last updated: 2026-07-21
 - FT-204 is active on `feat/ft-204-alert-lifecycle`; deterministic Rust policy will own ranking, dedupe, transitions, and audit evidence while the web app exposes human-controlled actions.
 - FT-204 is delivered through PR #12. CI run `29811831163` verifies live replay persistence, route-hazard alert creation, score evidence, API acknowledgement, schema invariants, and the independent PostGIS rule oracle; M2 is complete.
 - FT-301 is externally gated on written commercial rights and a common 14-day provider trial. FT-303 can proceed independently and should establish authenticated tenant context before FT-304 expands the dispatcher queue.
+- FT-303 is delivered through PR #13 at implementation commit `1430ce8`. CI run `29814499315` verifies Rust, web, live authenticated replay, the identity migration, PostGIS cross-tenant route isolation, session revocation, and actor/tenant audit behavior. Hosted identity remains behind a provider-neutral boundary; tenant membership and operational authorization are app-owned and enforced by Rust.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

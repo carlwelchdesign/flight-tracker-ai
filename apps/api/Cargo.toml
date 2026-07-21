@@ -11,6 +11,7 @@ axum.workspace = true
 chrono.workspace = true
 futures-core.workspace = true
 geo.workspace = true
+jsonwebtoken.workspace = true
 rand.workspace = true
 reqwest.workspace = true
 serde.workspace = true

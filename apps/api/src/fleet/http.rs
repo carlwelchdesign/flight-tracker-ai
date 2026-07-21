@@ -2,7 +2,7 @@ use std::{convert::Infallible, time::Duration};
 
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response, Sse, sse::Event},
     routing::get,
@@ -11,7 +11,11 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use crate::{domain::FlightId, metrics::ApiMetrics};
+use crate::{
+    auth::{AuthContext, AuthFailure, Permission, require},
+    domain::FlightId,
+    metrics::ApiMetrics,
+};
 
 use super::{FleetEvent, FleetStore};
 
@@ -100,47 +104,61 @@ pub fn fleet_router(store: FleetStore, metrics: ApiMetrics) -> Router {
 
 async fn list_flights(
     State(state): State<FleetHttpState>,
+    Extension(context): Extension<AuthContext>,
     Query(query): Query<PaginationQuery>,
-) -> Result<impl IntoResponse, ApiError> {
-    validate_pagination(&query)?;
-    Ok(Json(state.store.list(query.page, query.page_size).await))
+) -> Result<impl IntoResponse, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
+    validate_pagination(&query).map_err(IntoResponse::into_response)?;
+    Ok(Json(
+        state
+            .store
+            .list(context.operator_id, query.page, query.page_size)
+            .await,
+    ))
 }
 
 async fn flight_detail(
     State(state): State<FleetHttpState>,
+    Extension(context): Extension<AuthContext>,
     Path(flight_id): Path<String>,
-) -> Result<impl IntoResponse, ApiError> {
-    let flight_id = parse_flight_id(&flight_id)?;
+) -> Result<impl IntoResponse, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
+    let flight_id = parse_flight_id(&flight_id).map_err(IntoResponse::into_response)?;
     state
         .store
-        .detail(flight_id)
+        .detail(context.operator_id, flight_id)
         .await
         .map(Json)
-        .ok_or(ApiError::FlightNotFound)
+        .ok_or_else(|| ApiError::FlightNotFound.into_response())
 }
 
 async fn flight_timeline(
     State(state): State<FleetHttpState>,
+    Extension(context): Extension<AuthContext>,
     Path(flight_id): Path<String>,
     Query(query): Query<PaginationQuery>,
-) -> Result<impl IntoResponse, ApiError> {
-    validate_pagination(&query)?;
-    let flight_id = parse_flight_id(&flight_id)?;
+) -> Result<impl IntoResponse, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
+    validate_pagination(&query).map_err(IntoResponse::into_response)?;
+    let flight_id = parse_flight_id(&flight_id).map_err(IntoResponse::into_response)?;
     state
         .store
-        .timeline(flight_id, query.page, query.page_size)
+        .timeline(context.operator_id, flight_id, query.page, query.page_size)
         .await
         .map(Json)
-        .ok_or(ApiError::FlightNotFound)
+        .ok_or_else(|| ApiError::FlightNotFound.into_response())
 }
 
 async fn event_stream(
     State(state): State<FleetHttpState>,
+    Extension(context): Extension<AuthContext>,
     headers: HeaderMap,
-) -> Result<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>, ApiError> {
-    let mut last_sent = parse_last_event_id(&headers)?;
+) -> Result<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
+    let mut last_sent = parse_last_event_id(&headers).map_err(IntoResponse::into_response)?;
     let mut receiver = state.store.subscribe();
-    let replay = state.store.events_after(last_sent).await;
+    let operator_id = context.operator_id;
+    let replay = state.store.events_after(operator_id, last_sent).await;
     let store = state.store.clone();
     let metrics = state.metrics.clone();
     let stream = async_stream::stream! {
@@ -153,13 +171,13 @@ async fn event_stream(
         }
         loop {
             match receiver.recv().await {
-                Ok(event) if event.id > last_sent => {
+                Ok(event) if event.operator_id == operator_id && event.id > last_sent => {
                     last_sent = event.id;
                     yield Ok(to_sse_event(&event));
                 }
                 Ok(_) => {}
                 Err(broadcast::error::RecvError::Lagged(_)) => {
-                    for event in store.events_after(last_sent).await {
+                    for event in store.events_after(operator_id, last_sent).await {
                         if event.id > last_sent {
                             last_sent = event.id;
                             yield Ok(to_sse_event(&event));
@@ -178,11 +196,15 @@ async fn event_stream(
     ))
 }
 
-async fn metrics_endpoint(State(state): State<FleetHttpState>) -> impl IntoResponse {
-    (
+async fn metrics_endpoint(
+    State(state): State<FleetHttpState>,
+    Extension(context): Extension<AuthContext>,
+) -> Result<impl IntoResponse, AuthFailure> {
+    require(&context, Permission::ReadMetrics)?;
+    Ok((
         [(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
         state.metrics.prometheus(),
-    )
+    ))
 }
 
 fn validate_pagination(query: &PaginationQuery) -> Result<(), ApiError> {
@@ -237,6 +259,7 @@ mod tests {
 
     use super::*;
     use crate::{
+        auth::{AuthContext, AuthRole},
         metrics::observe_request,
         replay::{ReplayScenario, ScenarioEvent},
     };
@@ -264,11 +287,24 @@ mod tests {
         serde_json::from_slice(&body).unwrap()
     }
 
+    fn authenticated_app(store: FleetStore, metrics: ApiMetrics) -> Router {
+        fleet_router(store, metrics).layer(Extension(AuthContext {
+            identity_id: Uuid::nil(),
+            operator_id: fixture().operator_id,
+            operator_code: "SIM".into(),
+            operator_name: "Simulation Operator".into(),
+            provider: "test".into(),
+            subject: "test-user".into(),
+            session_id: "test-session".into(),
+            role: AuthRole::Administrator,
+        }))
+    }
+
     #[tokio::test]
     async fn list_detail_and_timeline_have_typed_paginated_contracts() {
         let scenario = fixture();
         let store = store_with_events(&scenario, &scenario.events).await;
-        let app = fleet_router(store, ApiMetrics::default());
+        let app = authenticated_app(store, ApiMetrics::default());
 
         let list = app
             .clone()
@@ -317,7 +353,7 @@ mod tests {
 
     #[tokio::test]
     async fn invalid_pagination_and_unknown_flights_return_structured_errors() {
-        let app = fleet_router(FleetStore::new(16), ApiMetrics::default());
+        let app = authenticated_app(FleetStore::new(16), ApiMetrics::default());
         let invalid = app
             .clone()
             .oneshot(
@@ -350,7 +386,7 @@ mod tests {
             &[scenario.events[1].clone(), scenario.events[4].clone()],
         )
         .await;
-        let app = fleet_router(store, ApiMetrics::default());
+        let app = authenticated_app(store, ApiMetrics::default());
         let response = app
             .oneshot(
                 Request::get("/api/events/stream")
@@ -381,7 +417,7 @@ mod tests {
 
     #[tokio::test]
     async fn sse_rejects_an_invalid_last_event_id() {
-        let response = fleet_router(FleetStore::new(16), ApiMetrics::default())
+        let response = authenticated_app(FleetStore::new(16), ApiMetrics::default())
             .oneshot(
                 Request::get("/api/events/stream")
                     .header("last-event-id", "not-an-event-id")
@@ -400,7 +436,7 @@ mod tests {
     #[tokio::test]
     async fn metrics_endpoint_exposes_request_latency_and_stream_counters() {
         let metrics = ApiMetrics::default();
-        let app = fleet_router(FleetStore::new(16), metrics.clone())
+        let app = authenticated_app(FleetStore::new(16), metrics.clone())
             .layer(middleware::from_fn_with_state(metrics, observe_request));
         app.clone()
             .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())

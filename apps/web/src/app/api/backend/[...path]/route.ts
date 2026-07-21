@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { getApiBaseUrl } from "@/lib/fleet-api";
+import { AuthSessionError, createInternalAssertion } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,7 +13,10 @@ const ALLOWED_PATHS = [
   /^api\/flights(?:\/[^/]+(?:\/timeline)?)?$/,
   /^api\/alerts(?:\/[^/]+(?:\/actions)?)?$/,
   /^api\/events\/stream$/,
+  /^api\/auth\/context$/,
+  /^api\/admin\/(?:memberships(?:\/[^/]+)?|sessions\/revoke)$/,
   /^api\/dev\/replay(?:\/(?:pause|resume|reset|speed|outage))?$/,
+  /^metrics$/,
 ];
 
 type RouteContext = {
@@ -27,10 +31,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
   return forward(request, context, "POST");
 }
 
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  return forward(request, context, "PATCH");
+}
+
 async function forward(
   request: NextRequest,
   context: RouteContext,
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PATCH",
 ): Promise<Response> {
   const { path } = await context.params;
   const backendPath = path.join("/");
@@ -50,10 +58,12 @@ async function forward(
   }
 
   try {
+    const assertion = await createInternalAssertion();
+    headers.set("authorization", `Bearer ${assertion}`);
     const response = await fetch(target, {
       method,
       headers,
-      body: method === "POST" ? await request.text() : undefined,
+      body: method === "GET" ? undefined : await request.text(),
       cache: "no-store",
       signal: request.signal,
     });
@@ -70,7 +80,13 @@ async function forward(
       status: response.status,
       headers: responseHeaders,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof AuthSessionError) {
+      return Response.json(
+        { error: { code: "session_unavailable", message: error.message } },
+        { status: error.status },
+      );
+    }
     return Response.json(
       { error: { code: "backend_unavailable", message: "Operations API is unavailable" } },
       { status: 503 },
