@@ -4,11 +4,11 @@ Default owner: Backend/data engineering, with independent domain review of alert
 
 ## FT-201 — Ingest and normalize NOAA aviation weather
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-201-noaa-weather-ingestion`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `0949784`
+Pull request: [#9](https://github.com/carlwelchdesign/flight-tracker-ai/pull/9)
 Owner: Backend/data engineering
 
 Integrate NOAA Aviation Weather data beginning with SIGMETs and METARs while retaining raw evidence.
@@ -17,13 +17,13 @@ Dependencies: FT-002, FT-104
 
 Acceptance checklist:
 
-- [ ] NOAA client has timeouts, retry policy, backoff, rate discipline, and identifiable user agent.
-- [ ] Raw payload reference and normalized record are stored transactionally or recoverably.
-- [ ] Validity windows, issue times, geometry, altitude, and cancellation/update behavior are represented.
-- [ ] METAR and SIGMET fixtures cover normal, malformed, duplicate, and amended records.
-- [ ] Source health becomes stale or degraded at documented thresholds.
+- [x] NOAA client has timeouts, retry policy, backoff, rate discipline, and identifiable user agent.
+- [x] Raw payload reference and normalized record are stored transactionally or recoverably.
+- [x] Validity windows, issue times, geometry, altitude, and cancellation/update behavior are represented.
+- [x] METAR and SIGMET fixtures cover normal, malformed, duplicate, and amended records.
+- [x] Source health becomes stale or degraded at documented thresholds.
 
-Verification evidence: Pending.
+Verification evidence: `plans/NOAA_INGESTION.md`; normal, malformed, duplicate, amended, and geometry-free cancellation fixtures; focused NOAA client, normalization, source-health, projection, and configuration tests; 47 passing Rust library tests and 5 binary tests; strict workspace Clippy; Rust formatting and release build; 11 passing frontend tests; dependency audit with 0 vulnerabilities; frontend lint, typecheck, and production build; Compose configuration and diff hygiene; implementation commit `0949784`; PR [#9](https://github.com/carlwelchdesign/flight-tracker-ai/pull/9), with Rust, web, and API/PostGIS smoke checks passing, including transactional persistence, revision, cancellation, quarantine, duplicate, and source-health coverage against PostGIS.
 
 ## FT-202 — Render weather and hazard layers
 
