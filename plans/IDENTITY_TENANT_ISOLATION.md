@@ -38,6 +38,7 @@ Development uses the same signed assertion and database membership path. `AUTH_M
 | Read tenant-scoped service metrics | no | no | yes | yes |
 | List/change memberships and revoke sessions | no | no | no | yes |
 | Review/export redacted tenant audit evidence and monitoring signals | no | no | no | yes |
+| Create/approve/execute tenant retention controls | no | no | no | yes |
 
 Roles are ordered only for this fixed policy version; handlers ask for named permissions, not numeric role levels. Hosted-provider organization roles are not authoritative for application actions.
 
@@ -53,7 +54,7 @@ The active hosted organization becomes the assertion's external tenant. Rust map
 - Dispatcher write: alert actions. Actor and operator are taken from `AuthContext`.
 - Operator write: development replay controls.
 - Operator diagnostic: `/metrics`, filtered to the active operator where labels contain tenant data.
-- Administrator: membership list/update, session revocation, tenant-scoped redacted audit review/export, and privileged-action monitoring.
+- Administrator: membership list/update, session revocation, tenant-scoped redacted audit review/export, privileged-action monitoring, and two-person retention controls.
 
 Background ingestion and replay workers continue using configured operator identities; they do not impersonate a human.
 

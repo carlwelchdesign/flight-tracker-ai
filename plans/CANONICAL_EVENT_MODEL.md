@@ -34,10 +34,17 @@ provider payload -> ProviderEnvelope -> provider adapter -> CanonicalEvent -> pr
 | `Alert` | `alerts` and `alert_evidence` | Alert UUID, operator UUID, series/revision, material dedupe key, evidence envelopes |
 | `AlertAction` | `alert_actions` | Action UUID, operator/alert UUIDs, human actor and idempotency key |
 | `SourceHealth` | `source_health` | Health UUID, operator UUID, provider/feed identity |
+| Retention policy/run | `retention_policies`, `retention_runs` | Tenant/data-class/provider policy version, requester/approver/executor, cutoff and counts |
+| Deletion tombstone | `data_deletion_tombstones` | Tenant/provider/feed/raw hash and deletion-run evidence |
 
 Every operational table includes a non-null `operator_id`. Composite foreign
 keys include `operator_id`, so a record cannot reference an envelope, flight,
 hazard, or alert belonging to another operator even if application scoping fails.
+
+Provider envelope source identity and hash evidence remain stable. An approved
+raw-payload retention run may replace `raw_payload` with an empty object and
+attach a tombstone; the insert/update trigger prevents an identical deleted
+payload from being restored into the tenant.
 
 ## Versioning
 

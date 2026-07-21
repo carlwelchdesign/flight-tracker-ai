@@ -11,7 +11,7 @@ Last updated: 2026-07-21
 - Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; completion gate remains open)
 - Owner: Security, legal/privacy, product, and engineering
 - Overall status: M0, M1, and M2 are complete; M3 remains externally gated while dependency-safe FT-401 review preparation is in progress
-- Next action: Implement dependency-safe F401-002 retention/deletion enforcement and use its audit retention/integrity procedure to finish the in-repo F401-007 work; complete hosted drills/reviews when environments and owners are available, while commercial-provider controls remain blocked on FT-301.
+- Next action: Extend F401-002 from raw payloads to normalized facts, terminal alert history, authorization/session/identity records, and scheduled execution; then finish the in-repo F401-007 retention/integrity procedure. Hosted drills/reviews remain environment/owner dependent and commercial controls remain blocked on FT-301.
 
 ## Milestone checklist
 

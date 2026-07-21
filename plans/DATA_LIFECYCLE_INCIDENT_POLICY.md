@@ -6,8 +6,8 @@ FT-401 proposed pilot control baseline, last reviewed 2026-07-21. These controls
 
 | Data | Proposed maximum active retention | Deletion/exit behavior | Status |
 | --- | --- | --- | --- |
-| Commercial raw provider messages | 24 hours unless the controlling Order expressly permits longer | Delete primary objects and derived raw caches; preserve only contract-approved normalized/audit fields; record deletion evidence. | Not implemented; provider blocked. |
-| NOAA raw public observations | 30 days for debugging/replay | Delete expired raw payloads; normalized current/revision records may follow operational history policy. | Not implemented. |
+| Commercial raw provider messages | 24 hours unless the controlling Order expressly permits longer | Delete primary objects and derived raw caches; preserve only contract-approved normalized/audit fields; record deletion evidence. | Generic raw-payload enforcement exists; provider policy approval remains blocked on FT-301. |
+| NOAA raw public observations | 30 days for debugging/replay | Delete expired raw payloads; normalized current/revision records may follow operational history policy. | Raw-payload policy/preview/approval/deletion/tombstone enforcement implemented; policy approval and normalized-record retention remain pending. |
 | Flight positions/routes/status facts | 30 days for a limited pilot unless contract/operator requires shorter | Tenant deletion plus provider-entitlement deletion; exclude expired facts from restore. | Not implemented. |
 | Alerts, dispatcher actions, and rule evidence | 12 months for pilot evaluation, subject to provider derivative rights | Preserve append-only decision evidence; redact/delete prohibited source fields; Legal approves any litigation/security hold. | Not implemented. |
 | Authorization audit events | 12 months | Preserve actor/action/target evidence; restrict exports; delete on approved schedule, not user UI action. | Not implemented. |
@@ -17,7 +17,7 @@ FT-401 proposed pilot control baseline, last reviewed 2026-07-21. These controls
 | Metrics | 13 months only when aggregate/non-identifying and contract-approved | Delete tenant/source labels that exceed approved aggregation. | Current metrics are in-memory; hosted policy pending. |
 | Controlled contracts, quotes, approvals | Per legal/procurement record schedule outside Git | Contract repository disposition; Git retains only opaque references/redacted summaries. | Process defined in FT-301. |
 
-The Product, Legal/privacy, Security, and operator owners must approve or shorten this baseline before a pilot. No code may silently extend a period. Retention configuration must be field/source aware, versioned, auditable, and testable with a dry run.
+The Product, Legal/privacy, Security, and operator owners must approve or shorten this baseline before a pilot. No code may silently extend a period. Retention configuration must be field/source aware, versioned, auditable, and testable with a dry run. The implemented raw-payload workflow and remaining limits are in `RETENTION_DELETION_RUNBOOK.md`.
 
 ## Deletion requirements
 

@@ -31,7 +31,7 @@ Startup fails before polling if the configured operator does not exist. Provider
 
 ## Persistence and revisions
 
-Each provider record becomes an immutable `provider_envelopes` row containing the raw JSON and SHA-256 hash. The matching normalized record is written in the same transaction:
+Each provider record becomes a `provider_envelopes` row with immutable source identity and SHA-256 evidence. Raw JSON remains available only until an approved retention run clears it and attaches a restore-suppression tombstone; normalized record identity is preserved. The matching normalized record is written in the same transaction:
 
 - METARs become `airport_observations` with report time, NOAA receipt time, local receipt/processing time, WGS84 point, wind in knots/true degrees, visibility in statute miles, ceiling in feet AGL, and flight category.
 - SIGMETs become versioned `weather_hazards` with issuance and validity times, NOAA receipt time, WGS84 polygon, flight-level altitude band, hazard/severity, stable external series identity, revision, superseded revision, and active/cancelled status.
