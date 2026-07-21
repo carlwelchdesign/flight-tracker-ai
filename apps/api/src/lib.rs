@@ -4,9 +4,13 @@ use sqlx::PgPool;
 use tower_http::trace::TraceLayer;
 
 pub mod domain;
+pub mod fleet;
 pub mod ingestion;
+pub mod metrics;
 pub mod replay;
 
+use fleet::{FleetStore, fleet_router, spawn_projection_worker};
+use metrics::ApiMetrics;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
 
 pub const SERVICE_NAME: &str = "flight-tracker-api";
@@ -15,6 +19,7 @@ pub const SERVICE_NAME: &str = "flight-tracker-api";
 pub struct ApiState {
     database: PgPool,
     replay: Option<ReplayHandle>,
+    fleet: FleetStore,
 }
 
 #[derive(Debug, Serialize)]
@@ -37,10 +42,24 @@ struct ReadinessChecks {
 }
 
 pub fn build_router(database: PgPool) -> Router {
-    build_router_with_replay(database, None)
+    build_router_with_services(database, None, FleetStore::new(2_048))
 }
 
 pub fn build_router_with_replay(database: PgPool, replay: Option<ReplayHandle>) -> Router {
+    let fleet = FleetStore::new(2_048);
+    if let Some(handle) = replay.as_ref() {
+        spawn_projection_worker(fleet.clone(), handle.subscribe());
+    }
+    build_router_with_services(database, replay, fleet)
+}
+
+pub fn build_router_with_services(
+    database: PgPool,
+    replay: Option<ReplayHandle>,
+    fleet: FleetStore,
+) -> Router {
+    let metrics = ApiMetrics::default();
+    let fleet_routes = fleet_router(fleet.clone(), metrics);
     let mut router = Router::new()
         .route("/health", get(health))
         .route("/readiness", get(readiness));
@@ -55,7 +74,12 @@ pub fn build_router_with_replay(database: PgPool, replay: Option<ReplayHandle>) 
     }
 
     router
-        .with_state(ApiState { database, replay })
+        .with_state(ApiState {
+            database,
+            replay,
+            fleet,
+        })
+        .merge(fleet_routes)
         .layer(TraceLayer::new_for_http())
 }
 
@@ -95,13 +119,14 @@ async fn replay_resume(State(state): State<ApiState>) -> Json<ReplayStatus> {
 }
 
 async fn replay_reset(State(state): State<ApiState>) -> Json<ReplayStatus> {
-    Json(
-        state
-            .replay
-            .expect("replay route requires handle")
-            .reset()
-            .await,
-    )
+    let status = state
+        .replay
+        .as_ref()
+        .expect("replay route requires handle")
+        .reset()
+        .await;
+    state.fleet.clear_projection().await;
+    Json(status)
 }
 
 async fn replay_speed(
@@ -274,5 +299,104 @@ mod tests {
         let payload: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(payload["phase"], "running");
         assert_eq!(payload["speed"], "4x");
+    }
+
+    #[tokio::test]
+    async fn replay_reset_clears_projected_fleet_state() {
+        let scenario = ReplayScenario::from_json(include_str!(
+            "../../../fixtures/replay/m1-operations-v1.json"
+        ))
+        .unwrap();
+        let store = FleetStore::new(16);
+        store
+            .apply(&scenario.batch_for(&scenario.events[1]).unwrap())
+            .await
+            .unwrap();
+        let app = build_router_with_services(
+            unavailable_database(),
+            Some(ReplayHandle::new(scenario, 16)),
+            store,
+        );
+
+        let reset = app
+            .clone()
+            .oneshot(
+                Request::post("/api/dev/replay/reset")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(reset.status(), StatusCode::OK);
+
+        let flights = app
+            .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let payload = flights.into_body().collect().await.unwrap().to_bytes();
+        let payload: Value = serde_json::from_slice(&payload).unwrap();
+        assert_eq!(payload["pagination"]["total_items"], 0);
+    }
+
+    #[tokio::test]
+    async fn replay_runtime_projects_flights_through_public_api_routes() {
+        let scenario = ReplayScenario::from_json(include_str!(
+            "../../../fixtures/replay/m1-operations-v1.json"
+        ))
+        .unwrap();
+        let handle = ReplayHandle::new(scenario, 64);
+        let runtime =
+            crate::replay::spawn_replay_runtime(handle.clone(), Duration::from_millis(25));
+        let app = build_router_with_replay(unavailable_database(), Some(handle));
+
+        app.clone()
+            .oneshot(
+                Request::post("/api/dev/replay/speed")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"speed":"8x"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        app.clone()
+            .oneshot(
+                Request::post("/api/dev/replay/resume")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        let flights = app
+            .clone()
+            .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let payload = flights.into_body().collect().await.unwrap().to_bytes();
+        let payload: Value = serde_json::from_slice(&payload).unwrap();
+        assert_eq!(payload["pagination"]["total_items"], 3);
+        assert!(payload["data"].as_array().unwrap().iter().all(|flight| {
+            flight["latest_position"].is_object() || flight["flight"]["callsign"] == "FT202"
+        }));
+
+        let reset = app
+            .clone()
+            .oneshot(
+                Request::post("/api/dev/replay/reset")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(reset.status(), StatusCode::OK);
+        let flights = app
+            .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let payload = flights.into_body().collect().await.unwrap().to_bytes();
+        let payload: Value = serde_json::from_slice(&payload).unwrap();
+        assert_eq!(payload["pagination"]["total_items"], 0);
+        runtime.abort();
     }
 }

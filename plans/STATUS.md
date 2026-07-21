@@ -10,7 +10,7 @@ Last updated: 2026-07-20
 - Pull request: Pending
 - Owner: Backend engineering
 - Overall status: M0 and FT-101 are merged; FT-102 fleet projection and streaming are in progress
-- Next action: Implement the in-memory current-state projection, typed read APIs, stable timeline, replayable SSE stream, and boundary metrics.
+- Next action: Commit the verified FT-102 implementation, open its pull request, and monitor required checks.
 
 ## Milestone checklist
 

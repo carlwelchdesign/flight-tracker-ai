@@ -40,13 +40,13 @@ Dependencies: FT-101
 
 Acceptance checklist:
 
-- [ ] Flight list and detail endpoints return typed, paginated responses.
-- [ ] Timeline returns source-attributed operational events in stable order.
-- [ ] SSE reconnect behavior and event IDs are tested.
-- [ ] Invalid or out-of-order events do not corrupt current state.
-- [ ] API latency and stream connection metrics are emitted.
+- [x] Flight list and detail endpoints return typed, paginated responses.
+- [x] Timeline returns source-attributed operational events in stable order.
+- [x] SSE reconnect behavior and event IDs are tested.
+- [x] Invalid or out-of-order events do not corrupt current state.
+- [x] API latency and stream connection metrics are emitted.
 
-Verification evidence: Pending.
+Verification evidence in progress: `plans/FLEET_API.md`; focused projection, HTTP, SSE, metrics, replay-reset, and replay-to-public-API tests; 31 passing Rust tests; strict workspace Clippy; Rust release build; web dependency audit, lint, typecheck, and production build; Compose configuration and diff hygiene. Final commit, PR, and required checks pending.
 
 ## FT-103 — Build map, flight board, and flight detail experience
 
