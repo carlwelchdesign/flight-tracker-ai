@@ -83,6 +83,8 @@ Every envelope should carry:
 - `GET /api/events/stream`
 - Development-only replay controls protected by environment and authorization
 
+`/health` is a liveness-oriented response: it remains HTTP 200 while reporting `ok` or `degraded`, the critical-worker check, and each worker's state and last heartbeat. `/readiness` is fail-closed: it returns 503 unless the database, PostGIS, and all registered critical workers are ready. A worker is degraded while starting, after a failed/stopped task, or when its heartbeat exceeds the health threshold.
+
 ## Security and operational constraints
 
 - Tenant or operator ID must exist on operational records before real customer data is introduced.

@@ -96,6 +96,8 @@ a:focus-visible {
 .operations-controls,
 .operations-summary,
 .replay-controls,
+.operations-badges,
+.system-badge,
 .connection-badge,
 .ops-panel-heading,
 .detail-header,
@@ -136,8 +138,8 @@ a:focus-visible {
 }
 
 .summary-metric {
-  min-width: 94px;
-  padding: 2px 18px;
+  min-width: 78px;
+  padding: 2px 12px;
   border-right: 1px solid var(--line);
 }
 .summary-metric:last-child { border-right: 0; }
@@ -147,8 +149,15 @@ a:focus-visible {
 .summary-critical strong { color: var(--red); }
 
 .operations-controls { justify-content: flex-end; gap: 12px; }
-.connection-badge { gap: 7px; white-space: nowrap; color: var(--muted); font: 520 11px/1 "Geist Mono", monospace; }
+.operations-badges { align-items: flex-start; flex-direction: column; gap: 6px; }
+.system-badge,
+.connection-badge { gap: 7px; white-space: nowrap; color: var(--muted); font: 520 10px/1 "Geist Mono", monospace; }
+.system-badge i,
 .connection-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--subtle); box-shadow: 0 0 0 3px rgba(96, 119, 125, 0.12); }
+.system-healthy { color: #9de8d9; }
+.system-healthy i { background: var(--cyan); }
+.system-degraded { color: var(--red); }
+.system-degraded i { background: var(--red); }
 .connection-live { color: #9de8d9; }
 .connection-live i { background: var(--cyan); box-shadow: 0 0 0 3px rgba(85, 214, 194, 0.14), 0 0 12px rgba(85, 214, 194, 0.35); }
 .connection-reconnecting { color: var(--amber); }

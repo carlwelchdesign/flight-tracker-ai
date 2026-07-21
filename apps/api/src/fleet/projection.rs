@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     sync::Arc,
+    time::Duration,
 };
 
 use thiserror::Error;
@@ -11,6 +12,7 @@ use crate::{
         AircraftPosition, CanonicalEvent, Flight, FlightId, OperatorId, ProviderEnvelope,
         ProviderEnvelopeId, SourceAttribution,
     },
+    health::WorkerProbe,
     ingestion::NormalizedEventBatch,
 };
 
@@ -199,23 +201,37 @@ impl FleetStore {
 pub fn spawn_projection_worker(
     store: FleetStore,
     mut receiver: broadcast::Receiver<Arc<NormalizedEventBatch>>,
+    probe: WorkerProbe,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
+        let mut heartbeat = tokio::time::interval(Duration::from_secs(1));
+        heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
-            match receiver.recv().await {
-                Ok(batch) => match store.apply(&batch).await {
-                    Ok(report) => tracing::debug!(
-                        accepted_events = report.accepted_events,
-                        ignored_events = report.ignored_events,
-                        duplicate_batch = report.duplicate_batch,
-                        "fleet projection applied ingestion batch"
-                    ),
-                    Err(error) => tracing::warn!(error = %error, "fleet projection rejected batch"),
-                },
-                Err(broadcast::error::RecvError::Lagged(skipped)) => {
-                    tracing::error!(skipped, "fleet projection lagged behind ingestion");
+            tokio::select! {
+                _ = heartbeat.tick() => probe.heartbeat(),
+                received = receiver.recv() => match received {
+                    Ok(batch) => {
+                        probe.heartbeat();
+                        match store.apply(&batch).await {
+                            Ok(report) => tracing::debug!(
+                                correlation_id = %batch.envelope.id.as_uuid(),
+                                accepted_events = report.accepted_events,
+                                ignored_events = report.ignored_events,
+                                duplicate_batch = report.duplicate_batch,
+                                "fleet projection applied ingestion batch"
+                            ),
+                            Err(error) => tracing::warn!(
+                                correlation_id = %batch.envelope.id.as_uuid(),
+                                error = %error,
+                                "fleet projection rejected batch"
+                            ),
+                        }
+                    }
+                    Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                        tracing::error!(skipped, "fleet projection lagged behind ingestion");
+                    }
+                    Err(broadcast::error::RecvError::Closed) => break,
                 }
-                Err(broadcast::error::RecvError::Closed) => break,
             }
         }
     })

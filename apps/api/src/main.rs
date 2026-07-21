@@ -4,7 +4,8 @@ use std::time::Duration;
 
 use config::Config;
 use flight_tracker_api::{
-    build_router_with_replay,
+    build_router_with_runtime,
+    health::CriticalWorkerRegistry,
     replay::{ReplayHandle, ReplayScenario, spawn_replay_runtime},
 };
 use sqlx::postgres::PgPoolOptions;
@@ -18,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "flight_tracker_api=info,tower_http=info".into()),
         )
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::layer().json())
         .init();
 
     let config = Config::from_env()?;
@@ -30,12 +31,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     sqlx::migrate!("../../migrations").run(&database).await?;
 
+    let workers = CriticalWorkerRegistry::default();
     let replay = if let Some(replay_config) = config.replay {
         let scenario = ReplayScenario::load(&replay_config.scenario_path)?;
         let scenario_id = scenario.id.clone();
         let handle = ReplayHandle::new(scenario, 256);
-        spawn_replay_runtime(handle.clone(), Duration::from_millis(100));
-        tracing::info!(scenario = %scenario_id, "development replay controls enabled");
+        spawn_replay_runtime(
+            handle.clone(),
+            Duration::from_millis(100),
+            workers.register("replay_runtime"),
+        );
+        tracing::info!(
+            correlation_id = %scenario_id,
+            scenario = %scenario_id,
+            "development replay controls enabled"
+        );
         Some(handle)
     } else {
         None
@@ -43,9 +53,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let listener = TcpListener::bind(config.bind_address).await?;
     tracing::info!(address = %config.bind_address, "API listening");
-    axum::serve(listener, build_router_with_replay(database, replay))
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    axum::serve(
+        listener,
+        build_router_with_runtime(database, replay, workers),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
 
     Ok(())
 }

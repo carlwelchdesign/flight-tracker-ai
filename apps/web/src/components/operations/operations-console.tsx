@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parseBackendHealth } from "@/lib/backend-health";
 import type { FleetEvent, FleetLoadResult, FlightPage, FlightView, Hazard, TimelinePage } from "@/lib/fleet-api";
 import { hazardFromEvent, parseFleetEvent, parseFlightPage, parseTimelinePage } from "@/lib/fleet-api";
 import { FlightBoard } from "./flight-board";
 import { FlightDetail } from "./flight-detail";
 import { OperationsMap } from "./operations-map";
-import { attentionLevel, fleetReferenceTime, formatZulu } from "./operations-model";
+import { attentionLevel, fleetReferenceTime, fleetTiming, formatZulu } from "./operations-model";
+import { OperationsBadges } from "./operations-badges";
+import type { ConnectionState, ServiceHealthState } from "./operations-health-model";
+import { OperationsStatusRegion } from "./operations-status";
 
-type ConnectionState = "connecting" | "live" | "reconnecting" | "disconnected";
 type ReplayPhase = "running" | "paused" | "completed" | "unavailable";
 
 type OperationsConsoleProps = {
@@ -31,6 +34,11 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
     initialFleet.state === "ready" ? "connecting" : "disconnected",
   );
   const [replayPhase, setReplayPhase] = useState<ReplayPhase>("unavailable");
+  const [feedOutage, setFeedOutage] = useState(false);
+  const [serviceHealth, setServiceHealth] = useState<ServiceHealthState>({
+    state: "checking",
+    workers: [],
+  });
   const [speed, setSpeed] = useState("8x");
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(
@@ -41,6 +49,7 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
 
   const selected = flights.find((view) => view.flight.id === selectedId) ?? null;
   const referenceTime = fleetReferenceTime(flights);
+  const timing = fleetTiming(flights);
   const attentionCounts = useMemo(() => {
     return flights.reduce(
       (counts, view) => {
@@ -130,6 +139,7 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
         if (!cancelled && isReplayStatus(payload)) {
           setReplayPhase(payload.phase);
           setSpeed(payload.speed);
+          setFeedOutage(payload.feed_outage);
         }
       } catch {
         // Replay controls are optional outside development.
@@ -138,6 +148,44 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
     void loadReplayStatus();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadServiceHealth() {
+      try {
+        const response = await fetch("/api/backend/health", { cache: "no-store" });
+        if (!response.ok) throw new Error(`Health check returned HTTP ${response.status}`);
+        const health = parseBackendHealth(await response.json());
+        if (cancelled) return;
+        if (health.status === "ok") {
+          setServiceHealth({ state: "healthy", workers: health.workers });
+        } else {
+          const degraded = health.workers
+            .filter((worker) => worker.state !== "running")
+            .map((worker) => `${worker.name}: ${worker.state}`)
+            .join(", ");
+          setServiceHealth({
+            state: "degraded",
+            workers: health.workers,
+            message: degraded || "A critical worker is not healthy.",
+          });
+        }
+      } catch (healthError) {
+        if (cancelled) return;
+        setServiceHealth({
+          state: "degraded",
+          workers: [],
+          message: healthError instanceof Error ? healthError.message : "Health check failed",
+        });
+      }
+    }
+    void loadServiceHealth();
+    const interval = setInterval(() => void loadServiceHealth(), 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
     };
   }, []);
 
@@ -166,7 +214,7 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
   }, [selectedId, eventRevision]);
 
   const invokeReplay = useCallback(
-    async (action: "pause" | "resume" | "reset" | "speed", body?: unknown) => {
+    async (action: "pause" | "resume" | "reset" | "speed" | "outage", body?: unknown) => {
       const response = await fetch(`/api/backend/api/dev/replay/${action}`, {
         method: "POST",
         headers: body ? { "content-type": "application/json" } : undefined,
@@ -177,6 +225,7 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
       if (isReplayStatus(payload)) {
         setReplayPhase(payload.phase);
         setSpeed(payload.speed);
+        setFeedOutage(payload.feed_outage);
       }
     },
     [],
@@ -213,6 +262,17 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
     }
   }
 
+  async function setSimulationOutage(active: boolean) {
+    try {
+      await invokeReplay("outage", { active });
+      setError(null);
+    } catch (controlError) {
+      setError(
+        controlError instanceof Error ? controlError.message : "Feed outage could not be changed",
+      );
+    }
+  }
+
   return (
     <main className="operations-shell">
       <a className="skip-link" href="#flight-board">Skip to flight board</a>
@@ -229,11 +289,12 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
           <SummaryMetric label="Tracked" value={flights.length.toString()} />
           <SummaryMetric label="Attention" value={(attentionCounts.watch + attentionCounts.critical).toString()} tone="watch" />
           <SummaryMetric label="Critical" value={attentionCounts.critical.toString()} tone="critical" />
-          <SummaryMetric label="Scenario time" value={referenceTime ? formatZulu(new Date(referenceTime).toISOString()) : "—"} />
+          <SummaryMetric label="Last event" value={formatTiming(timing.lastEventTime)} />
+          <SummaryMetric label="Last received" value={formatTiming(timing.lastReceivedTime)} />
         </div>
 
         <div className="operations-controls">
-          <ConnectionBadge state={connection} />
+          <OperationsBadges connection={connection} serviceHealth={serviceHealth} />
           {replayPhase !== "unavailable" && (
             <div className="replay-controls" aria-label="Simulation controls">
               <label>
@@ -258,29 +319,28 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
               ) : (
                 <button type="button" onClick={() => void startSimulation()}>Run</button>
               )}
+              <button
+                type="button"
+                onClick={() => void setSimulationOutage(!feedOutage)}
+                aria-label={feedOutage ? "Restore simulation feed" : "Simulate feed outage"}
+              >
+                {feedOutage ? "Restore" : "Outage"}
+              </button>
               <button type="button" className="icon-control" onClick={() => void resetSimulation()} aria-label="Reset simulation">↺</button>
             </div>
           )}
         </div>
       </header>
 
-      <div className="operations-status-region" aria-live="polite">
-        {connection === "reconnecting" && (
-          <StatusBanner tone="stale" title="Live stream interrupted">
-            Showing the last accepted operational picture while reconnection is attempted.
-          </StatusBanner>
-        )}
-        {connection === "disconnected" && (
-          <StatusBanner tone="error" title="Operations API disconnected">
-            {error ?? "No live source is available."} <button type="button" onClick={() => void refreshFlights()}>Retry</button>
-          </StatusBanner>
-        )}
-        {error && connection !== "disconnected" && (
-          <StatusBanner tone="error" title="Partial data issue">
-            {error} <button type="button" onClick={() => setError(null)}>Dismiss</button>
-          </StatusBanner>
-        )}
-      </div>
+      <OperationsStatusRegion
+        connection={connection}
+        serviceHealth={serviceHealth}
+        feedOutage={feedOutage}
+        error={error}
+        onRetry={() => void refreshFlights()}
+        onDismiss={() => setError(null)}
+        onRestoreFeed={() => void setSimulationOutage(false)}
+      />
 
       <div className="operations-grid">
         <OperationsMap
@@ -327,42 +387,20 @@ function SummaryMetric({ label, value, tone }: { label: string; value: string; t
   );
 }
 
-function ConnectionBadge({ state }: { state: ConnectionState }) {
-  const labels: Record<ConnectionState, string> = {
-    connecting: "Connecting",
-    live: "Live feed",
-    reconnecting: "Reconnecting",
-    disconnected: "Disconnected",
-  };
-  return (
-    <span className={`connection-badge connection-${state}`} role="status">
-      <i aria-hidden="true" /> {labels[state]}
-    </span>
-  );
-}
-
-function StatusBanner({
-  tone,
-  title,
-  children,
-}: {
-  tone: "stale" | "error";
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={`status-banner status-${tone}`} role={tone === "error" ? "alert" : "status"}>
-      <strong>{title}</strong>
-      <span>{children}</span>
-    </div>
-  );
-}
-
-function isReplayStatus(value: unknown): value is { phase: Exclude<ReplayPhase, "unavailable">; speed: string } {
+function isReplayStatus(value: unknown): value is {
+  phase: Exclude<ReplayPhase, "unavailable">;
+  speed: string;
+  feed_outage: boolean;
+} {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Record<string, unknown>;
   return (
     ["running", "paused", "completed"].includes(String(candidate.phase)) &&
-    typeof candidate.speed === "string"
+    typeof candidate.speed === "string" &&
+    typeof candidate.feed_outage === "boolean"
   );
+}
+
+function formatTiming(value: number | null): string {
+  return value === null ? "—" : formatZulu(new Date(value).toISOString());
 }

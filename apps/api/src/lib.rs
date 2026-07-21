@@ -1,16 +1,19 @@
-use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
+use axum::{Json, Router, extract::State, http::StatusCode, middleware, routing::get};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use tower_http::trace::TraceLayer;
 
 pub mod domain;
 pub mod fleet;
+pub mod health;
 pub mod ingestion;
 pub mod metrics;
+pub mod observability;
 pub mod replay;
 
 use fleet::{FleetStore, fleet_router, spawn_projection_worker};
-use metrics::ApiMetrics;
+use health::{CriticalWorkerRegistry, WorkerSnapshot};
+use metrics::{ApiMetrics, observe_request};
+use observability::correlate_request;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
 
 pub const SERVICE_NAME: &str = "flight-tracker-api";
@@ -20,6 +23,7 @@ pub struct ApiState {
     database: PgPool,
     replay: Option<ReplayHandle>,
     fleet: FleetStore,
+    workers: CriticalWorkerRegistry,
 }
 
 #[derive(Debug, Serialize)]
@@ -27,6 +31,13 @@ struct HealthResponse {
     status: &'static str,
     service: &'static str,
     version: &'static str,
+    checks: HealthChecks,
+    workers: Vec<WorkerSnapshot>,
+}
+
+#[derive(Debug, Serialize)]
+struct HealthChecks {
+    critical_workers: &'static str,
 }
 
 #[derive(Debug, Serialize)]
@@ -39,18 +50,31 @@ struct ReadinessResponse {
 struct ReadinessChecks {
     database: &'static str,
     postgis: &'static str,
+    critical_workers: &'static str,
 }
 
 pub fn build_router(database: PgPool) -> Router {
-    build_router_with_services(database, None, FleetStore::new(2_048))
+    build_router_with_runtime(database, None, CriticalWorkerRegistry::default())
 }
 
 pub fn build_router_with_replay(database: PgPool, replay: Option<ReplayHandle>) -> Router {
+    build_router_with_runtime(database, replay, CriticalWorkerRegistry::default())
+}
+
+pub fn build_router_with_runtime(
+    database: PgPool,
+    replay: Option<ReplayHandle>,
+    workers: CriticalWorkerRegistry,
+) -> Router {
     let fleet = FleetStore::new(2_048);
     if let Some(handle) = replay.as_ref() {
-        spawn_projection_worker(fleet.clone(), handle.subscribe());
+        spawn_projection_worker(
+            fleet.clone(),
+            handle.subscribe(),
+            workers.register("fleet_projection"),
+        );
     }
-    build_router_with_services(database, replay, fleet)
+    build_router_with_services_and_health(database, replay, fleet, workers)
 }
 
 pub fn build_router_with_services(
@@ -58,8 +82,22 @@ pub fn build_router_with_services(
     replay: Option<ReplayHandle>,
     fleet: FleetStore,
 ) -> Router {
+    build_router_with_services_and_health(
+        database,
+        replay,
+        fleet,
+        CriticalWorkerRegistry::default(),
+    )
+}
+
+fn build_router_with_services_and_health(
+    database: PgPool,
+    replay: Option<ReplayHandle>,
+    fleet: FleetStore,
+    workers: CriticalWorkerRegistry,
+) -> Router {
     let metrics = ApiMetrics::default();
-    let fleet_routes = fleet_router(fleet.clone(), metrics);
+    let fleet_routes = fleet_router(fleet.clone(), metrics.clone());
     let mut router = Router::new()
         .route("/health", get(health))
         .route("/readiness", get(readiness));
@@ -70,7 +108,8 @@ pub fn build_router_with_services(
             .route("/api/dev/replay/pause", axum::routing::post(replay_pause))
             .route("/api/dev/replay/resume", axum::routing::post(replay_resume))
             .route("/api/dev/replay/reset", axum::routing::post(replay_reset))
-            .route("/api/dev/replay/speed", axum::routing::post(replay_speed));
+            .route("/api/dev/replay/speed", axum::routing::post(replay_speed))
+            .route("/api/dev/replay/outage", axum::routing::post(replay_outage));
     }
 
     router
@@ -78,14 +117,21 @@ pub fn build_router_with_services(
             database,
             replay,
             fleet,
+            workers,
         })
         .merge(fleet_routes)
-        .layer(TraceLayer::new_for_http())
+        .layer(middleware::from_fn_with_state(metrics, observe_request))
+        .layer(middleware::from_fn(correlate_request))
 }
 
 #[derive(Debug, Deserialize)]
 struct ReplaySpeedRequest {
     speed: ReplaySpeed,
+}
+
+#[derive(Debug, Deserialize)]
+struct ReplayOutageRequest {
+    active: bool,
 }
 
 async fn replay_status(State(state): State<ApiState>) -> Json<ReplayStatus> {
@@ -142,15 +188,35 @@ async fn replay_speed(
     )
 }
 
-async fn health() -> Json<HealthResponse> {
+async fn replay_outage(
+    State(state): State<ApiState>,
+    Json(request): Json<ReplayOutageRequest>,
+) -> Json<ReplayStatus> {
+    Json(
+        state
+            .replay
+            .expect("replay route requires handle")
+            .set_feed_outage(request.active)
+            .await,
+    )
+}
+
+async fn health(State(state): State<ApiState>) -> Json<HealthResponse> {
+    let workers = state.workers.snapshot();
+    let workers_ready = workers.iter().all(WorkerSnapshot::is_ready);
     Json(HealthResponse {
-        status: "ok",
+        status: if workers_ready { "ok" } else { "degraded" },
         service: SERVICE_NAME,
         version: env!("CARGO_PKG_VERSION"),
+        checks: HealthChecks {
+            critical_workers: if workers_ready { "ok" } else { "degraded" },
+        },
+        workers,
     })
 }
 
 async fn readiness(State(state): State<ApiState>) -> (StatusCode, Json<ReadinessResponse>) {
+    let workers_ready = state.workers.is_ready();
     let postgis_ready = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis')",
     )
@@ -158,40 +224,55 @@ async fn readiness(State(state): State<ApiState>) -> (StatusCode, Json<Readiness
     .await;
 
     match postgis_ready {
-        Ok(true) => (
-            StatusCode::OK,
-            Json(ReadinessResponse {
-                status: "ready",
-                checks: ReadinessChecks {
-                    database: "ok",
-                    postgis: "ok",
-                },
-            }),
+        Ok(true) => readiness_response(
+            if workers_ready {
+                StatusCode::OK
+            } else {
+                StatusCode::SERVICE_UNAVAILABLE
+            },
+            "ok",
+            "ok",
+            workers_ready,
         ),
-        Ok(false) => (
+        Ok(false) => readiness_response(
             StatusCode::SERVICE_UNAVAILABLE,
-            Json(ReadinessResponse {
-                status: "not_ready",
-                checks: ReadinessChecks {
-                    database: "ok",
-                    postgis: "missing",
-                },
-            }),
+            "ok",
+            "missing",
+            workers_ready,
         ),
         Err(error) => {
             tracing::warn!(error = %error, "readiness database check failed");
-            (
+            readiness_response(
                 StatusCode::SERVICE_UNAVAILABLE,
-                Json(ReadinessResponse {
-                    status: "not_ready",
-                    checks: ReadinessChecks {
-                        database: "unavailable",
-                        postgis: "unknown",
-                    },
-                }),
+                "unavailable",
+                "unknown",
+                workers_ready,
             )
         }
     }
+}
+
+fn readiness_response(
+    status_code: StatusCode,
+    database: &'static str,
+    postgis: &'static str,
+    workers_ready: bool,
+) -> (StatusCode, Json<ReadinessResponse>) {
+    (
+        status_code,
+        Json(ReadinessResponse {
+            status: if status_code == StatusCode::OK {
+                "ready"
+            } else {
+                "not_ready"
+            },
+            checks: ReadinessChecks {
+                database,
+                postgis,
+                critical_workers: if workers_ready { "ok" } else { "degraded" },
+            },
+        }),
+    )
 }
 
 #[cfg(test)]
@@ -240,6 +321,25 @@ mod tests {
         let payload: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(payload["status"], "not_ready");
         assert_eq!(payload["checks"]["database"], "unavailable");
+        assert_eq!(payload["checks"]["critical_workers"], "ok");
+    }
+
+    #[tokio::test]
+    async fn health_reports_a_critical_worker_that_has_not_started() {
+        let workers = CriticalWorkerRegistry::default();
+        let _probe = workers.register("test_worker");
+        let response = build_router_with_runtime(unavailable_database(), None, workers)
+            .oneshot(Request::get("/health").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let payload: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(payload["status"], "degraded");
+        assert_eq!(payload["checks"]["critical_workers"], "degraded");
+        assert_eq!(payload["workers"][0]["name"], "test_worker");
+        assert_eq!(payload["workers"][0]["state"], "starting");
     }
 
     #[tokio::test]
@@ -287,6 +387,7 @@ mod tests {
         assert_eq!(speed.status(), StatusCode::OK);
 
         let resume = app
+            .clone()
             .oneshot(
                 Request::post("/api/dev/replay/resume")
                     .body(Body::empty())
@@ -299,6 +400,20 @@ mod tests {
         let payload: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(payload["phase"], "running");
         assert_eq!(payload["speed"], "4x");
+
+        let outage = app
+            .oneshot(
+                Request::post("/api/dev/replay/outage")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"active":true}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(outage.status(), StatusCode::OK);
+        let body = outage.into_body().collect().await.unwrap().to_bytes();
+        let payload: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(payload["feed_outage"], true);
     }
 
     #[tokio::test]
@@ -345,9 +460,34 @@ mod tests {
         ))
         .unwrap();
         let handle = ReplayHandle::new(scenario, 64);
-        let runtime =
-            crate::replay::spawn_replay_runtime(handle.clone(), Duration::from_millis(25));
-        let app = build_router_with_replay(unavailable_database(), Some(handle));
+        let workers = CriticalWorkerRegistry::default();
+        let runtime = crate::replay::spawn_replay_runtime(
+            handle.clone(),
+            Duration::from_millis(25),
+            workers.register("test_replay"),
+        );
+        let app = build_router_with_runtime(unavailable_database(), Some(handle), workers);
+
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        let health = app
+            .clone()
+            .oneshot(Request::get("/health").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let payload = health.into_body().collect().await.unwrap().to_bytes();
+        let payload: Value = serde_json::from_slice(&payload).unwrap();
+        assert_eq!(payload["status"], "ok");
+        assert_eq!(payload["workers"].as_array().unwrap().len(), 2);
+
+        app.clone()
+            .oneshot(
+                Request::post("/api/dev/replay/outage")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"active":true}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
 
         app.clone()
             .oneshot(
@@ -362,6 +502,30 @@ mod tests {
             .oneshot(
                 Request::post("/api/dev/replay/resume")
                     .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        let during_outage = app
+            .clone()
+            .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let payload = during_outage
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes();
+        let payload: Value = serde_json::from_slice(&payload).unwrap();
+        assert_eq!(payload["pagination"]["total_items"], 0);
+
+        app.clone()
+            .oneshot(
+                Request::post("/api/dev/replay/outage")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"active":false}"#))
                     .unwrap(),
             )
             .await

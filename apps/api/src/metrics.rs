@@ -13,6 +13,8 @@ use axum::{
     response::Response,
 };
 
+use crate::observability::CorrelationId;
+
 #[derive(Default)]
 struct MetricsInner {
     api_requests_total: AtomicU64,
@@ -85,6 +87,11 @@ pub async fn observe_request(
 ) -> Response<Body> {
     let path = request.uri().path().to_owned();
     let method = request.method().clone();
+    let correlation_id = request
+        .extensions()
+        .get::<CorrelationId>()
+        .map(|value| value.as_str().to_owned())
+        .unwrap_or_else(|| "missing".to_owned());
     let started = Instant::now();
     let response = next.run(request).await;
     let elapsed = started.elapsed();
@@ -97,6 +104,7 @@ pub async fn observe_request(
         Ordering::Relaxed,
     );
     tracing::info!(
+        %correlation_id,
         %method,
         %path,
         status = response.status().as_u16(),

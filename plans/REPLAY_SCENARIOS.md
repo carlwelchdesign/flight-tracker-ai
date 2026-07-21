@@ -36,8 +36,9 @@ The local Compose stack opts in with `APP_ENV=development`, `ENABLE_REPLAY_CONTR
 - `POST /api/dev/replay/resume`
 - `POST /api/dev/replay/reset`
 - `POST /api/dev/replay/speed` with JSON such as `{ "speed": "4x" }`
+- `POST /api/dev/replay/outage` with `{ "active": true }` to suspend source events and `{ "active": false }` to restore them
 
-The scenario starts paused. Status reports phase, speed, event cursor, emitted and total event counts, virtual elapsed milliseconds, and virtual time.
+The scenario starts paused. Status reports phase, speed, event cursor, emitted and total event counts, virtual elapsed milliseconds, virtual time, and `feed_outage`. A simulated outage leaves the replay and projection workers healthy but freezes virtual source progress. This intentionally distinguishes provider/source degradation from a crashed critical worker. Reset clears the outage.
 
 ## Production safety boundary
 
