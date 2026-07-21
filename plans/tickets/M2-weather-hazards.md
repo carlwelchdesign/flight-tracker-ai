@@ -30,8 +30,8 @@ Verification evidence: `plans/NOAA_INGESTION.md`; normal, malformed, duplicate, 
 Status: In progress
 
 Branch: `feat/ft-202-weather-hazard-layers`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `568bd63`
+Pull request: [#10](https://github.com/carlwelchdesign/flight-tracker-ai/pull/10)
 Owner: Full-stack engineering with product-design review
 
 Display current hazards and airport observations without obscuring the core fleet workflow.
@@ -46,7 +46,7 @@ Acceptance checklist:
 - [ ] Selecting a hazard reveals normalized fields and raw-source access.
 - [ ] Map performance is measured with a representative regional dataset.
 
-Verification evidence: Pending.
+Verification evidence: `plans/WEATHER_LAYERS.md`; 47 passing Rust library tests, 5 binary tests, and the schema contract; strict workspace Clippy; Rust formatting and release build; 15 passing web tests; frontend lint, typecheck, production build, and dependency audit with 0 vulnerabilities; Compose configuration and diff hygiene; deterministic 300-hazard/75-METAR benchmark with a 48.29 ms mean complete render and 0.19 ms mean projection; browser verification at 1180 x 720 and 820 x 900 with keyboard hazard selection, layer visibility, retained-data presentation, responsive layout, no horizontal overflow, and no browser errors. Awaiting required PR checks on [#10](https://github.com/carlwelchdesign/flight-tracker-ai/pull/10).
 
 ## FT-203 — Implement route–hazard intersection rules
 
