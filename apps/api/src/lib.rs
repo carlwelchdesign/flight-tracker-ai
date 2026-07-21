@@ -54,6 +54,11 @@ struct HealthResponse {
 }
 
 #[derive(Debug, Serialize)]
+struct ProbeResponse {
+    status: &'static str,
+}
+
+#[derive(Debug, Serialize)]
 struct HealthChecks {
     critical_workers: &'static str,
 }
@@ -69,6 +74,14 @@ struct ReadinessChecks {
     database: &'static str,
     postgis: &'static str,
     critical_workers: &'static str,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ReadinessSnapshot {
+    status_code: StatusCode,
+    database: &'static str,
+    postgis: &'static str,
+    workers_ready: bool,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -191,7 +204,10 @@ fn build_router_with_services_and_health(
             fleet: fleet.clone(),
             workers: workers.clone(),
         });
-    let mut protected = Router::new().route("/api/source-health", get(source_health));
+    let mut protected = Router::new()
+        .route("/api/source-health", get(source_health))
+        .route("/api/system/health", get(system_health))
+        .route("/api/system/readiness", get(system_readiness));
 
     if replay.is_some() {
         protected = protected
@@ -326,10 +342,18 @@ async fn authorize_replay(state: &ApiState, context: &AuthContext) -> Result<(),
     Ok(())
 }
 
-async fn health(State(state): State<ApiState>) -> Json<HealthResponse> {
+async fn health() -> Json<ProbeResponse> {
+    Json(ProbeResponse { status: "ok" })
+}
+
+async fn system_health(
+    State(state): State<ApiState>,
+    Extension(context): Extension<AuthContext>,
+) -> Result<Json<HealthResponse>, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
     let workers = state.workers.snapshot();
     let workers_ready = workers.iter().all(WorkerSnapshot::is_ready);
-    Json(HealthResponse {
+    Ok(Json(HealthResponse {
         status: if workers_ready { "ok" } else { "degraded" },
         service: SERVICE_NAME,
         version: env!("CARGO_PKG_VERSION"),
@@ -337,7 +361,7 @@ async fn health(State(state): State<ApiState>) -> Json<HealthResponse> {
             critical_workers: if workers_ready { "ok" } else { "degraded" },
         },
         workers,
-    })
+    }))
 }
 
 async fn source_health(
@@ -372,7 +396,29 @@ async fn source_health(
     Ok(Json(SourceHealthResponse { data: rows }))
 }
 
-async fn readiness(State(state): State<ApiState>) -> (StatusCode, Json<ReadinessResponse>) {
+async fn readiness(State(state): State<ApiState>) -> (StatusCode, Json<ProbeResponse>) {
+    let snapshot = readiness_snapshot(&state).await;
+    (
+        snapshot.status_code,
+        Json(ProbeResponse {
+            status: if snapshot.status_code == StatusCode::OK {
+                "ready"
+            } else {
+                "not_ready"
+            },
+        }),
+    )
+}
+
+async fn system_readiness(
+    State(state): State<ApiState>,
+    Extension(context): Extension<AuthContext>,
+) -> Result<(StatusCode, Json<ReadinessResponse>), Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
+    Ok(readiness_response(readiness_snapshot(&state).await))
+}
+
+async fn readiness_snapshot(state: &ApiState) -> ReadinessSnapshot {
     let workers_ready = state.workers.is_ready();
     let postgis_ready = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis')",
@@ -381,52 +427,51 @@ async fn readiness(State(state): State<ApiState>) -> (StatusCode, Json<Readiness
     .await;
 
     match postgis_ready {
-        Ok(true) => readiness_response(
-            if workers_ready {
+        Ok(true) => ReadinessSnapshot {
+            status_code: if workers_ready {
                 StatusCode::OK
             } else {
                 StatusCode::SERVICE_UNAVAILABLE
             },
-            "ok",
-            "ok",
+            database: "ok",
+            postgis: "ok",
             workers_ready,
-        ),
-        Ok(false) => readiness_response(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "ok",
-            "missing",
+        },
+        Ok(false) => ReadinessSnapshot {
+            status_code: StatusCode::SERVICE_UNAVAILABLE,
+            database: "ok",
+            postgis: "missing",
             workers_ready,
-        ),
+        },
         Err(error) => {
             tracing::warn!(error = %error, "readiness database check failed");
-            readiness_response(
-                StatusCode::SERVICE_UNAVAILABLE,
-                "unavailable",
-                "unknown",
+            ReadinessSnapshot {
+                status_code: StatusCode::SERVICE_UNAVAILABLE,
+                database: "unavailable",
+                postgis: "unknown",
                 workers_ready,
-            )
+            }
         }
     }
 }
 
-fn readiness_response(
-    status_code: StatusCode,
-    database: &'static str,
-    postgis: &'static str,
-    workers_ready: bool,
-) -> (StatusCode, Json<ReadinessResponse>) {
+fn readiness_response(snapshot: ReadinessSnapshot) -> (StatusCode, Json<ReadinessResponse>) {
     (
-        status_code,
+        snapshot.status_code,
         Json(ReadinessResponse {
-            status: if status_code == StatusCode::OK {
+            status: if snapshot.status_code == StatusCode::OK {
                 "ready"
             } else {
                 "not_ready"
             },
             checks: ReadinessChecks {
-                database,
-                postgis,
-                critical_workers: if workers_ready { "ok" } else { "degraded" },
+                database: snapshot.database,
+                postgis: snapshot.postgis,
+                critical_workers: if snapshot.workers_ready {
+                    "ok"
+                } else {
+                    "degraded"
+                },
             },
         }),
     )
@@ -469,7 +514,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn health_reports_service_identity_without_database_access() {
+    async fn public_health_is_minimal_and_does_not_access_the_database() {
         let database = unavailable_database();
         let response = build_router(database.clone(), test_auth(&database))
             .oneshot(Request::get("/health").body(Body::empty()).unwrap())
@@ -479,8 +524,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let payload: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(payload["status"], "ok");
-        assert_eq!(payload["service"], SERVICE_NAME);
+        assert_eq!(payload, serde_json::json!({ "status": "ok" }));
     }
 
     #[tokio::test]
@@ -494,13 +538,11 @@ mod tests {
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let payload: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(payload["status"], "not_ready");
-        assert_eq!(payload["checks"]["database"], "unavailable");
-        assert_eq!(payload["checks"]["critical_workers"], "ok");
+        assert_eq!(payload, serde_json::json!({ "status": "not_ready" }));
     }
 
     #[tokio::test]
-    async fn health_reports_a_critical_worker_that_has_not_started() {
+    async fn public_health_does_not_expose_critical_worker_details() {
         let workers = CriticalWorkerRegistry::default();
         let _probe = workers.register("test_worker");
         let database = unavailable_database();
@@ -513,10 +555,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let payload: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(payload["status"], "degraded");
-        assert_eq!(payload["checks"]["critical_workers"], "degraded");
-        assert_eq!(payload["workers"][0]["name"], "test_worker");
-        assert_eq!(payload["workers"][0]["state"], "starting");
+        assert_eq!(payload, serde_json::json!({ "status": "ok" }));
     }
 
     #[tokio::test]
@@ -550,6 +589,12 @@ mod tests {
                 .unwrap(),
             Request::get("/api/flights").body(Body::empty()).unwrap(),
             Request::get("/api/events/stream")
+                .body(Body::empty())
+                .unwrap(),
+            Request::get("/api/system/health")
+                .body(Body::empty())
+                .unwrap(),
+            Request::get("/api/system/readiness")
                 .body(Body::empty())
                 .unwrap(),
             Request::get("/metrics").body(Body::empty()).unwrap(),

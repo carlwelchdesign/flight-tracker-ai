@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const ALLOWED_PATHS = [
-  /^(?:health|readiness)$/,
+  /^api\/system\/(?:health|readiness)$/,
   /^api\/source-health$/,
   /^api\/(?:hazards|airport-observations)$/,
   /^api\/source-records\/[^/]+$/,

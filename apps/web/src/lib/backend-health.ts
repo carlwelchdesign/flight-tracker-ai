@@ -15,45 +15,6 @@ export type WorkerHealth = {
   detail: string | null;
 };
 
-export type BackendStatus =
-  | { state: "connected"; health: BackendHealth }
-  | { state: "degraded"; message: string };
-
-const DEFAULT_API_BASE_URL = "http://localhost:8080";
-
-export async function getBackendStatus(): Promise<BackendStatus> {
-  const apiBaseUrl = process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL;
-
-  try {
-    const response = await fetch(`${apiBaseUrl}/health`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(2_000),
-    });
-
-    if (!response.ok) {
-      return {
-        state: "degraded",
-        message: `API returned HTTP ${response.status}`,
-      };
-    }
-
-    const payload: unknown = await response.json();
-    if (!isBackendHealth(payload)) {
-      return {
-        state: "degraded",
-        message: "API returned an unexpected health payload",
-      };
-    }
-
-    return { state: "connected", health: payload };
-  } catch {
-    return {
-      state: "degraded",
-      message: "API is unavailable",
-    };
-  }
-}
-
 export function parseBackendHealth(value: unknown): BackendHealth {
   if (!isBackendHealth(value)) {
     throw new Error("API returned an unexpected health payload");

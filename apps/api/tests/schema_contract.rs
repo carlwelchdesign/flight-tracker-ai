@@ -996,7 +996,56 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
         .await
         .unwrap();
     let (auth, authorization) = authenticated_service(pool, operator_id).await;
-    let response = build_router(pool.clone(), auth)
+    let app = build_router(pool.clone(), auth);
+    let system_health = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/system/health")
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(system_health.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(
+        &system_health
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes(),
+    )
+    .unwrap();
+    assert_eq!(body["service"], "flight-tracker-api");
+    assert!(body["workers"].is_array());
+
+    let system_readiness = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/system/readiness")
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(system_readiness.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(
+        &system_readiness
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes(),
+    )
+    .unwrap();
+    assert_eq!(body["checks"]["database"], "ok");
+    assert_eq!(body["checks"]["postgis"], "ok");
+
+    let response = app
         .oneshot(
             Request::builder()
                 .uri("/api/source-health")

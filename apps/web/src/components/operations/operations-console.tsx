@@ -261,7 +261,7 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
     let cancelled = false;
     async function loadServiceHealth() {
       try {
-        const response = await fetch("/api/backend/health", { cache: "no-store" });
+        const response = await fetch("/api/backend/api/system/health", { cache: "no-store" });
         if (!response.ok) throw new Error(`Health check returned HTTP ${response.status}`);
         const health = parseBackendHealth(await response.json());
         if (cancelled) return;

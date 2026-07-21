@@ -109,8 +109,8 @@ jobs:
             fi
             sleep 2
           done
-          curl --fail --silent http://127.0.0.1:8080/health | grep '"status":"ok"'
-          grep '"postgis":"ok"' /tmp/readiness.json
+          test "$(curl --fail --silent http://127.0.0.1:8080/health)" = '{"status":"ok"}'
+          test "$(cat /tmp/readiness.json)" = '{"status":"ready"}'
       - name: Verify replay alert lifecycle
         run: |
           assertion="$(python3 - <<'PY'
