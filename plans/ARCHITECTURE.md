@@ -31,6 +31,7 @@ Use a modular monolith first: one Rust workspace containing the API, ingestion w
 - Redis only when durable queueing, fan-out, or rate coordination is actually needed
 - Object storage for large raw payload archives or replay fixtures
 - Provider payloads stored separately from normalized domain facts
+- Malformed provider records retained with explicit quarantine evidence
 
 ## Service boundaries
 

@@ -20,6 +20,8 @@ Open:
 
 The Rust API applies SQLx migrations at startup. The development stack uses PostgreSQL 17 with PostGIS 3.5 and keeps its data in a Docker volume.
 
+Live NOAA ingestion is disabled by default. Before enabling it, create the configured operator in PostgreSQL, set `ENABLE_NOAA_WEATHER=true`, and keep the poll interval at 60 seconds or longer. See [plans/NOAA_INGESTION.md](plans/NOAA_INGESTION.md) for configuration, source-health semantics, and recovery guidance.
+
 Stop the stack with `make down`. Run all local checks with `make verify`.
 
 ## Repository structure

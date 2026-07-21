@@ -266,6 +266,7 @@ fn event_identity(event: &CanonicalEvent) -> (OperatorId, Option<&SourceAttribut
         CanonicalEvent::Flight(value) => (value.operator_id, Some(&value.source)),
         CanonicalEvent::AircraftPosition(value) => (value.operator_id, Some(&value.source)),
         CanonicalEvent::PlannedRoute(value) => (value.operator_id, Some(&value.source)),
+        CanonicalEvent::AirportObservation(value) => (value.operator_id, Some(&value.source)),
         CanonicalEvent::WeatherHazard(value) => (value.operator_id, Some(&value.source)),
         CanonicalEvent::Alert(value) => (value.operator_id, None),
         CanonicalEvent::AlertAction(value) => (value.operator_id, None),
@@ -333,6 +334,9 @@ fn to_fleet_event(id: u64, envelope_id: ProviderEnvelopeId, event: CanonicalEven
             value.times.event_time,
             Some(value.source.clone()),
         ),
+        CanonicalEvent::AirportObservation(value) => {
+            (None, value.times.event_time, Some(value.source.clone()))
+        }
         CanonicalEvent::WeatherHazard(value) => {
             (None, value.times.event_time, Some(value.source.clone()))
         }

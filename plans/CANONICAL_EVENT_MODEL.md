@@ -26,6 +26,7 @@ provider payload -> ProviderEnvelope -> provider adapter -> CanonicalEvent -> pr
 | Rust type | PostgreSQL table | Identity and source |
 | --- | --- | --- |
 | `ProviderEnvelope` | `provider_envelopes` | Envelope UUID, operator UUID, provider/feed/record ID |
+| `AirportObservation` | `airport_observations` | Observation UUID, station, operator/source-envelope UUIDs |
 | `Flight` | `flights` | Flight UUID, operator UUID, source-envelope UUID |
 | `AircraftPosition` | `aircraft_positions` | Position UUID, operator/flight/source-envelope UUIDs |
 | `PlannedRoute` | `planned_routes` | Route UUID, operator/flight/source-envelope UUIDs, route version |
@@ -91,6 +92,8 @@ valid observations that must remain visible rather than be silently rewritten.
   messages. The same operator/provider/feed/record ID plus payload hash is
   unique to make identical delivery retries idempotent without suppressing a
   changed payload.
+- NOAA SIGMET revisions share a stable external series identity. Each changed payload creates a new immutable envelope and hazard revision with an explicit superseded record and active/cancelled status.
+- Malformed live-provider records retain their raw envelope and an `ingestion_failures` quarantine row; only successfully normalized records enter canonical event streams.
 - Source attribution is mandatory on external normalized facts.
 - Alert evidence is an ordered join to provider envelopes rather than an opaque
   JSON list, preserving tenant constraints and queryability.

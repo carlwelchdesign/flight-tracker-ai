@@ -18,6 +18,11 @@ pub struct IngestionHub {
     sender: broadcast::Sender<Arc<NormalizedEventBatch>>,
 }
 
+pub struct IngestionSubscription {
+    pub worker_name: &'static str,
+    pub receiver: broadcast::Receiver<Arc<NormalizedEventBatch>>,
+}
+
 impl IngestionHub {
     pub fn new(capacity: usize) -> Self {
         let (sender, _) = broadcast::channel(capacity);
@@ -26,6 +31,13 @@ impl IngestionHub {
 
     pub fn subscribe(&self) -> broadcast::Receiver<Arc<NormalizedEventBatch>> {
         self.sender.subscribe()
+    }
+
+    pub fn subscription(&self, worker_name: &'static str) -> IngestionSubscription {
+        IngestionSubscription {
+            worker_name,
+            receiver: self.subscribe(),
+        }
     }
 
     pub fn publish(&self, batch: NormalizedEventBatch) -> usize {

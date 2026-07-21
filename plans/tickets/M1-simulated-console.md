@@ -78,7 +78,7 @@ Status: Complete
 
 Branch: `feat/ft-104-source-health-observability`
 Final implementation commit: `c03c4f0`
-Pull request: [#8](https://github.com/carlwelchdesign/flight-tracker-ai/pull/8)
+Pull request: [#8](https://github.com/carlwelchdesign/flight-tracker-ai/pull/8) (merged at `da1a6ad`)
 Owner: Full-stack engineering
 
 Make replay and service health visible to operators and developers.

@@ -1,0 +1,21 @@
+[
+  {
+    "icaoId": "KSFO",
+    "receiptTime": "2026-07-21T05:00:46.314Z",
+    "obsTime": 1784609760,
+    "reportTime": "2026-07-21T05:00:00.000Z",
+    "rawOb": "METAR KSFO 210456Z 30009KT 10SM FEW006 BKN020 16/13 A2992",
+    "lat": 37.6196,
+    "lon": -122.3656,
+    "metarType": "METAR",
+    "wdir": 300,
+    "wspd": 9,
+    "wgst": 14,
+    "visib": "10+",
+    "clouds": [
+      { "cover": "FEW", "base": 600 },
+      { "cover": "BKN", "base": 2000 }
+    ],
+    "fltCat": "VFR"
+  }
+]

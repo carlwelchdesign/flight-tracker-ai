@@ -1,0 +1,12 @@
+[
+  {
+    "icaoId": "KSFO",
+    "receiptTime": "not-a-time",
+    "reportTime": "2026-07-21T05:00:00.000Z",
+    "rawOb": "METAR KSFO MALFORMED",
+    "lat": 37.6196,
+    "lon": -122.3656,
+    "wdir": "SIDEWAYS",
+    "visib": "unknown"
+  }
+]

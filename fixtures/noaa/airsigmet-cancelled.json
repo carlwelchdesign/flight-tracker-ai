@@ -1,0 +1,19 @@
+[
+  {
+    "icaoId": "KKCI",
+    "alphaChar": "W",
+    "seriesId": "21W",
+    "receiptTime": "2026-07-21T05:10:10.000Z",
+    "creationTime": "2026-07-21T05:10:00.000Z",
+    "validTimeFrom": 1784609700,
+    "validTimeTo": 1784616900,
+    "airSigmetType": "SIGMET",
+    "hazard": "CONVECTIVE",
+    "severity": 5,
+    "altitudeHi1": 43000,
+    "altitudeHi2": 43000,
+    "altitudeLo1": null,
+    "altitudeLo2": null,
+    "rawAirSigmet": "KKCI CNL SIGMET 21W VALID 210455/210655."
+  }
+]

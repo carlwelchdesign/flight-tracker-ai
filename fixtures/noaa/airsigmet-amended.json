@@ -1,0 +1,25 @@
+[
+  {
+    "icaoId": "KKCI",
+    "alphaChar": "W",
+    "seriesId": "21W",
+    "receiptTime": "2026-07-21T05:02:10.000Z",
+    "creationTime": "2026-07-21T05:01:00.000Z",
+    "validTimeFrom": 1784609700,
+    "validTimeTo": 1784616900,
+    "airSigmetType": "SIGMET",
+    "hazard": "CONVECTIVE",
+    "severity": 5,
+    "altitudeHi1": 43000,
+    "altitudeHi2": 43000,
+    "altitudeLo1": null,
+    "altitudeLo2": null,
+    "rawAirSigmet": "AMD CONVECTIVE SIGMET 21W VALID UNTIL 0655Z AREA SEV TS TOPS TO FL430.",
+    "coords": [
+      { "lat": 36.8, "lon": -114.2 },
+      { "lat": 35.0, "lon": -113.2 },
+      { "lat": 34.5, "lon": -114.4 },
+      { "lat": 36.2, "lon": -115.0 }
+    ]
+  }
+]

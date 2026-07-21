@@ -1,0 +1,25 @@
+[
+  {
+    "icaoId": "KKCI",
+    "alphaChar": "W",
+    "seriesId": "21W",
+    "receiptTime": "2026-07-21T04:56:10.000Z",
+    "creationTime": "2026-07-21T04:55:00.000Z",
+    "validTimeFrom": 1784609700,
+    "validTimeTo": 1784616900,
+    "airSigmetType": "SIGMET",
+    "hazard": "CONVECTIVE",
+    "severity": 5,
+    "altitudeHi1": 41000,
+    "altitudeHi2": 41000,
+    "altitudeLo1": null,
+    "altitudeLo2": null,
+    "rawAirSigmet": "CONVECTIVE SIGMET 21W VALID UNTIL 0655Z AREA TS TOPS TO FL410.",
+    "coords": [
+      { "lat": 36.698, "lon": -114.097 },
+      { "lat": 35.005, "lon": -113.229 },
+      { "lat": 34.649, "lon": -114.323 },
+      { "lat": 36.145, "lon": -114.965 }
+    ]
+  }
+]

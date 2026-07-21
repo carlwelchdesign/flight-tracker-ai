@@ -1,6 +1,8 @@
 use axum::{Json, Router, extract::State, http::StatusCode, middleware, routing::get};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 pub mod domain;
 pub mod fleet;
@@ -9,9 +11,11 @@ pub mod ingestion;
 pub mod metrics;
 pub mod observability;
 pub mod replay;
+pub mod weather;
 
 use fleet::{FleetStore, fleet_router, spawn_projection_worker};
 use health::{CriticalWorkerRegistry, WorkerSnapshot};
+use ingestion::IngestionSubscription;
 use metrics::{ApiMetrics, observe_request};
 use observability::correlate_request;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
@@ -53,6 +57,40 @@ struct ReadinessChecks {
     critical_workers: &'static str,
 }
 
+#[derive(Debug, Serialize, sqlx::FromRow)]
+struct SourceHealthView {
+    id: Uuid,
+    operator_id: Uuid,
+    schema_version: i16,
+    provider: String,
+    feed: String,
+    state: String,
+    observed_at: DateTime<Utc>,
+    last_attempt_at: DateTime<Utc>,
+    last_success_at: Option<DateTime<Utc>>,
+    newest_event_at: Option<DateTime<Utc>>,
+    consecutive_failures: i32,
+    delay_seconds: Option<i64>,
+    stale_after_seconds: i64,
+    last_error_code: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct SourceHealthResponse {
+    data: Vec<SourceHealthView>,
+}
+
+#[derive(Debug, Serialize)]
+struct ApiErrorResponse {
+    error: ApiErrorBody,
+}
+
+#[derive(Debug, Serialize)]
+struct ApiErrorBody {
+    code: &'static str,
+    message: &'static str,
+}
+
 pub fn build_router(database: PgPool) -> Router {
     build_router_with_runtime(database, None, CriticalWorkerRegistry::default())
 }
@@ -66,12 +104,28 @@ pub fn build_router_with_runtime(
     replay: Option<ReplayHandle>,
     workers: CriticalWorkerRegistry,
 ) -> Router {
+    build_router_with_runtime_and_ingestion(database, replay, workers, Vec::new())
+}
+
+pub fn build_router_with_runtime_and_ingestion(
+    database: PgPool,
+    replay: Option<ReplayHandle>,
+    workers: CriticalWorkerRegistry,
+    subscriptions: Vec<IngestionSubscription>,
+) -> Router {
     let fleet = FleetStore::new(2_048);
     if let Some(handle) = replay.as_ref() {
         spawn_projection_worker(
             fleet.clone(),
             handle.subscribe(),
             workers.register("fleet_projection"),
+        );
+    }
+    for subscription in subscriptions {
+        spawn_projection_worker(
+            fleet.clone(),
+            subscription.receiver,
+            workers.register(subscription.worker_name),
         );
     }
     build_router_with_services_and_health(database, replay, fleet, workers)
@@ -100,7 +154,8 @@ fn build_router_with_services_and_health(
     let fleet_routes = fleet_router(fleet.clone(), metrics.clone());
     let mut router = Router::new()
         .route("/health", get(health))
-        .route("/readiness", get(readiness));
+        .route("/readiness", get(readiness))
+        .route("/api/source-health", get(source_health));
 
     if replay.is_some() {
         router = router
@@ -213,6 +268,34 @@ async fn health(State(state): State<ApiState>) -> Json<HealthResponse> {
         },
         workers,
     })
+}
+
+async fn source_health(
+    State(state): State<ApiState>,
+) -> Result<Json<SourceHealthResponse>, (StatusCode, Json<ApiErrorResponse>)> {
+    let rows = sqlx::query_as::<_, SourceHealthView>(
+        r#"
+        SELECT id, operator_id, schema_version, provider, feed, state, observed_at,
+               last_attempt_at, last_success_at, newest_event_at, consecutive_failures,
+               delay_seconds, stale_after_seconds, last_error_code
+        FROM source_health
+        ORDER BY provider, feed
+        "#,
+    )
+    .fetch_all(&state.database)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiErrorResponse {
+                error: ApiErrorBody {
+                    code: "source_health_unavailable",
+                    message: "Source health is temporarily unavailable",
+                },
+            }),
+        )
+    })?;
+    Ok(Json(SourceHealthResponse { data: rows }))
 }
 
 async fn readiness(State(state): State<ApiState>) -> (StatusCode, Json<ReadinessResponse>) {
