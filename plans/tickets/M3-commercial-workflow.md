@@ -73,11 +73,11 @@ Verification evidence: [identity and tenant isolation contract](../IDENTITY_TENA
 
 ## FT-304 — Build the dispatcher review queue
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-304-dispatcher-review-queue`
-Final commit: Pending
-Pull request: Pending
+Final commit: `11bdc0d`
+Pull request: [#14](https://github.com/carlwelchdesign/flight-tracker-ai/pull/14)
 Owner: Backend and full-stack engineering
 
 Make alert triage fast, prioritized, and auditable for an operations user.
@@ -86,11 +86,11 @@ Dependencies: FT-204, FT-303
 
 Acceptance checklist:
 
-- [ ] Queue supports severity, status, flight, time, and assigned-user filters.
-- [ ] Evidence is visible before an action is taken.
-- [ ] Acknowledge, assign, dismiss, comment, and resolve actions have clear feedback.
-- [ ] Concurrent updates do not silently overwrite another dispatcher’s action.
-- [ ] Dismissal reasons are structured enough to tune alert rules.
-- [ ] Queue usability is tested with a representative alert volume.
+- [x] Queue supports severity, status, flight, time, and assigned-user filters.
+- [x] Evidence is visible before an action is taken.
+- [x] Acknowledge, assign, dismiss, comment, and resolve actions have clear feedback.
+- [x] Concurrent updates do not silently overwrite another dispatcher’s action.
+- [x] Dismissal reasons are structured enough to tune alert rules.
+- [x] Queue usability is tested with a representative alert volume.
 
-Verification evidence: Pending.
+Verification evidence: tenant-scoped Rust queue filters for severity, lifecycle, callsign or flight UUID, inclusive event time, and active assignee or unassigned state; active alert-manager directory and assignment audit records; atomic workflow-version increments with `409 alert_conflict` recovery; duplicate, stale-data, incorrect-correlation, not-operationally-relevant, and other dismissal taxonomy; evidence-first responsive interface with loading, filtered-empty, unavailable, partial assignee failure, read-only, pending, success, validation, and conflict states; PostGIS coverage for cross-tenant assignment denial, full filters, stale-write rejection, structured dismissal, and a bounded 100-of-120 alert page; 150-alert React usability coverage; 62 Rust library tests, 8 binary tests, strict Clippy, formatting, release build, 28 web tests, lint, typecheck, production build, and 0 dependency vulnerabilities; authenticated replay and migration/schema verification in [CI run 29816346733](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29816346733); implementation and CI contract commit `11bdc0d`; PR [#14](https://github.com/carlwelchdesign/flight-tracker-ai/pull/14), with all required checks passing.

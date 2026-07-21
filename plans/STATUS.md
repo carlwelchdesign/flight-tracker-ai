@@ -5,12 +5,12 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M3 — Commercial flight data and operational workflow
-- Active ticket: FT-304 — Build the dispatcher review queue
-- Branch: `feat/ft-304-dispatcher-review-queue`
+- Active ticket: None
+- Branch: `main`
 - Pull request: None
-- Owner: Backend and full-stack engineering
-- Overall status: M0, M1, and M2 are complete; FT-304 is in progress while FT-301 remains externally gated
-- Next action: Implement tenant-scoped queue filters, assignment, structured dismissal, and optimistic concurrency, then verify the high-volume dispatcher workflow.
+- Owner: Unassigned
+- Overall status: M0, M1, and M2 are complete; FT-303 and FT-304 are complete while FT-301 remains externally gated
+- Next action: Complete FT-301 provider rights and the common 14-day trial; FT-302 and pilot-readiness tickets remain dependency-gated until that evidence exists.
 
 ## Milestone checklist
 
@@ -28,7 +28,7 @@ Last updated: 2026-07-21
 | M0 | 3 | 3 |
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
-| M3 | 1 | 4 |
+| M3 | 2 | 4 |
 | M4 | 0 | 4 |
 | M5 | 0 | 3 |
 
@@ -55,7 +55,7 @@ Last updated: 2026-07-21
 - FT-204 is delivered through PR #12. CI run `29811831163` verifies live replay persistence, route-hazard alert creation, score evidence, API acknowledgement, schema invariants, and the independent PostGIS rule oracle; M2 is complete.
 - FT-301 is externally gated on written commercial rights and a common 14-day provider trial. FT-303 can proceed independently and should establish authenticated tenant context before FT-304 expands the dispatcher queue.
 - FT-303 is delivered through PR #13 at implementation commit `1430ce8`. CI run `29814499315` verifies Rust, web, live authenticated replay, the identity migration, PostGIS cross-tenant route isolation, session revocation, and actor/tenant audit behavior. Hosted identity remains behind a provider-neutral boundary; tenant membership and operational authorization are app-owned and enforced by Rust.
-- FT-304 is active on `feat/ft-304-dispatcher-review-queue`. The Rust alert store will own tenant-scoped filtering, assignment, dismissal taxonomy, and workflow-version conflict detection; the web queue will expose explicit evidence, feedback, permission, and recovery states.
+- FT-304 is delivered through PR #14 at implementation and CI contract commit `11bdc0d`. CI run `29816346733` verifies the additive migration, authenticated replay, workflow-version acknowledgement, tenant-safe assignment, all queue filters, structured dismissal, conflict rejection, bounded persistence volume, Rust and web quality gates, and production builds.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
