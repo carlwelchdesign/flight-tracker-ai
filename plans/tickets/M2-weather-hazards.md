@@ -50,11 +50,12 @@ Verification evidence: `plans/WEATHER_LAYERS.md`; 47 passing Rust library tests,
 
 ## FT-203 — Implement route–hazard intersection rules
 
-Status: Not started
+Status: Complete
 
 Branch: `feat/ft-203-route-hazard-rules`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `28f227f`
+Pull request: [#11](https://github.com/carlwelchdesign/flight-tracker-ai/pull/11)
+Owner: Backend/domain engineering with independent fixture review
 
 Create deterministic, versioned rules that consider geometry, time, altitude, direction, and configurable proximity margins.
 
@@ -62,14 +63,14 @@ Dependencies: FT-201, FT-202
 
 Acceptance checklist:
 
-- [ ] Great-circle/route geometry and coordinate conventions are tested.
-- [ ] Rule considers hazard validity and altitude overlap, not polygon intersection alone.
-- [ ] Alert evidence identifies route version, hazard version, closest approach, and rule version.
-- [ ] Golden cases cover intersection, near miss, expired hazard, and non-overlapping altitude.
-- [ ] Rule results are deterministic across replay runs.
-- [ ] Independent fixture review confirms expected outcomes.
+- [x] Great-circle/route geometry and coordinate conventions are tested.
+- [x] Rule considers hazard validity and altitude overlap, not polygon intersection alone.
+- [x] Alert evidence identifies route version, hazard version, closest approach, and rule version.
+- [x] Golden cases cover intersection, near miss, expired hazard, and non-overlapping altitude.
+- [x] Rule results are deterministic across replay runs.
+- [x] Independent fixture review confirms expected outcomes.
 
-Verification evidence: Pending.
+Verification evidence: `plans/ROUTE_HAZARD_RULES.md`; high-latitude great-circle and antimeridian coordinate tests; eight rationale-backed golden cases for intersection, near miss, expiry, cancellation, altitude separation, route direction/progress, and missing-altitude behavior; byte-identical canonical replay batches and serialized decisions across scenario reloads; 54 passing Rust library tests, 5 binary tests, 2 golden/replay contract tests, and the schema contract; strict workspace Clippy; Rust formatting and release build; 15 passing web tests plus lint, typecheck, production build, and dependency audit with 0 vulnerabilities; Compose configuration and diff hygiene; implementation commit `28f227f`; PR [#11](https://github.com/carlwelchdesign/flight-tracker-ai/pull/11), with Rust, web, and API/PostGIS checks passing. The PostGIS 3.5 cross-engine oracle independently confirmed all golden spatial, temporal, altitude, direction, closest-approach, and outcome expectations in [CI run 29809973027](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29809973027).
 
 ## FT-204 — Add alert ranking, lifecycle, and deduplication
 

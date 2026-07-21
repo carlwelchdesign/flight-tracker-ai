@@ -1,16 +1,16 @@
 # Project Status
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Current state
 
 - Current milestone: M2 — Live weather and hazard intelligence
-- Active ticket: FT-202 — Render weather and hazard layers
-- Branch: `feat/ft-202-weather-hazard-layers`
-- Pull request: [#10](https://github.com/carlwelchdesign/flight-tracker-ai/pull/10)
-- Owner: Full-stack engineering with product-design review
-- Overall status: M0 and M1 are merged; FT-201 is merged and FT-202 is complete with merge pending
-- Next action: Merge green PR #10, update local `main`, then begin FT-203 route-hazard intersection rules on its dedicated branch.
+- Active ticket: FT-203 — Implement route–hazard intersection rules
+- Branch: `feat/ft-203-route-hazard-rules`
+- Pull request: [#11](https://github.com/carlwelchdesign/flight-tracker-ai/pull/11)
+- Owner: Backend/domain engineering with independent fixture review
+- Overall status: M0 and M1 are merged; FT-201 and FT-202 are merged; FT-203 is complete with merge pending
+- Next action: Merge green PR #11, update local `main`, then begin FT-204 alert ranking, lifecycle, and deduplication on its dedicated branch.
 
 ## Milestone checklist
 
@@ -27,7 +27,7 @@ Last updated: 2026-07-20
 | --- | ---: | ---: |
 | M0 | 3 | 3 |
 | M1 | 4 | 4 |
-| M2 | 2 | 4 |
+| M2 | 3 | 4 |
 | M3 | 0 | 4 |
 | M4 | 0 | 4 |
 | M5 | 0 | 3 |
@@ -47,6 +47,9 @@ Last updated: 2026-07-20
 - FT-104 is merged through PR #8 at `da1a6ad` with all required checks passing.
 - FT-201 is merged through PR #9 at `2ce50e2`; Rust, web, and API/PostGIS checks pass, including NOAA persistence and revision behavior.
 - FT-202 implementation commit `568bd63` and CI correction `225937f` are green in PR #10; Rust, web, and API/PostGIS checks pass, including weather reads and raw-source evidence against PostGIS.
+- FT-202 is merged through PR #10 at `617b337`; local `main` was synchronized before FT-203 began.
+- FT-203 is active on `feat/ft-203-route-hazard-rules`; its pure Rust domain rule will remain independent of Axum, SQLx, provider payloads, and wall-clock time.
+- FT-203 implementation commit `28f227f` is green in PR #11; Rust, web, and API/PostGIS checks pass, and the PostGIS 3.5 oracle independently confirmed all eight golden cases in CI run `29809973027`.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
