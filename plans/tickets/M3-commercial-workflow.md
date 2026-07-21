@@ -40,8 +40,8 @@ Historical evidence: PR [#15](https://github.com/carlwelchdesign/flight-tracker-
 Status: In progress
 
 Branch: `feat/ft-302-live-flight-integration`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `fe8957b`
+Pull request: [#21](https://github.com/carlwelchdesign/flight-tracker-ai/pull/21)
 Owner: Backend and full-stack engineering
 
 Implement the selected free source behind the canonical event boundary without weakening deterministic replay.
