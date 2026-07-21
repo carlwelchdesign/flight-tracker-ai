@@ -5,14 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-405 — Live navigable flight tracker
-- Branch: `feat/ft-405-live-navigable-tracker`
-- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
-- Owner: Full-stack product engineering
+- Active ticket: FT-406 — Observed trails and estimated trajectories
+- Branch: `feat/ft-406-flight-trajectories`
+- Pull request: Pending
+- Owner: Frontend product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Add airport and NOAA hazard/weather overlays, direct motion and
-  reduced-motion lifecycle tests, and a forced hosted degraded-state exercise
-  before closing and merging FT-405.
+- Next action: Implement bounded page-memory observation history, deterministic
+  five-minute projection math, and selected-aircraft MapLibre trajectory layers.
 
 ## Milestone checklist
 
@@ -25,6 +24,11 @@ Last updated: 2026-07-21
 
 ## Current product correction
 
+- FT-406 is active as a stacked follow-up to FT-405. It adds a selected live
+  aircraft's ten-minute observed trail and a separately labeled estimated
+  five-minute motion projection without persisting provider positions or
+  claiming a filed route, destination, ETA, or authoritative prediction. See
+  [`FT-406-flight-trajectories.md`](tickets/FT-406-flight-trajectories.md).
 - FT-405 is active on `feat/ft-405-live-navigable-tracker`. The existing public
   SVG/replay surface has been replaced in production by a sanitized public
   no-store ADSB.lol read model, a navigable MapLibre/OpenFreeMap view, animated
