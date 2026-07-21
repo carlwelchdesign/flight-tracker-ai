@@ -28,6 +28,7 @@ FT-001 must establish:
 
 - Make reviewable commits that contain only ticket scope.
 - Use Conventional Commit style with the lowercase ticket ID as scope, for example: `feat(ft-123): stream normalized flight events`.
+- Commit signing is not required for this repository. Do not pause delivery for GPG, SSH-signing, hardware-key, or pinentry availability.
 - Run the relevant verification before the final commit.
 - Record the final commit SHA in the ticket.
 - Do not mix opportunistic refactors into the ticket; create another ticket when needed.

@@ -47,6 +47,13 @@
 - Constraint: Do not integrate OpenSky into an automated or commercial product without a written commercial/operational license. Do not use FlightAware AeroAPI for the dispatcher display under its published self-service license because that license prohibits commercial aircraft situational displays. Do not use FAA SCDS or NMS as a sole operational source without the applicable access agreement and written confirmation of permitted use.
 - Gate: Select a commercial provider only after the competitive trial and contract checklist in `PROVIDER_FEASIBILITY.md` passes. Until then OD-002 remains blocked by procurement evidence.
 
+### ADR-008 — Repository commits do not require signing
+
+- Date: 2026-07-20
+- Decision: Use ordinary unsigned Git commits for this repository; GPG, SSH signing, and hardware-key confirmation are not delivery gates.
+- Reason: Hardware signing repeatedly interrupted otherwise verified ticket delivery without adding a project-specific requirement.
+- Constraint: Continue using ticket-scoped branches, intentional Conventional Commits, required CI checks, pull requests, and human-controlled merges.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |

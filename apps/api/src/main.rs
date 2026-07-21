@@ -3,7 +3,10 @@ mod config;
 use std::time::Duration;
 
 use config::Config;
-use flight_tracker_api::build_router;
+use flight_tracker_api::{
+    build_router_with_replay,
+    replay::{ReplayHandle, ReplayScenario, spawn_replay_runtime},
+};
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
@@ -27,9 +30,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     sqlx::migrate!("../../migrations").run(&database).await?;
 
+    let replay = if let Some(replay_config) = config.replay {
+        let scenario = ReplayScenario::load(&replay_config.scenario_path)?;
+        let scenario_id = scenario.id.clone();
+        let handle = ReplayHandle::new(scenario, 256);
+        spawn_replay_runtime(handle.clone(), Duration::from_millis(100));
+        tracing::info!(scenario = %scenario_id, "development replay controls enabled");
+        Some(handle)
+    } else {
+        None
+    };
+
     let listener = TcpListener::bind(config.bind_address).await?;
     tracing::info!(address = %config.bind_address, "API listening");
-    axum::serve(listener, build_router(database))
+    axum::serve(listener, build_router_with_replay(database, replay))
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 

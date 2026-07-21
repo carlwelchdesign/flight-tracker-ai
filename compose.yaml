@@ -26,6 +26,9 @@ services:
     command: cargo run --locked -p flight-tracker-api
     environment:
       API_BIND_ADDRESS: 0.0.0.0:8080
+      APP_ENV: development
+      ENABLE_REPLAY_CONTROLS: "true"
+      REPLAY_SCENARIO_PATH: /workspace/fixtures/replay/m1-operations-v1.json
       DATABASE_URL: postgres://${POSTGRES_USER:-flight_tracker}:${POSTGRES_PASSWORD:-flight_tracker}@database:5432/${POSTGRES_DB:-flight_tracker}
       RUST_LOG: flight_tracker_api=info,tower_http=info
       CARGO_HOME: /cargo

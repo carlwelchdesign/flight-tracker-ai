@@ -4,11 +4,12 @@ Default owner: Full-stack engineering, with product-design review for dispatcher
 
 ## FT-101 — Build deterministic replay infrastructure
 
-Status: Not started
+Status: Complete
 
 Branch: `feat/ft-101-replay-infrastructure`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `47a8029`
+Pull request: [#5](https://github.com/carlwelchdesign/flight-tracker-ai/pull/5) (ready for review; required checks passed)
+Owner: Full-stack engineering
 
 Create a versioned scenario format and virtual clock that emits positions and operational events through the same path used by live providers.
 
@@ -16,13 +17,13 @@ Dependencies: FT-001, FT-002
 
 Acceptance checklist:
 
-- [ ] At least one multi-flight scenario includes normal, delayed, and hazard-adjacent flights.
-- [ ] Pause, resume, speed, reset, and deterministic restart are supported in development.
-- [ ] Replaying identical fixtures produces identical normalized events.
-- [ ] Replay controls cannot be enabled accidentally in production.
-- [ ] Scenario schema and authoring instructions are documented.
+- [x] At least one multi-flight scenario includes normal, delayed, and hazard-adjacent flights.
+- [x] Pause, resume, speed, reset, and deterministic restart are supported in development.
+- [x] Replaying identical fixtures produces identical normalized events.
+- [x] Replay controls cannot be enabled accidentally in production.
+- [x] Scenario schema and authoring instructions are documented.
 
-Verification evidence: Pending.
+Verification evidence: `fixtures/replay/m1-operations-v1.json`; `plans/REPLAY_SCENARIOS.md`; `cargo fmt --all --check`; strict workspace Clippy; 18 passing Rust tests; production Rust release build; web install, audit, lint, typecheck, and production build; Compose configuration validation; live Compose API sequence covering status, 8x speed, resume, pause, and reset; production startup rejected `ReplayControlsForbidden`; implementation commit `47a8029`; PR [#5](https://github.com/carlwelchdesign/flight-tracker-ai/pull/5), with Rust, web, and API/PostGIS smoke checks passing.
 
 ## FT-102 — Implement fleet API and live event stream
 
