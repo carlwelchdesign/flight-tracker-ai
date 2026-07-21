@@ -20,6 +20,7 @@ REQUIRED_FILES = {
     "TRIAL_PROTOCOL.md",
     "DECISION_SCORECARD.md",
     "OUTREACH_REQUESTS.md",
+    "provider-question-responses.csv",
     "trial-scorecard.csv",
     "cost-model.csv",
 }
@@ -58,6 +59,33 @@ EVIDENCE_COLUMNS = (
     "Reviewer",
     "Notes",
 )
+RESPONSE_COLUMNS = (
+    "provider",
+    "question_id",
+    "answer",
+    "controlling_clause",
+    "limitations",
+    "additional_fee",
+    "evidence_id",
+    "reviewer",
+    "review_status",
+    "notes",
+)
+RESPONSE_ANSWERS = {"pending", "yes", "no", "exception_required"}
+RESPONSE_REVIEW_STATUSES = {"pending", "accepted", "exception", "rejected"}
+TERMINAL_RESPONSE_STATUSES = {"accepted", "exception", "rejected"}
+QUESTION_IDS = REQUIRED_RIGHTS_IDS | REQUIRED_SERVICE_IDS
+EXPECTED_RESPONSE_KEYS = {
+    (provider, question_id)
+    for provider in PROVIDERS
+    for question_id in QUESTION_IDS
+}
+EXPECTED_RESPONSE_EVIDENCE = {
+    ("flightaware_firehose", "R"): "FA-RIGHTS",
+    ("flightaware_firehose", "S"): "FA-SLA",
+    ("cirium_sky_stream", "R"): "CI-RIGHTS",
+    ("cirium_sky_stream", "S"): "CI-SLA",
+}
 TRIAL_METRICS = {
     "expected_flight_identification",
     "position_availability",
@@ -185,6 +213,72 @@ def validate_evidence_register(path: Path, require_complete: bool) -> list[str]:
     missing = sorted(REQUIRED_EVIDENCE_IDS - seen)
     if missing:
         errors.append(f"{path.name}: missing evidence IDs {missing}")
+    return errors
+
+
+def validate_question_responses(
+    rows: list[dict[str, str]], require_complete: bool
+) -> list[str]:
+    errors: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    for line, row in enumerate(rows, start=2):
+        provider = row.get("provider", "")
+        question_id = row.get("question_id", "")
+        answer = row.get("answer", "")
+        review_status = row.get("review_status", "")
+        key = (provider, question_id)
+        if provider not in PROVIDERS:
+            errors.append(f"response line {line}: unsupported provider {provider!r}")
+        if question_id not in QUESTION_IDS:
+            errors.append(f"response line {line}: unsupported question ID {question_id!r}")
+        if key in seen:
+            errors.append(f"response line {line}: duplicate provider/question")
+        seen.add(key)
+        if answer not in RESPONSE_ANSWERS:
+            errors.append(f"response line {line}: unsupported answer {answer!r}")
+        if review_status not in RESPONSE_REVIEW_STATUSES:
+            errors.append(
+                f"response line {line}: unsupported review status {review_status!r}"
+            )
+        if not row.get("reviewer"):
+            errors.append(f"response line {line}: reviewer is required")
+
+        question_family = question_id[:1]
+        expected_evidence = EXPECTED_RESPONSE_EVIDENCE.get((provider, question_family))
+        if expected_evidence and row.get("evidence_id") != expected_evidence:
+            errors.append(
+                f"response line {line}: evidence_id must be {expected_evidence}"
+            )
+
+        if answer != "pending":
+            required = ("controlling_clause", "limitations", "additional_fee")
+            missing = [field for field in required if not row.get(field)]
+            if missing:
+                errors.append(
+                    f"response line {line}: answered row missing {', '.join(missing)}"
+                )
+
+        compatible_answers = {
+            "accepted": {"yes"},
+            "exception": {"exception_required"},
+            "rejected": {"no", "exception_required"},
+        }
+        allowed = compatible_answers.get(review_status)
+        if allowed is not None and answer not in allowed:
+            errors.append(
+                f"response line {line}: {review_status} review is incompatible with {answer!r} answer"
+            )
+        if require_complete and review_status not in TERMINAL_RESPONSE_STATUSES:
+            errors.append(
+                f"response line {line}: question response is not in a terminal review state"
+            )
+
+    missing = sorted(EXPECTED_RESPONSE_KEYS - seen)
+    if missing:
+        errors.append(f"response matrix: missing provider/question rows {missing}")
+    unexpected = sorted(seen - EXPECTED_RESPONSE_KEYS)
+    if unexpected:
+        errors.append(f"response matrix: unsupported provider/question rows {unexpected}")
     return errors
 
 
@@ -324,11 +418,15 @@ def validate(directory: Path, require_complete: bool = False) -> list[str]:
 
     trial = directory / "trial-scorecard.csv"
     cost = directory / "cost-model.csv"
+    responses = directory / "provider-question-responses.csv"
     trial_rows, trial_errors = validate_table(trial, TRIAL_COLUMNS)
     cost_rows, cost_errors = validate_table(cost, COST_COLUMNS)
+    response_rows, response_errors = validate_table(responses, RESPONSE_COLUMNS)
     return (
         validate_questionnaire(directory / "RIGHTS_AND_SERVICE_QUESTIONNAIRE.md")
         + validate_evidence_register(directory / "EVIDENCE_REGISTER.md", require_complete)
+        + response_errors
+        + validate_question_responses(response_rows, require_complete)
         + trial_errors
         + cost_errors
         + validate_trial(trial_rows, require_complete)

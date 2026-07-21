@@ -74,6 +74,31 @@ class Ft301EvidenceValidationTest(unittest.TestCase):
             self.assertTrue(any("controlled reference" in error for error in errors))
             self.assertTrue(any("received date" in error for error in errors))
 
+    def test_rejects_incomplete_or_inconsistent_question_responses(self) -> None:
+        source = ROOT / "plans" / "provider-evaluation"
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "provider-evaluation"
+            shutil.copytree(source, directory)
+            response_path = directory / "provider-question-responses.csv"
+            with response_path.open(encoding="utf-8") as response_source:
+                rows = list(csv.DictReader(response_source))
+            rows[0].update({"answer": "yes", "review_status": "accepted"})
+            rows[1].update({
+                "answer": "no",
+                "controlling_clause": "Order section 1",
+                "limitations": "none",
+                "additional_fee": "none",
+                "review_status": "accepted",
+            })
+            rows[2]["evidence_id"] = "CI-RIGHTS"
+            rows.pop()
+            self._write(response_path, rows)
+            errors = validate(directory)
+            self.assertTrue(any("answered row missing" in error for error in errors))
+            self.assertTrue(any("incompatible" in error for error in errors))
+            self.assertTrue(any("evidence_id must be" in error for error in errors))
+            self.assertTrue(any("missing provider/question rows" in error for error in errors))
+
     @staticmethod
     def _write(path: Path, rows: list[dict[str, str]]) -> None:
         with path.open("w", newline="", encoding="utf-8") as target:

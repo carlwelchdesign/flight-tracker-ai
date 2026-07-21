@@ -13,11 +13,11 @@ This folder turns the commercial-provider gate into a repeatable procurement and
 ## Required workflow
 
 1. Send each provider the same [outreach request](OUTREACH_REQUESTS.md) and [rights and service questionnaire](RIGHTS_AND_SERVICE_QUESTIONNAIRE.md), and require clause-level written answers.
-2. Record only non-confidential evidence in [the evidence register](EVIDENCE_REGISTER.md). Store contracts, credentials, target tails, and provider-confidential material outside Git.
+2. Record every answer and its review disposition in `provider-question-responses.csv`, and record only non-confidential document metadata in [the evidence register](EVIDENCE_REGISTER.md). Store contracts, credentials, target tails, and provider-confidential material outside Git.
 3. Confirm both providers can supply the same 14-calendar-day real-time trial window and target population before starting either clock.
 4. Freeze the test population and regions using [the trial protocol](TRIAL_PROTOCOL.md).
 5. Collect raw trial observations without converting missing values into zero or silently dropping reconnect periods.
-6. Populate the evidence register, `trial-scorecard.csv`, and `cost-model.csv`; validate the complete package with `python3 scripts/validate_ft301_evidence.py` from the repository root. The validator protects the required document set, R-01–R-21 and S-01–S-12 question IDs, evidence IDs/statuses, trial metrics, and cost scenarios.
+6. Populate the response matrix, evidence register, `trial-scorecard.csv`, and `cost-model.csv`; validate the complete package with `python3 scripts/validate_ft301_evidence.py` from the repository root. The validator protects the required document set, exact two-provider question coverage, clause-level answer/review consistency, evidence IDs/statuses, trial metrics, and cost scenarios.
 7. Apply the pass/fail gates and scored comparison in [the decision scorecard](DECISION_SCORECARD.md).
 8. Legal records its approval, Engineering records technical approval, Product records the commercial recommendation, and the accountable owner resolves OD-002.
 
@@ -38,7 +38,7 @@ This folder turns the commercial-provider gate into a repeatable procurement and
 
 ## Data handling
 
-Do not commit credentials, contracts, quotes marked confidential, real tail lists, passenger or crew data, or raw licensed provider messages. Committed evidence must be an aggregate, redacted summary with a stable reference to the controlled original. Trial collection must use the minimum fields defined in the protocol and follow the stricter provider term until Legal approves a final retention schedule. No provider data, normalized facts, evidence, screenshots, or outputs may enter an AI/ML system until the controlling Order and Legal explicitly authorize that processing.
+Do not commit credentials, contracts, quotes marked confidential, real tail lists, passenger or crew data, or raw licensed provider messages. The response matrix may contain only clause identifiers and redacted summaries, never confidential clause text. Committed evidence must be an aggregate, redacted summary with a stable reference to the controlled original. Trial collection must use the minimum fields defined in the protocol and follow the stricter provider term until Legal approves a final retention schedule. No provider data, normalized facts, evidence, screenshots, or outputs may enter an AI/ML system until the controlling Order and Legal explicitly authorize that processing.
 
 ## Completion rule
 

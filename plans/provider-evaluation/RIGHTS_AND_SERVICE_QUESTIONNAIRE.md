@@ -1,6 +1,6 @@
 # Rights and Service Questionnaire
 
-Send the same questions to Cirium and FlightAware. A response is decision evidence only when it cites the controlling Order, data license, service schedule, or negotiated amendment. Public documentation and sales email may inform negotiation but do not close a contractual gate.
+Send the same questions to Cirium and FlightAware. A response is decision evidence only when it cites the controlling Order, data license, service schedule, or negotiated amendment. Public documentation and sales email may inform negotiation but do not close a contractual gate. Record each clause-level answer and Legal/Engineering disposition in `provider-question-responses.csv`; do not paste confidential contract text into the repository.
 
 ## Intended use statement
 

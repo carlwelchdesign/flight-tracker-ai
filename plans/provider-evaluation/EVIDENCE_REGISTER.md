@@ -2,6 +2,8 @@
 
 This register contains redacted metadata, not confidential documents. Store controlled originals in the approved contract repository and use an opaque reference that does not expose a secret URL or customer identifier.
 
+Use `provider-question-responses.csv` for the clause-level answer and review disposition of every R/S question. This register tracks the controlled source document, proposal, population, or trial result that supports those rows.
+
 ## Evidence status
 
 Use only `missing`, `requested`, `received`, `accepted`, `exception`, or `rejected`.

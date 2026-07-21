@@ -8,7 +8,7 @@ The decision uses gates before weights. Do not calculate a winning score for a p
 
 | Gate | Pass condition | Authority |
 | --- | --- | --- |
-| Exact-use rights | All R-01 through R-21 questions are accepted in controlling contract language, or every exception has an approved design control and amendment. | Legal/privacy |
+| Exact-use rights | Every R-01 through R-21 row for the provider is `accepted` or has an approved `exception` with its design control and amendment; no row is pending or rejected. | Legal/privacy |
 | Aircraft privacy | LADD, PIA, blocked-tail, owner authorization, entitlement updates, and deletion are enforceable for the proposed package. | Legal/privacy and Engineering |
 | Retention and exit | Raw, normalized, derived, audit, backup, fixture, termination, and deletion rules are implementable and priced. | Legal/privacy and Engineering |
 | Comparable trial | Both providers complete a valid paired 14-day real-time target-population trial under `ft301-v1`. | Engineering/data |
@@ -17,6 +17,8 @@ The decision uses gates before weights. Do not calculate a winning score for a p
 | Complete price | The 20, 100, and 500-flight scenarios include every fixed and variable component under normal, peak, replay, reconnect, and failure behavior. | Product/commercial |
 
 If neither provider passes, record `no_select`, preserve simulation, and negotiate or evaluate another licensed enterprise provider. Do not relax a gate after seeing the scores without a dated decision-log entry and all affected approvers.
+
+`--require-complete` treats accepted, rejected, and exception decisions as terminal evidence states. That command proves the review is complete; it does not prove a provider passed these gates. A rejected response eliminates the provider unless the decision record explicitly narrows the intended use and all affected approvers accept that change.
 
 ### Weighted comparison after gates
 
