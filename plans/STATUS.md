@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-407 — Align live aircraft markers with trajectories
-- Branch: `fix/ft-407-aircraft-marker-heading`
-- Pull request: Pending
+- Active ticket: FT-405 — Live navigable flight tracker
+- Branch: `feat/ft-405-live-navigable-tracker`
+- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
 - Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Apply and verify the public live marker's negative 90-degree
-  glyph-axis correction, then return to FT-405's remaining overlays and tests.
+- Next action: Complete FT-405's airport and NOAA hazard/weather overlays,
+  direct motion lifecycle tests, and forced hosted degraded-state exercise.
 
 ## Milestone checklist
 
@@ -24,7 +24,7 @@ Last updated: 2026-07-21
 
 ## Current product correction
 
-- FT-407 is in progress on `fix/ft-407-aircraft-marker-heading`. It corrects
+- FT-407 is complete in stacked PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27). It corrects
   the public live-map glyph axis without changing ADS-B headings, trajectory
   math, or the protected console's separate north-facing SVG marker. See
   [`FT-407-aircraft-marker-heading.md`](tickets/FT-407-aircraft-marker-heading.md).
@@ -54,6 +54,13 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
+- FT-407 is delivered in stacked PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27)
+  at implementation commit `c36f763`. CI run
+  [29875663012](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875663012)
+  passes all five checks. The public live MapLibre marker now applies an
+  explicit negative 90-degree glyph-axis correction; browser verification
+  proved a supplied 298.26-degree heading renders at 208.26 degrees without
+  changing source evidence or trajectory math.
 - FT-406 is merged into the FT-405 feature branch through PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26)
   at merge commit `2df6deb`. Final CI run
   [29875004160](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875004160)
