@@ -7,10 +7,10 @@ Last updated: 2026-07-20
 - Current milestone: M1 — Simulated operations console
 - Active ticket: FT-102 — Implement fleet API and live event stream
 - Branch: `feat/ft-102-fleet-api-event-stream`
-- Pull request: Pending
+- Pull request: [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6) (draft; checks pending)
 - Owner: Backend engineering
 - Overall status: M0 and FT-101 are merged; FT-102 fleet projection and streaming are in progress
-- Next action: Commit the verified FT-102 implementation, open its pull request, and monitor required checks.
+- Next action: Monitor PR #6 required checks, address any failures, and record final merge-ready evidence.
 
 ## Milestone checklist
 

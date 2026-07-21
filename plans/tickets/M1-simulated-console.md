@@ -30,8 +30,8 @@ Verification evidence: `fixtures/replay/m1-operations-v1.json`; `plans/REPLAY_SC
 Status: In progress
 
 Branch: `feat/ft-102-fleet-api-event-stream`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `7e99083`
+Pull request: [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6) (draft; checks pending)
 Owner: Backend engineering
 
 Project current flight state from replay events and expose list, detail, timeline, and SSE endpoints.
@@ -46,7 +46,7 @@ Acceptance checklist:
 - [x] Invalid or out-of-order events do not corrupt current state.
 - [x] API latency and stream connection metrics are emitted.
 
-Verification evidence in progress: `plans/FLEET_API.md`; focused projection, HTTP, SSE, metrics, replay-reset, and replay-to-public-API tests; 31 passing Rust tests; strict workspace Clippy; Rust release build; web dependency audit, lint, typecheck, and production build; Compose configuration and diff hygiene. Final commit, PR, and required checks pending.
+Verification evidence in progress: `plans/FLEET_API.md`; focused projection, HTTP, SSE, metrics, replay-reset, and replay-to-public-API tests; 31 passing Rust tests; strict workspace Clippy; Rust release build; web dependency audit, lint, typecheck, and production build; Compose configuration and diff hygiene; implementation commit `7e99083`; draft PR [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6). Required checks pending.
 
 ## FT-103 — Build map, flight board, and flight detail experience
 
