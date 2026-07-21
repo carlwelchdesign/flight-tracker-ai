@@ -11,7 +11,7 @@ Last updated: 2026-07-21
 - Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; completion gate remains open)
 - Owner: Security, legal/privacy, product, and engineering
 - Overall status: M0, M1, and M2 are complete; M3 remains externally gated while dependency-safe FT-401 review preparation is in progress
-- Next action: Resolve the remaining dependency-safe FT-401 findings, beginning with persistent advisory/environment language; complete credential and Clerk browser drills when hosted environments exist, and leave commercial-provider controls blocked until FT-301 resolves.
+- Next action: Resolve dependency-safe F401-007 audit access, export, and privileged-action monitoring; complete the hosted F401-001 credential drills, F401-005 Clerk browser smoke, and F401-009 wording/state review when their environments and reviewers are available, while commercial-provider controls remain blocked on FT-301.
 
 ## Milestone checklist
 
