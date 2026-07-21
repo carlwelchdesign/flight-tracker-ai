@@ -7,10 +7,10 @@ Last updated: 2026-07-20
 - Current milestone: M1 — Simulated operations console
 - Active ticket: FT-101 — Build deterministic replay infrastructure
 - Branch: `feat/ft-101-replay-infrastructure`
-- Pull request: Pending
+- Pull request: [#5](https://github.com/carlwelchdesign/flight-tracker-ai/pull/5) (ready for review; required checks passed)
 - Owner: Full-stack engineering
-- Overall status: M0 is complete and merged; FT-101 replay infrastructure is in progress
-- Next action: Open the FT-101 draft pull request, monitor required checks, and record final merge-ready evidence.
+- Overall status: M0 is complete and merged; FT-101 is complete and ready to merge through PR #5
+- Next action: Human review and merge PR #5, then update local `main` and begin FT-102 on its feature branch.
 
 ## Milestone checklist
 
@@ -26,7 +26,7 @@ Last updated: 2026-07-20
 | Milestone | Complete | Total |
 | --- | ---: | ---: |
 | M0 | 3 | 3 |
-| M1 | 0 | 4 |
+| M1 | 1 | 4 |
 | M2 | 0 | 4 |
 | M3 | 0 | 4 |
 | M4 | 0 | 4 |
@@ -41,6 +41,7 @@ Last updated: 2026-07-20
 - FT-002 implementation is merged through PR #3; correction PR #4 is also merged and preserves provider revisions while deduplicating identical deliveries.
 - The canonical v1 contract separates raw envelopes from normalized facts, uses explicit UTC time/unit/geometry semantics, and enforces operator consistency through composite foreign keys.
 - FT-003 is merged through PR #2 at `7edfa2a`; M0 is complete.
+- FT-101 implementation is complete at `47a8029`; PR #5 is ready for human review with all required checks passing.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
