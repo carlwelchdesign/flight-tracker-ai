@@ -35,6 +35,7 @@ The Product, Legal/privacy, Security, and operator owners must approve or shorte
 - Proposed backup retention is 35 days, shortened when a provider contract requires it.
 - Test restore at least quarterly and before a pilot; record RPO, RTO, migration version, PostGIS availability, row/tenant counts, and tombstone replay.
 - A restore is incomplete until current membership/session revocations and deletion tombstones are reapplied before serving traffic.
+- Follow `BACKUP_RESTORE_RUNBOOK.md` and require a healthy administrator-only retention-integrity result for every tenant before serving traffic. The controlled procedure and integrity gate are implemented; managed backup configuration and a recorded drill remain pending.
 - Provider credentials and hosted identity secrets are restored from the managed secret system, never from database backups.
 
 ## Security incident classification

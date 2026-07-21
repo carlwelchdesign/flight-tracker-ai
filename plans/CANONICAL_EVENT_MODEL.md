@@ -40,6 +40,7 @@ provider payload -> ProviderEnvelope -> provider adapter -> CanonicalEvent -> pr
 | Lifecycle deletion tombstone | `lifecycle_deletion_tombstones` | Tenant/data-class/source-record identity plus deletion/minimization evidence |
 | Alert-history tombstone | `alert_history_tombstones` | Tenant/alert ID/material dedupe key/series revision plus retention-run evidence |
 | Operational-fact tombstone | `operational_fact_tombstones` | Tenant/provider/fact table/record ID plus retention-run evidence |
+| Retention integrity view | Read-only projection across current rows, tombstones, schedules, and attempts | Tenant-scoped resurrection violations plus operational restore diagnostics |
 
 Every operational table includes a non-null `operator_id`. Composite foreign
 keys include `operator_id`, so a record cannot reference an envelope, flight,
@@ -62,6 +63,11 @@ exact logical replay while allowing new material evidence at the next revision.
 Approved normalized-fact runs delete old observations, whole unreferenced
 terminal flight aggregates, and whole unreferenced expired hazard series in
 dependency order. Provider-scoped fact tombstones suppress exact restoration.
+
+The administrator-only retention-integrity projection is read-only. It compares
+current tenant rows against every tombstone class and reports paused schedules
+and recent scheduled failures without weakening or mutating the underlying
+retention evidence.
 
 ## Versioning
 

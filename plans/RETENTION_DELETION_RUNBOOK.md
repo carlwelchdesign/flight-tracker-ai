@@ -48,6 +48,12 @@ Normalized-fact runs create typed provider-scoped tombstones before deleting pos
 
 After any backup restore, restore the current tombstone set from the isolated control copy before allowing application traffic or ingestion. Then verify that a representative tombstoned payload cannot be reintroduced. F401-008 remains open until this is exercised against managed backups with recorded RPO/RTO.
 
+## Integrity verification
+
+An administrator can call `GET /api/admin/retention/integrity` after a restore, retention run, or incident. The tenant-scoped result is healthy only when no current row conflicts with a raw-payload, lifecycle, alert-history, or operational-fact tombstone. It also reports tombstone totals, paused schedules, and failed scheduled attempts from the prior 24 hours as diagnostic context; those operational signals do not by themselves mean deleted data was resurrected.
+
+Follow [`BACKUP_RESTORE_RUNBOOK.md`](BACKUP_RESTORE_RUNBOOK.md) for the controlled restore sequence. Do not reopen traffic until every tenant is healthy, the representative replay probes remain suppressed, and a second reviewer approves the evidence. F401-008 remains open until this procedure is exercised against managed backups with recorded RPO/RTO.
+
 ## Failure handling
 
 - `second_administrator_required`: use another active administrator; do not share sessions or change the requester identity.
