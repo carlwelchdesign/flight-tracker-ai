@@ -1,10 +1,17 @@
 # Retention and Deletion Runbook
 
-This runbook describes the implemented FT-401 raw-provider-payload deletion workflow. It is deny-by-default: no data is deleted until a tenant administrator creates a versioned policy, a different administrator approves it, a fixed inventory is previewed, and a different administrator approves that run.
+This runbook describes the implemented FT-401 lifecycle-retention workflow. It is deny-by-default: no data is deleted or minimized until a tenant administrator creates a versioned policy, a different administrator approves it, a fixed inventory is previewed, and a different administrator approves that run.
 
 ## Implemented scope
 
-The current engine supports `provider_raw_payload` only. It replaces expired `provider_envelopes.raw_payload` values with an empty object while preserving the non-payload envelope identity, provider/feed, timing, SHA-256 evidence, and normalized records. It does not yet enforce retention for normalized flight/weather facts, alert history, authorization audit, identity mappings, session revocations, logs, exports, or backups.
+The current engine supports four data classes:
+
+- `provider_raw_payload` replaces expired `provider_envelopes.raw_payload` values with an empty object while preserving non-payload envelope identity, provider/feed, timing, SHA-256 evidence, and normalized records.
+- `authorization_audit` deletes expired tenant authorization-audit rows after recording lifecycle tombstones.
+- `session_revocation` deletes expired revocation rows only after the approved retention interval has elapsed beyond session expiry.
+- `identity_mapping` minimizes an inactive identity only when its old revoked membership belongs exclusively to the current tenant, no active or newer membership exists, and the identity is not shared with another tenant. Minimization replaces the external subject with an opaque deleted identifier, clears the display name, and preserves the original disabled time.
+
+Application-owned classes use provider scope `application`; raw payloads retain their actual provider scope. The engine does not yet enforce retention for normalized flight/weather facts, terminal alert history, logs, exports, or backups.
 
 No commercial provider policy may be approved until FT-301 supplies the controlling retention right and approval reference. The shortest applicable provider, operator, legal, or security period must be used.
 
@@ -24,6 +31,8 @@ Policy and evidence references accept only bounded identifier characters; they a
 ## Tombstones and restoration
 
 Every deleted raw payload creates a tenant/provider/feed/SHA-256 tombstone before the payload is cleared. A database trigger applies the tombstone to inserts or raw-payload updates, so restoring or replaying an identical deleted payload keeps it empty and retains the original deletion timestamp/reference.
+
+Authorization-audit, session-revocation, and identity-minimization runs create typed lifecycle tombstones before mutation. Database triggers suppress restored audit/revocation rows and force restored tombstoned identities back to the minimized subject/display-name/disabled state. Shared identities are deliberately excluded until their cross-tenant disposition is approved.
 
 After any backup restore, restore the current tombstone set from the isolated control copy before allowing application traffic or ingestion. Then verify that a representative tombstoned payload cannot be reintroduced. F401-008 remains open until this is exercised against managed backups with recorded RPO/RTO.
 

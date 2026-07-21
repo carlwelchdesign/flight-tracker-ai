@@ -26,6 +26,7 @@ Development uses the same signed assertion and database membership path. `AUTH_M
 - `operator_memberships` links identities to operators with one app role and active/revoked status.
 - `auth_session_revocations` immediately rejects a specific provider session until its expiry.
 - `authorization_audit_events` records tenant, authenticated actor, action, target, timestamp, and structured metadata for membership/session administration.
+- Approved lifecycle runs delete old authorization events and expired revocations through typed restore-suppression tombstones. They minimize only identities whose old revoked membership is exclusive to one tenant and has no active/newer relationship; shared identities are excluded.
 
 ## Role and permission matrix
 
@@ -69,7 +70,7 @@ Background ingestion and replay workers continue using configured operator ident
 
 Development bootstrap may create the configured local operator, identity, and administrator membership only when `APP_ENV=development` and `AUTH_MODE=development`.
 
-Production provisioning requires a Clerk organization plus an app operator/identity/membership mapping. Removing or revoking a membership immediately denies access without deleting historical audit records. Rolling back the web identity adapter does not require rewriting authorization data or tenant-scoped repositories.
+Production provisioning requires a Clerk organization plus an app operator/identity/membership mapping. Removing or revoking a membership immediately denies access. Approved retention may later delete old authorization evidence or minimize an exclusively tenant-owned inactive identity while tombstones prevent restoration; it never changes current access to satisfy a cleanup request. Rolling back the web identity adapter does not require rewriting authorization data or tenant-scoped repositories.
 
 For Vercel, configure `AUTH_MODE=clerk`, Clerk's publishable and secret keys, the internal assertion active key ID/secret, issuer/audience, and `API_BASE_URL` on the Next.js project. The Rust deployment receives the same active assertion settings plus optional previous key ID/secret during rotation, `APP_ENV=production`, `AUTH_MODE=clerk`, and `DATABASE_URL`. The shared secret is a server-to-server credential and must never use the checked-in development value in a hosted environment.
 

@@ -1,6 +1,6 @@
 # Audit Review and Privileged-Action Monitoring
 
-This runbook governs the tenant-scoped audit review surface added for FT-401. It supports investigation and evidence export; it is not a substitute for a SIEM, database backup, or approved retention schedule.
+This runbook governs the tenant-scoped audit review surface added for FT-401. It supports investigation and evidence export; it is not a substitute for a SIEM or database backup. Approved authorization-audit retention is implemented through the two-person workflow in `RETENTION_DELETION_RUNBOOK.md`; hosted execution evidence remains required below.
 
 ## Access boundary
 

@@ -35,7 +35,8 @@ provider payload -> ProviderEnvelope -> provider adapter -> CanonicalEvent -> pr
 | `AlertAction` | `alert_actions` | Action UUID, operator/alert UUIDs, human actor and idempotency key |
 | `SourceHealth` | `source_health` | Health UUID, operator UUID, provider/feed identity |
 | Retention policy/run | `retention_policies`, `retention_runs` | Tenant/data-class/provider policy version, requester/approver/executor, cutoff and counts |
-| Deletion tombstone | `data_deletion_tombstones` | Tenant/provider/feed/raw hash and deletion-run evidence |
+| Raw deletion tombstone | `data_deletion_tombstones` | Tenant/provider/feed/raw hash and deletion-run evidence |
+| Lifecycle deletion tombstone | `lifecycle_deletion_tombstones` | Tenant/data-class/source-record identity plus deletion/minimization evidence |
 
 Every operational table includes a non-null `operator_id`. Composite foreign
 keys include `operator_id`, so a record cannot reference an envelope, flight,
@@ -45,6 +46,11 @@ Provider envelope source identity and hash evidence remain stable. An approved
 raw-payload retention run may replace `raw_payload` with an empty object and
 attach a tombstone; the insert/update trigger prevents an identical deleted
 payload from being restored into the tenant.
+
+Approved application-lifecycle runs may delete old authorization events and
+expired session revocations or minimize an exclusively tenant-owned inactive
+identity. Typed lifecycle tombstones suppress restored audit/revocation rows and
+force restored identity mappings back to their minimized state.
 
 ## Versioning
 
