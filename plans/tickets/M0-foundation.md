@@ -121,8 +121,9 @@ Verification evidence: official release and action-manifest checks confirmed che
 Status: In progress
 
 Branch: `docs/ft-005-portfolio-scope`
+Latest implementation commit: `7b052f9`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19) (draft)
 Owner: Product and engineering
 
 Make the durable plans reflect the actual goal: a public, non-commercial demonstration for recruiters and hiring managers, with free best-effort data and deterministic replay instead of commercial procurement.
@@ -139,4 +140,4 @@ Acceptance checklist:
 - [x] Status, ticket index, decisions, and risks reflect the same scope.
 - [ ] Dedicated branch, intentional commit, pull request, and required checks are recorded.
 
-Verification evidence: `python3 scripts/validate_ft301_evidence.py` and its five-test regression suite pass after the commercial package is moved off the active gate; `git diff --check` and scope-language searches pass; native Rust formatting, strict Clippy, and 74 tests pass; web audit reports zero vulnerabilities, and lint, typecheck, 28 tests, and the production build pass. The local Docker daemon did not respond to the Compose-based wrapper, so Compose configuration and fresh PostGIS verification are delegated to required CI. Final branch, commit, PR, and CI evidence remain pending.
+Verification evidence: `python3 scripts/validate_ft301_evidence.py` and its five-test regression suite pass after the commercial package is moved off the active gate; `git diff --check` and scope-language searches pass; native Rust formatting, strict Clippy, and 74 tests pass; web audit reports zero vulnerabilities, and lint, typecheck, 28 tests, and the production build pass. The local Docker daemon did not respond to the Compose-based wrapper, so Compose configuration and fresh PostGIS verification are delegated to required CI. Scope commit `7b052f9` is published in draft PR [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19); final CI and delivery evidence remain pending.
