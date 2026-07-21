@@ -125,8 +125,9 @@ neutral reviewer on the candidate preview produced by FT-404.
 Status: In progress
 
 Branch: `feat/ft-404-production-deployment`
+Latest implementation commit: `03cbd31`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
 Owner: Platform, backend, security, and full-stack engineering
 
 Deploy the public Next.js interface on Vercel while placing the Rust API, optional continuous ingestion, and PostgreSQL/PostGIS on infrastructure suited to those persistent workloads.
@@ -145,4 +146,10 @@ Acceptance checklist:
 - [ ] End-to-end smoke checks prove browser, API, database, replay fallback, source labeling, and degraded-state behavior.
 - [ ] The public deployment contains no claim of certification, operational authority, commercial SLA, or real-operator endorsement.
 
-Verification evidence: Pending.
+Verification evidence: The Vercel project `flight-tracker-ai` is Git-connected
+to this repository with `apps/web` as its Next.js root and Node.js 20.x. The
+first protected candidate deployment `dpl_BhRvwF9Bi5y67XW7w7qiQREaPrpj`
+successfully built commit `03cbd31` and is not public: unauthenticated requests
+are redirected to Vercel deployment protection. [`HOSTED_DEPLOYMENT_RUNBOOK.md`](../HOSTED_DEPLOYMENT_RUNBOOK.md)
+and [`render.yaml`](../../render.yaml) define the remaining Render, Neon, Clerk,
+secret, restore, browser, and promotion gates. Hosted smoke evidence is pending.
