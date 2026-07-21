@@ -5,12 +5,12 @@ Last updated: 2026-07-20
 ## Current state
 
 - Current milestone: M1 — Simulated operations console
-- Active ticket: FT-102 — Implement fleet API and live event stream
-- Branch: `feat/ft-102-fleet-api-event-stream`
-- Pull request: [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6) (ready for review; required checks passed)
-- Owner: Backend engineering
-- Overall status: M0 and FT-101 are merged; FT-102 is complete and ready to merge through PR #6
-- Next action: Human review and merge PR #6, then update local `main` and begin FT-103 on its feature branch.
+- Active ticket: FT-103 — Build map, flight board, and flight detail experience
+- Branch: `feat/ft-103-operations-console`
+- Pull request: Pending
+- Owner: Frontend engineering with product-design review
+- Overall status: M0, FT-101, and FT-102 are merged; FT-103 operations console is in progress
+- Next action: Implement the synchronized map, flight board, detail panel, operational states, and accessible keyboard behavior.
 
 ## Milestone checklist
 
@@ -42,7 +42,7 @@ Last updated: 2026-07-20
 - The canonical v1 contract separates raw envelopes from normalized facts, uses explicit UTC time/unit/geometry semantics, and enforces operator consistency through composite foreign keys.
 - FT-003 is merged through PR #2 at `7edfa2a`; M0 is complete.
 - FT-101 is merged through PR #5 at `efc2cf6` with all required checks passing.
-- FT-102 implementation is complete at `7e99083`; PR #6 is ready for human review with all required checks passing.
+- FT-102 is merged through PR #6 at `aed432d` with all required checks passing.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

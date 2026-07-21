@@ -31,7 +31,7 @@ Status: Complete
 
 Branch: `feat/ft-102-fleet-api-event-stream`
 Final implementation commit: `7e99083`
-Pull request: [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6) (ready for review; required checks passed)
+Pull request: [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6) (merged at `aed432d`)
 Owner: Backend engineering
 
 Project current flight state from replay events and expose list, detail, timeline, and SSE endpoints.
@@ -50,11 +50,12 @@ Verification evidence: `plans/FLEET_API.md`; focused projection, HTTP, SSE, metr
 
 ## FT-103 — Build map, flight board, and flight detail experience
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-103-operations-console`
 Final commit: Pending
 Pull request: Pending
+Owner: Frontend engineering with product-design review
 
 Create the desktop operations interface with synchronized map and table selection.
 
