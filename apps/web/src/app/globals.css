@@ -42,6 +42,7 @@ button { color: inherit; }
 
 button:focus-visible,
 select:focus-visible,
+input:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--cyan);
   outline-offset: 3px;
@@ -227,6 +228,55 @@ a:focus-visible {
 .ops-map-legend i { width: 8px; height: 8px; display: inline-block; }
 .legend-aircraft { background: var(--cyan); transform: rotate(45deg); }
 .legend-hazard { border: 1px solid var(--amber); background: rgba(239, 183, 93, 0.2); }
+.legend-observation { border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 2px rgba(114,174,232,.16); }
+
+.weather-layer-bar {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-muted);
+}
+.weather-layer-bar fieldset { display: flex; gap: 6px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.weather-layer-bar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: #c3d2d1;
+  background: #0c1b21;
+  font: 540 9px/1 "Geist Mono", monospace;
+  cursor: pointer;
+}
+.weather-layer-bar label:has(input:checked) { border-color: #3e6967; background: #102928; color: #d7f1ed; }
+.weather-layer-bar input { accent-color: var(--cyan); }
+.weather-layer-bar label span { color: var(--subtle); }
+.weather-source-summary { min-width: 0; text-align: right; }
+.weather-source-summary strong { display: block; font: 620 9px/1.2 "Geist Mono", monospace; text-transform: capitalize; }
+.weather-source-summary span { display: block; max-width: 230px; margin-top: 3px; overflow: hidden; color: var(--subtle); font: 500 8px/1.2 "Geist Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
+.weather-source-current strong { color: var(--cyan); }
+.weather-source-stale strong { color: var(--amber); }
+.weather-source-degraded strong { color: var(--red); }
+.weather-source-unknown strong { color: var(--muted); }
+.weather-partial-banner {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #5b4323;
+  background: #211a11;
+  color: #e2c48e;
+  font-size: 10px;
+}
+.weather-partial-banner button { border: 0; border-bottom: 1px solid currentColor; background: transparent; cursor: pointer; }
 
 .ops-map { position: relative; flex: 1; min-height: 440px; overflow: hidden; background: #07141b; }
 .ops-map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -238,8 +288,62 @@ a:focus-visible {
 .map-hazard-advisory { fill: rgba(239, 183, 93, 0.09); stroke: rgba(239, 183, 93, 0.65); }
 .map-hazard-significant { fill: rgba(239, 183, 93, 0.15); stroke: var(--amber); }
 .map-hazard-severe { fill: rgba(241, 123, 113, 0.18); stroke: var(--red); }
+.map-hazard-unknown { fill: rgba(143, 165, 169, 0.1); stroke: var(--muted); }
+.map-hazard-expired, .map-hazard-cancelled { fill: rgba(96,119,125,.04); stroke: var(--subtle); opacity: .55; }
+.map-hazard-cancelled { stroke-dasharray: 2 7; }
+.map-hazard-upcoming { opacity: .62; }
+.map-hazard-selected { stroke-width: 3; filter: drop-shadow(0 0 6px rgba(85,214,194,.35)); }
 .map-airport-dot { fill: #9fc3c7; stroke: #07141b; stroke-width: 3; }
 .map-airport-label { fill: #91aeb2; font: 600 13px "Geist Mono", monospace; letter-spacing: 0.05em; }
+
+.weather-station {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  border: 1px solid var(--blue);
+  border-radius: 10px;
+  background: rgba(9,24,30,.94);
+  color: #dce9ef;
+  font: 560 8px/1 "Geist Mono", monospace;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 3px 10px rgba(0,0,0,.24);
+  pointer-events: none;
+}
+.weather-station strong { color: var(--blue); font-size: 7px; }
+.weather-station-marginal_visual { border-color: var(--cyan); }
+.weather-station-marginal_visual strong { color: var(--cyan); }
+.weather-station-instrument { border-color: var(--amber); }
+.weather-station-instrument strong { color: var(--amber); }
+.weather-station-low_instrument { border-color: var(--red); }
+.weather-station-low_instrument strong { color: var(--red); }
+.weather-station-stale { border-style: dashed; opacity: .55; }
+.hazard-marker {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  max-width: 132px;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid var(--amber);
+  border-radius: 4px;
+  background: rgba(29,23,15,.92);
+  color: #f0d39c;
+  font: 560 8px/1 "Geist Mono", monospace;
+  text-transform: uppercase;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+.hazard-marker > span { display: grid; width: 12px; height: 12px; place-items: center; border-radius: 50%; background: var(--amber); color: #24190b; font-weight: 800; }
+.hazard-marker-severe { border-color: var(--red); background: rgba(40,19,18,.94); color: #f4aaa3; }
+.hazard-marker-severe > span { background: var(--red); color: #2c1110; }
+.hazard-marker-advisory { border-color: #9c7e4c; }
+.hazard-marker-expired, .hazard-marker-cancelled { border-style: dashed; border-color: var(--subtle); background: rgba(12,24,29,.9); color: var(--muted); opacity: .7; }
+.hazard-marker-selected { z-index: 5; border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(85,214,194,.16); }
+.weather-refreshing { position: absolute; top: 10px; right: 10px; color: var(--muted); font: 500 8px/1 "Geist Mono", monospace; }
 
 .aircraft-marker {
   position: absolute;
@@ -266,6 +370,19 @@ a:focus-visible {
 .aircraft-critical svg { fill: var(--red); }
 .map-scale { position: absolute; left: 16px; bottom: 14px; color: var(--subtle); font: 500 9px/1 "Geist Mono", monospace; }
 .map-scale span { display: block; width: 56px; margin-bottom: 5px; border-top: 1px solid #789399; border-left: 1px solid #789399; border-right: 1px solid #789399; height: 4px; }
+
+.weather-inspector { position: absolute; z-index: 6; right: 10px; bottom: 10px; width: min(430px, calc(100% - 20px)); padding: 11px 14px 12px; border: 1px solid var(--line-strong); border-radius: 5px; background: rgba(10,22,27,.98); box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+.weather-inspector-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.weather-inspector-heading h3 { margin: 2px 0 0; font-size: 14px; text-transform: capitalize; }
+.weather-inspector-heading button { width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; }
+.weather-inspector dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin: 10px 0; }
+.weather-inspector dt { color: var(--subtle); font: 500 7px/1.2 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .08em; }
+.weather-inspector dd { margin: 3px 0 0; overflow: hidden; color: #cbd9d7; font: 520 9px/1.25 "Geist Mono", monospace; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
+.weather-state-active { color: var(--cyan) !important; }
+.weather-state-upcoming, .weather-state-expired { color: var(--amber) !important; }
+.weather-state-cancelled { color: var(--red) !important; }
+.weather-inspector > a { color: var(--cyan); font: 550 9px/1.2 "Geist Mono", monospace; }
+.weather-inspector > p { margin: 0; color: var(--subtle); font: 500 8px/1.2 "Geist Mono", monospace; }
 
 .ops-board-panel { display: flex; flex-direction: column; }
 .flight-table-wrap { flex: 1; overflow: auto; }
@@ -405,6 +522,9 @@ a:focus-visible {
   .aircraft-marker { padding: 5px; }
   .flight-table th:nth-child(3), .flight-table td:nth-child(3) { display: none; }
   .replay-controls { margin-left: auto; }
+  .weather-layer-bar { align-items: flex-start; flex-direction: column; }
+  .weather-source-summary { text-align: left; }
+  .weather-inspector dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

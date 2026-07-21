@@ -1,4 +1,5 @@
-import type { FlightView, Hazard } from "@/lib/fleet-api";
+import type { FlightView } from "@/lib/fleet-api";
+import type { Hazard } from "@/lib/weather-api";
 
 export type AttentionLevel = "normal" | "watch" | "critical";
 export type FreshnessLevel = "current" | "aging" | "stale" | "unknown";
@@ -104,7 +105,9 @@ export function attentionLevel(
   hazards: Hazard[],
   referenceTime: number | null,
 ): { level: AttentionLevel; label: string; reason: string } {
-  const nearbyHazard = hazards.find((hazard) => isPositionNearHazard(view, hazard));
+  const nearbyHazard = hazards.find(
+    (hazard) => isHazardActiveAt(hazard, referenceTime) && isPositionNearHazard(view, hazard),
+  );
   if (nearbyHazard?.severity === "severe") {
     return { level: "critical", label: "Critical", reason: "Near severe weather" };
   }
@@ -120,6 +123,12 @@ export function attentionLevel(
     return { level: "watch", label: "Watch", reason: "Position data is stale" };
   }
   return { level: "normal", label: "Normal", reason: "No active exceptions" };
+}
+
+function isHazardActiveAt(hazard: Hazard, referenceTime: number | null): boolean {
+  if (hazard.status !== "active") return false;
+  const at = referenceTime ?? Date.parse(hazard.times.event_time);
+  return Date.parse(hazard.valid_from) <= at && Date.parse(hazard.valid_to) >= at;
 }
 
 export function formatZulu(value: string | null | undefined): string {

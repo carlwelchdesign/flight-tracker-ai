@@ -230,6 +230,7 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
         received_at,
     )
     .remove(0);
+    let metar_source_id = metar.envelope.id.as_uuid();
     assert!(matches!(
         store.persist_record(metar.clone()).await.unwrap(),
         PersistedNoaaRecord::Applied(_)
@@ -337,6 +338,79 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
         serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
     assert_eq!(body["data"][0]["feed"], "metar");
     assert_eq!(body["data"][0]["state"], "healthy");
+
+    sqlx::query(
+        "UPDATE airport_observations SET event_time = NOW() - INTERVAL '5 minutes' WHERE operator_id = $1",
+    )
+    .bind(operator_uuid)
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "UPDATE weather_hazards SET valid_from = NOW() - INTERVAL '1 hour', valid_to = NOW() + INTERVAL '1 hour' WHERE operator_id = $1",
+    )
+    .bind(operator_uuid)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let app = build_router(pool.clone());
+    let observations = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/airport-observations")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(observations.status(), StatusCode::OK);
+    let body: Value =
+        serde_json::from_slice(&observations.into_body().collect().await.unwrap().to_bytes())
+            .unwrap();
+    assert_eq!(body["data"][0]["station_code"], "KSFO");
+    assert_eq!(body["data"][0]["flight_category"], "visual");
+    assert_eq!(body["data"][0]["source"]["provider"], "noaa-awc");
+
+    let hazards = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/hazards")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(hazards.status(), StatusCode::OK);
+    let body: Value =
+        serde_json::from_slice(&hazards.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(body["data"][0]["revision"], 3);
+    assert_eq!(body["data"][0]["status"], "cancelled");
+    assert_eq!(body["data"][0]["severity"], "significant");
+    assert_eq!(
+        body["data"][0]["footprint"]["exterior"]
+            .as_array()
+            .unwrap()
+            .len(),
+        5
+    );
+
+    let source = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/source-records/{metar_source_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(source.status(), StatusCode::OK);
+    let body: Value =
+        serde_json::from_slice(&source.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(body["provider"], "noaa-awc");
+    assert_eq!(body["raw_payload"]["icaoId"], "KSFO");
     cleanup_noaa_test_records(pool, operator_uuid).await;
 }
 

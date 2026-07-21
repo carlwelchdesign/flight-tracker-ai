@@ -86,20 +86,6 @@ export type TimelinePage = {
   pagination: PageMetadata;
 };
 
-export type Hazard = {
-  id: string;
-  hazard_type: string;
-  severity: "advisory" | "significant" | "severe" | "unknown";
-  valid_from: string;
-  valid_to: string;
-  footprint: {
-    exterior: Array<{
-      longitude_degrees: number;
-      latitude_degrees: number;
-    }>;
-  };
-};
-
 export type FleetLoadResult =
   | { state: "ready"; page: FlightPage }
   | { state: "disconnected"; message: string };
@@ -163,26 +149,6 @@ export function parseFleetEvent(value: unknown): FleetEvent {
     throw new Error("Event stream returned an unexpected payload");
   }
   return value as FleetEvent;
-}
-
-export function hazardFromEvent(event: FleetEvent): Hazard | null {
-  if (event.event.event_type !== "weather_hazard") {
-    return null;
-  }
-  const data = event.event.data;
-  if (
-    typeof data.id !== "string" ||
-    typeof data.hazard_type !== "string" ||
-    !isHazardSeverity(data.severity) ||
-    typeof data.valid_from !== "string" ||
-    typeof data.valid_to !== "string" ||
-    !isRecord(data.footprint) ||
-    !Array.isArray(data.footprint.exterior) ||
-    !data.footprint.exterior.every(isPoint)
-  ) {
-    return null;
-  }
-  return data as Hazard;
 }
 
 function parseFlightView(value: unknown): FlightView {
@@ -263,10 +229,6 @@ function isPoint(value: unknown): boolean {
     typeof value.longitude_degrees === "number" &&
     typeof value.latitude_degrees === "number"
   );
-}
-
-function isHazardSeverity(value: unknown): value is Hazard["severity"] {
-  return ["advisory", "significant", "severe", "unknown"].includes(String(value));
 }
 
 function isOptionalString(value: unknown): value is string | null {

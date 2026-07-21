@@ -2,8 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseBackendHealth } from "@/lib/backend-health";
-import type { FleetEvent, FleetLoadResult, FlightPage, FlightView, Hazard, TimelinePage } from "@/lib/fleet-api";
-import { hazardFromEvent, parseFleetEvent, parseFlightPage, parseTimelinePage } from "@/lib/fleet-api";
+import type { FleetEvent, FleetLoadResult, FlightPage, FlightView, TimelinePage } from "@/lib/fleet-api";
+import { parseFleetEvent, parseFlightPage, parseTimelinePage } from "@/lib/fleet-api";
+import type {
+  AirportObservation,
+  Hazard,
+  WeatherLoadResult,
+  WeatherSourceHealth,
+} from "@/lib/weather-api";
+import {
+  hazardFromEvent,
+  observationFromEvent,
+  parseWeatherSnapshot,
+} from "@/lib/weather-api";
 import { FlightBoard } from "./flight-board";
 import { FlightDetail } from "./flight-detail";
 import { OperationsMap } from "./operations-map";
@@ -16,9 +27,10 @@ type ReplayPhase = "running" | "paused" | "completed" | "unavailable";
 
 type OperationsConsoleProps = {
   initialFleet: FleetLoadResult;
+  initialWeather: WeatherLoadResult;
 };
 
-export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
+export function OperationsConsole({ initialFleet, initialWeather }: OperationsConsoleProps) {
   const [flights, setFlights] = useState<FlightView[]>(
     initialFleet.state === "ready" ? initialFleet.page.data : [],
   );
@@ -29,7 +41,25 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
   const [timelineState, setTimelineState] = useState<"idle" | "loading" | "ready" | "error">(
     initialFleet.state === "ready" && initialFleet.page.data.length > 0 ? "loading" : "idle",
   );
-  const [hazards, setHazards] = useState<Hazard[]>([]);
+  const [hazards, setHazards] = useState<Hazard[]>(
+    initialWeather.state === "ready" ? initialWeather.snapshot.hazards : [],
+  );
+  const [observations, setObservations] = useState<AirportObservation[]>(
+    initialWeather.state === "ready" ? initialWeather.snapshot.observations : [],
+  );
+  const [sourceHealth, setSourceHealth] = useState<WeatherSourceHealth[]>(
+    initialWeather.state === "ready" ? initialWeather.snapshot.sourceHealth : [],
+  );
+  const [weatherState, setWeatherState] = useState<"ready" | "refreshing" | "unavailable">(
+    initialWeather.state,
+  );
+  const [weatherMessage, setWeatherMessage] = useState<string | null>(
+    initialWeather.state === "unavailable" ? initialWeather.message : null,
+  );
+  const [weatherAsOf, setWeatherAsOf] = useState<string | null>(
+    initialWeather.state === "ready" ? initialWeather.snapshot.generatedAt : null,
+  );
+  const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null);
   const [connection, setConnection] = useState<ConnectionState>(
     initialFleet.state === "ready" ? "connecting" : "disconnected",
   );
@@ -82,6 +112,37 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
     }
   }, []);
 
+  const refreshWeather = useCallback(async () => {
+    setWeatherState((current) => current === "ready" ? "refreshing" : current);
+    try {
+      const [hazardResponse, observationResponse, healthResponse] = await Promise.all([
+        fetch("/api/backend/api/hazards", { cache: "no-store" }),
+        fetch("/api/backend/api/airport-observations", { cache: "no-store" }),
+        fetch("/api/backend/api/source-health", { cache: "no-store" }),
+      ]);
+      const failed = [hazardResponse, observationResponse, healthResponse].find(
+        (response) => !response.ok,
+      );
+      if (failed) throw new Error(`Weather refresh returned HTTP ${failed.status}`);
+      const snapshot = parseWeatherSnapshot(
+        await hazardResponse.json(),
+        await observationResponse.json(),
+        await healthResponse.json(),
+      );
+      setHazards((current) => mergeProviderFacts(current, snapshot.hazards));
+      setObservations((current) => mergeProviderFacts(current, snapshot.observations));
+      setSourceHealth(snapshot.sourceHealth);
+      setWeatherAsOf(snapshot.generatedAt);
+      setWeatherState("ready");
+      setWeatherMessage(null);
+    } catch (weatherError) {
+      setWeatherState("unavailable");
+      setWeatherMessage(
+        weatherError instanceof Error ? weatherError.message : "Weather refresh failed",
+      );
+    }
+  }, []);
+
   const selectFlight = useCallback((flightId: string) => {
     setSelectedId(flightId);
     setTimeline([]);
@@ -93,9 +154,10 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
     refreshTimer.current = setTimeout(() => {
       refreshTimer.current = null;
       void refreshFlights();
+      void refreshWeather();
       setEventRevision((value) => value + 1);
     }, 80);
-  }, [refreshFlights]);
+  }, [refreshFlights, refreshWeather]);
 
   useEffect(() => {
     const source = new EventSource("/api/backend/api/events/stream");
@@ -109,8 +171,18 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
         const hazard = hazardFromEvent(event);
         if (hazard) {
           setHazards((current) => [
-            ...current.filter((candidate) => candidate.id !== hazard.id),
+            ...current.filter((candidate) => !sameHazardSeries(candidate, hazard)),
             hazard,
+          ]);
+        }
+        const observation = observationFromEvent(event);
+        if (observation) {
+          setObservations((current) => [
+            ...current.filter((candidate) =>
+              candidate.operator_id !== observation.operator_id ||
+              candidate.station_code !== observation.station_code
+            ),
+            observation,
           ]);
         }
         scheduleRefresh();
@@ -128,6 +200,11 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
       source.close();
     };
   }, [scheduleRefresh]);
+
+  useEffect(() => {
+    const interval = setInterval(() => void refreshWeather(), 60_000);
+    return () => clearInterval(interval);
+  }, [refreshWeather]);
 
   useEffect(() => {
     let cancelled = false;
@@ -253,7 +330,11 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
     try {
       await invokeReplay("reset");
       setFlights([]);
-      setHazards([]);
+      setHazards((current) => current.filter((hazard) => hazard.source.provider !== "simulation"));
+      setObservations((current) => current.filter(
+        (observation) => observation.source.provider !== "simulation",
+      ));
+      setSelectedHazardId(null);
       setTimeline([]);
       setSelectedId(null);
       setError(null);
@@ -346,8 +427,16 @@ export function OperationsConsole({ initialFleet }: OperationsConsoleProps) {
         <OperationsMap
           flights={flights}
           hazards={hazards}
+          observations={observations}
+          sourceHealth={sourceHealth}
+          weatherState={weatherState}
+          weatherMessage={weatherMessage}
+          weatherAsOf={weatherAsOf}
+          selectedHazardId={selectedHazardId}
           selectedId={selectedId}
           onSelect={selectFlight}
+          onSelectHazard={setSelectedHazardId}
+          onRetryWeather={() => void refreshWeather()}
         />
         <div id="flight-board">
           <FlightBoard
@@ -403,4 +492,18 @@ function isReplayStatus(value: unknown): value is {
 
 function formatTiming(value: number | null): string {
   return value === null ? "—" : formatZulu(new Date(value).toISOString());
+}
+
+function mergeProviderFacts<T extends { id: string; source: { provider: string } }>(
+  current: T[],
+  persisted: T[],
+): T[] {
+  const transient = current.filter((item) => item.source.provider === "simulation");
+  const transientIds = new Set(transient.map((item) => item.id));
+  return [...transient, ...persisted.filter((item) => !transientIds.has(item.id))];
+}
+
+function sameHazardSeries(left: Hazard, right: Hazard): boolean {
+  return left.operator_id === right.operator_id &&
+    left.external_series_id === right.external_series_id;
 }
