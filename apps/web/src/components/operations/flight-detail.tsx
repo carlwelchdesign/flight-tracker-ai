@@ -1,4 +1,5 @@
-import type { FleetEvent, FlightView, Hazard } from "@/lib/fleet-api";
+import type { FleetEvent, FlightView } from "@/lib/fleet-api";
+import type { Hazard } from "@/lib/weather-api";
 import {
   attentionLevel,
   callsign,

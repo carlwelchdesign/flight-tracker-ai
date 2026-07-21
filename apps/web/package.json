@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
+    "benchmark:weather-layers": "vitest bench --run src/components/operations/weather-layers.bench.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -2,7 +2,9 @@ import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { FlightView, Hazard } from "@/lib/fleet-api";
+import type { FlightView } from "@/lib/fleet-api";
+import type { AirportObservation, Hazard } from "@/lib/weather-api";
+import { parseWeatherSnapshot } from "@/lib/weather-api";
 import { parseFlightPage } from "@/lib/fleet-api";
 import { FlightBoard } from "./flight-board";
 import { FlightDetail } from "./flight-detail";
@@ -16,6 +18,7 @@ import {
 } from "./operations-model";
 import { OperationsBadges } from "./operations-badges";
 import { OperationsStatusRegion } from "./operations-status";
+import { hazardDisplayState } from "./weather-presentation";
 
 const flights = [
   flight("101", "FT101", "SFO", "LAX", "active", -121.95, 37.25, "2026-07-20T16:01:00Z"),
@@ -26,10 +29,33 @@ const flights = [
 const hazards: Hazard[] = [
   {
     id: "hazard-1",
+    operator_id: "00000000-0000-0000-0000-000000000999",
+    schema_version: 1,
+    source: {
+      envelope_id: "00000000-0000-0000-0000-000000000901",
+      provider: "noaa-awc",
+      feed: "airsigmet",
+      provider_record_id: "21W",
+    },
+    times: {
+      event_time: "2026-07-20T16:00:00Z",
+      received_at: "2026-07-20T16:00:05Z",
+      processed_at: "2026-07-20T16:00:06Z",
+    },
+    external_series_id: "KKCI:21W:2026-07-20",
+    revision: 2,
+    supersedes_id: "00000000-0000-0000-0000-000000000900",
+    status: "active",
+    issued_at: "2026-07-20T16:00:00Z",
+    provider_received_at: "2026-07-20T16:00:04Z",
     hazard_type: "convective_cell",
     severity: "significant",
     valid_from: "2026-07-20T16:00:00Z",
     valid_to: "2026-07-20T16:15:00Z",
+    altitude_band: {
+      lower: { value: 18_000, unit: "feet", reference: "flight_level" },
+      upper: { value: 42_000, unit: "feet", reference: "flight_level" },
+    },
     footprint: {
       exterior: [
         { longitude_degrees: -121.9, latitude_degrees: 37.1 },
@@ -41,6 +67,35 @@ const hazards: Hazard[] = [
     },
   },
 ];
+
+const observations: AirportObservation[] = [{
+  id: "observation-1",
+  operator_id: "00000000-0000-0000-0000-000000000999",
+  schema_version: 1,
+  source: {
+    envelope_id: "00000000-0000-0000-0000-000000000902",
+    provider: "noaa-awc",
+    feed: "metar",
+    provider_record_id: "KSFO-1600",
+  },
+  times: {
+    event_time: "2026-07-20T16:00:00Z",
+    received_at: "2026-07-20T16:00:04Z",
+    processed_at: "2026-07-20T16:00:05Z",
+  },
+  station_code: "KSFO",
+  report_type: "METAR",
+  raw_text: "METAR KSFO 201600Z 28012KT 10SM FEW010 18/13 A2992",
+  provider_received_at: "2026-07-20T16:00:03Z",
+  point: { longitude_degrees: -122.3656, latitude_degrees: 37.6196 },
+  wind_direction_true_degrees: 280,
+  wind_speed: { value: 12, unit: "knots" },
+  wind_gust: null,
+  visibility_statute_miles: 10,
+  visibility_greater_than: true,
+  ceiling: null,
+  flight_category: "visual",
+}];
 
 describe("operations console interaction", () => {
   it("synchronizes map, board, and detail selection with accessible controls", async () => {
@@ -81,6 +136,49 @@ describe("operations console interaction", () => {
     );
     expect(screen.getByRole("heading", { name: "No active flight picture" })).toBeInTheDocument();
     expect(screen.getByText(/replay controls are unavailable/i)).toBeInTheDocument();
+  });
+
+  it("exposes weather layers, validity, altitude, source, and raw evidence", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    expect(screen.getByRole("checkbox", { name: /hazards 1/i })).toBeChecked();
+    expect(screen.getByRole("img", { name: /ksfo vfr, current/i })).toBeInTheDocument();
+    const hazard = screen.getByRole("button", {
+      name: /convective_cell hazard, significant, fl180 – fl420, active/i,
+    });
+    hazard.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("heading", { name: "convective cell" })).toBeInTheDocument();
+    expect(screen.getByText("NOAA AWC · airsigmet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /open raw noaa source/i })).toHaveAttribute(
+      "href",
+      "/api/backend/api/source-records/00000000-0000-0000-0000-000000000901",
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: /hazards 1/i }));
+    expect(screen.queryByRole("button", { name: /convective_cell hazard/i })).not.toBeInTheDocument();
+  });
+
+  it("retains accepted weather evidence when a refresh becomes unavailable", () => {
+    render(
+      <OperationsMap
+        flights={[]}
+        hazards={hazards}
+        observations={observations}
+        sourceHealth={[]}
+        weatherState="unavailable"
+        weatherMessage="Weather refresh returned HTTP 503"
+        weatherAsOf="2026-07-20T16:03:00Z"
+        selectedId={null}
+        selectedHazardId={null}
+        onSelect={() => undefined}
+        onSelectHazard={() => undefined}
+        onRetryWeather={() => undefined}
+      />,
+    );
+    expect(screen.getByText(/retaining the last accepted layer/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /convective_cell hazard/i })).toBeInTheDocument();
   });
 });
 
@@ -128,6 +226,23 @@ describe("operational presentation rules", () => {
       lastEventTime: Date.parse("2026-07-20T16:03:00Z"),
       lastReceivedTime: Date.parse("2026-07-20T16:04:30Z"),
     });
+  });
+
+  it("distinguishes expired and cancelled hazards and excludes them from attention", () => {
+    expect(hazardDisplayState(hazards[0], Date.parse("2026-07-20T16:16:00Z"))).toBe("expired");
+    const cancelled = { ...hazards[0], status: "cancelled" as const };
+    expect(hazardDisplayState(cancelled, Date.parse("2026-07-20T16:03:00Z"))).toBe("cancelled");
+    expect(attentionLevel(flights[2], [cancelled], fleetReferenceTime(flights))).toMatchObject({
+      level: "normal",
+    });
+  });
+
+  it("rejects malformed weather payloads before rendering", () => {
+    expect(() => parseWeatherSnapshot(
+      { data: [{ id: "unsafe" }], generated_at: "2026-07-20T16:03:00Z" },
+      { data: [], generated_at: "2026-07-20T16:03:00Z" },
+      { data: [] },
+    )).toThrow("unexpected hazard");
   });
 });
 
@@ -191,14 +306,23 @@ describe("operations health presentation", () => {
 
 function Harness() {
   const [selectedId, setSelectedId] = useState(flights[0].flight.id);
+  const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null);
   const selected = flights.find((view) => view.flight.id === selectedId) ?? null;
   return (
     <>
       <OperationsMap
         flights={flights}
         hazards={hazards}
+        observations={observations}
+        sourceHealth={[]}
+        weatherState="ready"
+        weatherMessage={null}
+        weatherAsOf="2026-07-20T16:03:00Z"
+        selectedHazardId={selectedHazardId}
         selectedId={selectedId}
         onSelect={setSelectedId}
+        onSelectHazard={setSelectedHazardId}
+        onRetryWeather={() => undefined}
       />
       <FlightBoard
         flights={flights}

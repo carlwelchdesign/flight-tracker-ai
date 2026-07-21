@@ -19,6 +19,7 @@ use ingestion::IngestionSubscription;
 use metrics::{ApiMetrics, observe_request};
 use observability::correlate_request;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
+use weather::weather_router;
 
 pub const SERVICE_NAME: &str = "flight-tracker-api";
 
@@ -152,6 +153,7 @@ fn build_router_with_services_and_health(
 ) -> Router {
     let metrics = ApiMetrics::default();
     let fleet_routes = fleet_router(fleet.clone(), metrics.clone());
+    let weather_routes = weather_router(database.clone());
     let mut router = Router::new()
         .route("/health", get(health))
         .route("/readiness", get(readiness))
@@ -175,6 +177,7 @@ fn build_router_with_services_and_health(
             workers,
         })
         .merge(fleet_routes)
+        .merge(weather_routes)
         .layer(middleware::from_fn_with_state(metrics, observe_request))
         .layer(middleware::from_fn(correlate_request))
 }
