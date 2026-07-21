@@ -54,7 +54,7 @@ Status: Complete
 
 Branch: `feat/ft-103-operations-console`
 Final implementation commit: `160f5f6`
-Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (required checks passing; ready for human review)
+Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (merged at `18a5a23`)
 Owner: Frontend engineering with product-design review
 
 Create the desktop operations interface with synchronized map and table selection.
@@ -74,11 +74,12 @@ Verification evidence: `plans/OPERATIONS_CONSOLE.md`; 31 passing Rust tests; str
 
 ## FT-104 — Add source health and operational observability
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-104-source-health-observability`
 Final commit: Pending
 Pull request: Pending
+Owner: Full-stack engineering
 
 Make replay and service health visible to operators and developers.
 

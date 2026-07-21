@@ -5,12 +5,12 @@ Last updated: 2026-07-20
 ## Current state
 
 - Current milestone: M1 — Simulated operations console
-- Active ticket: None — FT-103 is complete and awaiting human merge approval
-- Branch: None — completed ticket branch is `feat/ft-103-operations-console`
-- Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (required checks passing; ready for human review)
-- Owner: Unassigned pending merge
-- Overall status: M0, FT-101, and FT-102 are merged; FT-103 is verified and ready to merge
-- Next action: Human merges PR #7, local `main` fast-forwards, then FT-104 starts on its dedicated branch.
+- Active ticket: FT-104 — Add source health and operational observability
+- Branch: `feat/ft-104-source-health-observability`
+- Pull request: Pending
+- Owner: Full-stack engineering
+- Overall status: M0 and FT-101 through FT-103 are merged; FT-104 is in progress
+- Next action: Define the critical-worker health contract and correlation boundary, then expose source timing and simulated outage degradation in the console.
 
 ## Milestone checklist
 
@@ -43,7 +43,7 @@ Last updated: 2026-07-20
 - FT-003 is merged through PR #2 at `7edfa2a`; M0 is complete.
 - FT-101 is merged through PR #5 at `efc2cf6` with all required checks passing.
 - FT-102 is merged through PR #6 at `aed432d` with all required checks passing.
-- FT-103 is implemented at `160f5f6` on PR #7; synchronized console behavior, responsive browser verification, and all required PR checks are complete. Merge remains human-controlled.
+- FT-103 is merged through PR #7 at `18a5a23` with all required checks passing.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
