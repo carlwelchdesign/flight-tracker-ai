@@ -5,17 +5,16 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M3 — Commercial flight data and operational workflow
-- External gate: FT-301 — provider procurement evidence pending after handoff PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
-- Active engineering ticket: FT-004 — Modernize GitHub Actions runtime
-- Branch: `chore/ft-004-modernize-ci-actions`
-- Pull request: Pending
-- Owner: Engineering
-- Overall status: M0 maintenance is in progress; M1 and M2 are complete; FT-301 remains externally gated
-- Next action: Upgrade the official checkout and setup-node actions to their Node 24 runtime releases, then verify all three CI jobs without the deprecation annotation.
+- Active ticket: FT-301 — Select and contract a commercial flight-data provider
+- Branch: None — external procurement evidence pending after handoff PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
+- Pull request: None active after maintenance PR [#17](https://github.com/carlwelchdesign/flight-tracker-ai/pull/17) merges
+- Owner: Product, legal, and engineering
+- Overall status: M0, M1, and M2 are complete; FT-303 and FT-304 are complete while FT-301 remains externally gated
+- Next action: Assign the named Product/Legal/Engineering/operator owners in the controlled tracker, approve the intended-use questionnaire, and submit both provider requests using `provider-evaluation/PROCUREMENT_HANDOFF.md`.
 
 ## Milestone checklist
 
-- [ ] M0 — Foundation and feasibility (maintenance in progress)
+- [x] M0 — Foundation and feasibility
 - [x] M1 — Simulated operations console
 - [x] M2 — Live weather and hazard intelligence
 - [ ] M3 — Commercial flight data and operational workflow
@@ -26,7 +25,7 @@ Last updated: 2026-07-21
 
 | Milestone | Complete | Total |
 | --- | ---: | ---: |
-| M0 | 3 | 4 |
+| M0 | 4 | 4 |
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
 | M3 | 2 | 4 |
@@ -58,6 +57,7 @@ Last updated: 2026-07-21
 - FT-303 is delivered through PR #13 at implementation commit `1430ce8`. CI run `29814499315` verifies Rust, web, live authenticated replay, the identity migration, PostGIS cross-tenant route isolation, session revocation, and actor/tenant audit behavior. Hosted identity remains behind a provider-neutral boundary; tenant membership and operational authorization are app-owned and enforced by Rust.
 - FT-304 is delivered through PR #14 at implementation and CI contract commit `11bdc0d`. CI run `29816346733` verifies the additive migration, authenticated replay, workflow-version acknowledgement, tenant-safe assignment, all queue filters, structured dismissal, conflict rejection, bounded persistence volume, Rust and web quality gates, and production builds.
 - FT-301 preparation package is merged through PR #15 at `c8d8a78`; PR #16 records the corrected external procurement handoff. Selection remains gated on named accountable owners, written Order-level rights (including explicit AI/ML, retention, and upstream-data SaaS authorization), a matched real-time 14-day trial, operator-owned target tails, and priced proposals.
+- FT-004 upgrades checkout and setup-node to their official Node 24 action-runtime releases through PR #17 at implementation commit `715d7d6`; CI run `29832129375` passed all three jobs with zero check annotations while preserving application Node.js `20.20.1`.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
