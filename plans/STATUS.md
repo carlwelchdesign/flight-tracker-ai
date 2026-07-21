@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-408 — Public NOAA weather map layers
-- Branch: `feat/ft-408-public-weather-map-layers`
-- Pull request: Pending
+- Active ticket: FT-405 — Live navigable flight tracker release closeout
+- Branch: `feat/ft-405-live-navigable-tracker`
+- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
 - Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Add the sanitized public NOAA snapshot and MapLibre
-  airport/METAR and SIGMET layers, then verify live and degraded behavior.
+- Next action: Close the remaining FT-405 direct motion/lifecycle coverage and
+  forced hosted fallback checks before merging the parent release PR.
 
 ## Milestone checklist
 
@@ -24,9 +24,9 @@ Last updated: 2026-07-21
 
 ## Current product correction
 
-- FT-408 is in progress on `feat/ft-408-public-weather-map-layers`. It ports the
-  existing NOAA METAR and SIGMET capability to the public navigable map through
-  a fixed-operator sanitized Rust read boundary. See
+- FT-408 is complete and merged through stacked PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28).
+  It ports NOAA METAR and SIGMET capability to the public navigable map through
+  a fixed-operator sanitized Rust read boundary and is live in production. See
   [`FT-408-public-weather-map-layers.md`](tickets/FT-408-public-weather-map-layers.md).
 - FT-407 is complete and merged through stacked PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27). It corrects
   the public live-map glyph axis without changing ADS-B headings, trajectory
@@ -58,6 +58,16 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
+- FT-408 is merged into the FT-405 feature branch through PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28)
+  at merge commit `d222094`; hosted-enablement commit `1ed490c` passes all five
+  checks. Render staging and production return a sanitized no-store NOAA
+  snapshot with three Bay Area METAR observations and 19 current provider
+  hazards. Vercel production deployment
+  `dpl_Cv3Z6XafLmTTh7and9SzBcx3fpzi` is live at
+  `https://flight-tracker-ai-one.vercel.app`; production browser verification
+  proves visible stale/current source truth, independent METAR/SIGMET controls,
+  selection evidence, attribution, live aircraft continuity, and no application
+  errors. The separate Clerk Marketplace DNS advisory remains unchanged.
 - FT-407 is merged into the FT-405 feature branch through PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27)
   at merge commit `965a779`. Final CI run
   [29875782640](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875782640)

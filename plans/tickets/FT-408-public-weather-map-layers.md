@@ -1,10 +1,10 @@
 # FT-408 — Public NOAA weather map layers
 
-Status: In review
+Status: Complete
 
 Branch: `feat/ft-408-public-weather-map-layers`
 Latest implementation commit: `f31d650`
-Final commit: Pending
+Final commit: `1ed490c`
 Pull request: [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28)
 Owner: Full-stack product engineering
 
@@ -70,7 +70,7 @@ FT-405 feature branch.
       lint, production build, API/PostGIS smoke, and whitespace checks pass.
 - [x] Browser verification proves live layers, toggles, selection, freshness,
       retained/unavailable behavior, keyboard use, and responsive layout.
-- [ ] The dedicated branch has intentional commits, a stacked pull request,
+- [x] The dedicated branch has intentional commits, a stacked pull request,
       passing required checks, production deployment evidence, and updated
   ticket/status documentation.
 
@@ -87,6 +87,18 @@ FT-405 feature branch.
   altitude/source evidence, attribution, canvas rendering, and absence of an
   error overlay were verified. Retained/unavailable behavior is covered by the
   component integration tests without fabricating network data.
+- Delivery: stacked PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28)
+  passed all five checks and merged at `d222094`. Render staging and production
+  deploy `1ed490c` with NOAA enabled for KSFO, KOAK, and KSJC at a 60-second
+  provider cadence. The production public boundary returned `no-store`, three
+  observations, 19 hazards, explicit source freshness, NOAA attribution, and no
+  protected fields. Vercel production deployment
+  `dpl_Cv3Z6XafLmTTh7and9SzBcx3fpzi` is assigned to
+  `https://flight-tracker-ai-one.vercel.app`; browser verification confirmed
+  148 live aircraft, all weather controls/evidence, the MapLibre canvas, and no
+  application errors. The known Clerk Marketplace DNS check was force-bypassed
+  after the already-verified Vercel-domain Clerk flow; it is unrelated to this
+  public read-only weather boundary.
 
 ## Non-goals
 
