@@ -11,7 +11,7 @@ Last updated: 2026-07-21
 - Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; completion gate remains open)
 - Owner: Security, legal/privacy, product, and engineering
 - Overall status: M0, M1, and M2 are complete; M3 remains externally gated while dependency-safe FT-401 review preparation is in progress
-- Next action: Resolve the remaining dependency-safe FT-401 findings, beginning with credential rotation; complete the hosted Clerk CSP smoke when preview credentials are available, and leave commercial-provider controls blocked until FT-301 resolves.
+- Next action: Resolve the remaining dependency-safe FT-401 findings, beginning with persistent advisory/environment language; complete credential and Clerk browser drills when hosted environments exist, and leave commercial-provider controls blocked until FT-301 resolves.
 
 ## Milestone checklist
 
@@ -63,6 +63,7 @@ Last updated: 2026-07-21
 - F401-004 is closed at implementation commit `e9e5f76`: operator-scoped membership foreign keys now protect both current alert assignments and assignment audit rows. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) proves direct-database and authenticated-API cross-tenant rejection plus valid same-tenant assignment.
 - Browser policy implementation commit `dc08690` adds strict nonce-aware Clerk CSP and production response hardening. CI run [29833848250](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833848250), the standalone header smoke, and all 30 web tests pass; F401-005 remains open only for a real hosted-Clerk preview browser smoke.
 - F401-010 is closed at implementation commit `38cf7b7`: public health/readiness probes now expose one status field, while detailed worker/database/PostGIS diagnostics require authorization. CI run [29834083229](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834083229) verifies the public, unauthorized, authenticated, PostGIS, BFF, and console contracts.
+- Assertion rotation implementation commit `5dca15e` and [`CREDENTIAL_ROTATION_RUNBOOK.md`](CREDENTIAL_ROTATION_RUNBOOK.md) define named active/previous keys, zero-downtime and emergency sequences, rollback, and evidence. CI run [29834813131](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834813131) verifies overlap/retirement, cross-language API authentication, 32 web tests, 77 Rust tests, and the browser-asset secret scan. F401-001 remains open until managed hosted secret stores and both drills exist.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

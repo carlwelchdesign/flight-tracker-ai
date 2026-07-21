@@ -37,8 +37,8 @@ public/licensed source -> bounded adapter -> immutable provider envelope
 
 Evidence observed in the repository:
 
-- Next.js requires a hosted user, session, and active organization; the browser cannot submit operator authority.
-- Rust validates algorithm, signature, issuer, audience, required claims, not-before/expiry, and a maximum 60-second assertion lifetime, then resolves app-owned membership and revocation on every request.
+- Next.js requires a hosted user, session, and active organization; the browser cannot submit operator authority. Its 30-second internal assertion names the active signing key with a safe `kid`.
+- Rust validates the named active key and at most one named previous key during rotation, plus algorithm, signature, issuer, audience, required claims, not-before/expiry, and a maximum 60-second assertion lifetime, then resolves app-owned membership and revocation on every request.
 - Production configuration rejects development authentication and development replay controls.
 - Only minimal `/health` and `/readiness` status probes are unauthenticated; detailed service, worker, database, and PostGIS diagnostics live under authenticated `/api/system/*` routes. Operational reads, raw NOAA evidence, SSE, metrics, replay controls, alert actions, and membership administration also require authorization.
 - Roles ask for named permissions. Viewers cannot mutate alerts; only administrators manage memberships/sessions.
@@ -51,7 +51,7 @@ Evidence observed in the repository:
 
 | ID | Threat and abuse case | Existing control | Required treatment before pilot | Finding |
 | --- | --- | --- | --- | --- |
-| T-01 | Internal assertion secret or hosted identity key is exposed and attackers mint sessions. | Server-only assertion creation, minimum secret length, issuer/audience binding, short lifetime, database authorization. | Managed secret storage, environment isolation, dual-key/rotation procedure, emergency revocation, and proof that secrets never reach browser/build output. | F401-001 |
+| T-01 | Internal assertion secret or hosted identity key is exposed and attackers mint sessions. | Server-only assertion creation, minimum secret length, named active/previous keys, issuer/audience binding, short lifetime, forced retirement tests, browser-asset secret scan, database authorization, and the rotation/revocation runbook. | Configure managed environment-separated secret stores and complete normal/emergency hosted drills for internal assertions, Clerk, database, and provider credentials. | F401-001 |
 | T-02 | Browser changes a tenant, actor, role, assignee, or alert identifier to cross operators. | Tenant/actor derive from verified context; composite tenant keys and scoped queries; active same-tenant assignee validation; composite assignment foreign keys; direct-database and API cross-tenant tests. | Closed: migration `20260721000500` prevents alternate write paths from creating cross-tenant alert assignments or assignment audit rows. | F401-004 |
 | T-03 | Stolen or revoked hosted session continues to access operational data. | Assertions live 30 seconds; hosted sessions and app revocations are checked; membership status/identity disable fail closed; SSE reconnect reauthenticates. | Define identity-disable/revocation operations runbook and maximum revocation-record cleanup delay. | F401-001, F401-008 |
 | T-04 | Malformed, oversized, duplicated, out-of-order, or adversarial provider messages exhaust workers or poison state. | NOAA timeouts/retry/cadence; provider-envelope dedupe; canonical validation; bounded channels; deterministic rule boundaries. | FT-302 adapter must impose size/rate/schema limits and quarantine with bounded evidence; FT-402 must drill poison-message and backlog recovery. | F401-006 |
