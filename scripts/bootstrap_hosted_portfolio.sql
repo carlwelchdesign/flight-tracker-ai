@@ -2,11 +2,13 @@
 
 \if :{?clerk_org_id}
 \else
-  \error 'clerk_org_id is required'
+  \echo 'clerk_org_id is required'
+  \quit 3
 \endif
 \if :{?clerk_user_id}
 \else
-  \error 'clerk_user_id is required'
+  \echo 'clerk_user_id is required'
+  \quit 3
 \endif
 
 BEGIN;
