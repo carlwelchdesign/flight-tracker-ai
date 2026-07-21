@@ -8,9 +8,9 @@
     "geometry_resolution_nm": 1.0
   },
   "review": {
-    "status": "awaiting_postgis_oracle",
+    "status": "verified_by_postgis_oracle",
     "reviewer": "postgis-3.5-cross-engine-review",
-    "reviewed_at": null
+    "reviewed_at": "2026-07-21T07:19:47Z"
   },
   "cases": [
     {
