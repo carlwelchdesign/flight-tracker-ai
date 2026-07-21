@@ -79,6 +79,41 @@ class PublicSurfaceVerificationTest(unittest.TestCase):
         self.assertTrue(evidence["publication_ready"])
         self.assertFalse(evidence["summary"]["deployment_protected"])
 
+    def test_public_signed_out_landing_is_an_approved_identity_boundary(self):
+        responses = healthy_api()
+        responses[(WEB, "/")] = response(
+            200,
+            b'<main><h1>Sign in to continue</h1><a href="/sign-in">Open secure sign in</a></main>',
+            {"content-type": "text/html; charset=utf-8", **SECURITY_HEADERS},
+        )
+
+        evidence = verify_public_surface(
+            SurfaceConfig("production-signed-out", WEB, API),
+            FakeClient(responses),
+        )
+
+        self.assertEqual(evidence["status"], "passed")
+        self.assertIn(
+            {"check": "web_signed_out_landing", "status": "passed"},
+            evidence["checks"],
+        )
+
+    def test_public_root_rejects_unbounded_html(self):
+        responses = healthy_api()
+        responses[(WEB, "/")] = response(
+            200,
+            b'<main><h1>Console</h1></main>',
+            {"content-type": "text/html; charset=utf-8", **SECURITY_HEADERS},
+        )
+
+        evidence = verify_public_surface(
+            SurfaceConfig("production-open-root", WEB, API),
+            FakeClient(responses),
+        )
+
+        self.assertEqual(evidence["status"], "failed")
+        self.assertFalse(evidence["publication_ready"])
+
     def test_protected_preview_passes_but_is_not_publication_ready(self):
         responses = healthy_api()
         responses[(WEB, "/")] = response(

@@ -1,8 +1,8 @@
 use axum::{
     Json, Router,
-    extract::{Extension, State},
-    http::StatusCode,
-    middleware,
+    extract::{Extension, Request, State},
+    http::{HeaderValue, StatusCode, header},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::get,
 };
@@ -267,6 +267,16 @@ fn build_router_with_services_and_health(
         .merge(public)
         .layer(middleware::from_fn_with_state(metrics, observe_request))
         .layer(middleware::from_fn(correlate_request))
+        .layer(middleware::from_fn(secure_transport_headers))
+}
+
+async fn secure_transport_headers(request: Request, next: Next) -> Response {
+    let mut response = next.run(request).await;
+    response.headers_mut().insert(
+        header::STRICT_TRANSPORT_SECURITY,
+        HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
+    response
 }
 
 #[derive(Debug, Deserialize)]
@@ -573,6 +583,12 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get(header::STRICT_TRANSPORT_SECURITY),
+            Some(&HeaderValue::from_static(
+                "max-age=31536000; includeSubDomains"
+            ))
+        );
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let payload: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(payload, serde_json::json!({ "status": "ok" }));

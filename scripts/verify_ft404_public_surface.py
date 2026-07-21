@@ -130,16 +130,23 @@ def verify_public_surface(config: SurfaceConfig, client: SurfaceHttpClient) -> d
     try:
         root = client.get(config.web_origin, "/")
         location = root.headers.get("location", "")
-        if root.status not in REDIRECT_STATUSES or not location:
-            failures.append("web root did not redirect through an identity boundary")
-        elif _is_clerk_sign_in(config.web_origin, location):
+        if root.status == 200 and _is_bounded_sign_in_landing(root):
+            checks.append({"check": "web_signed_out_landing", "status": "passed"})
+            _verify_web_headers(root, checks, failures)
+        elif root.status in REDIRECT_STATUSES and _is_clerk_sign_in(
+            config.web_origin, location
+        ):
             checks.append({"check": "web_identity_redirect", "status": "passed"})
             _verify_web_headers(root, checks, failures)
-        elif _is_vercel_protection(location) and config.allow_deployment_protection:
+        elif (
+            root.status in REDIRECT_STATUSES
+            and _is_vercel_protection(location)
+            and config.allow_deployment_protection
+        ):
             deployment_protected = True
             checks.append({"check": "preview_deployment_protection", "status": "passed"})
         else:
-            failures.append("web root redirected to an unapproved identity boundary")
+            failures.append("web root did not enforce an approved signed-out boundary")
     except (RuntimeError, VerificationConfigurationError):
         failures.append("web root request failed")
 
@@ -191,6 +198,15 @@ def _is_clerk_sign_in(origin: str, location: str) -> bool:
     destination = urlsplit(urljoin(f"{validate_https_origin(origin)}/", location))
     source = urlsplit(origin)
     return destination.netloc == source.netloc and destination.path.startswith("/sign-in")
+
+
+def _is_bounded_sign_in_landing(response: HttpResponse) -> bool:
+    content_type = response.headers.get("content-type", "").lower()
+    return (
+        "text/html" in content_type
+        and b"Sign in to continue" in response.body
+        and b'href="/sign-in"' in response.body
+    )
 
 
 def _is_vercel_protection(location: str) -> bool:
