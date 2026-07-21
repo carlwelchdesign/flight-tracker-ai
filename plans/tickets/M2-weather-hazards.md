@@ -27,11 +27,12 @@ Verification evidence: `plans/NOAA_INGESTION.md`; normal, malformed, duplicate, 
 
 ## FT-202 — Render weather and hazard layers
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-202-weather-hazard-layers`
 Final commit: Pending
 Pull request: Pending
+Owner: Full-stack engineering with product-design review
 
 Display current hazards and airport observations without obscuring the core fleet workflow.
 
