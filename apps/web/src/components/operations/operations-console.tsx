@@ -505,7 +505,7 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
       </div>
 
       <footer className="operations-footer">
-        <span>Simulation environment</span>
+        <span>Advisory evidence workspace</span>
         <span>Source-attributed · human-reviewed decisions</span>
         <span>UTC / WGS84</span>
       </footer>

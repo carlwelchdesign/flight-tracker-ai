@@ -71,6 +71,7 @@ services:
     environment:
       API_BASE_URL: http://api:8080
       AUTH_MODE: ${AUTH_MODE:-development}
+      OPERATIONS_MODE: ${OPERATIONS_MODE:-simulation}
       INTERNAL_AUTH_SECRET: ${INTERNAL_AUTH_SECRET:-local-development-internal-auth-secret-change-me}
       INTERNAL_AUTH_KEY_ID: ${INTERNAL_AUTH_KEY_ID:-local-primary}
       AUTH_ASSERTION_ISSUER: ${AUTH_ASSERTION_ISSUER:-flight-tracker-web}
