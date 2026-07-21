@@ -37,6 +37,7 @@ provider payload -> ProviderEnvelope -> provider adapter -> CanonicalEvent -> pr
 | Retention policy/run | `retention_policies`, `retention_runs` | Tenant/data-class/provider policy version, requester/approver/executor, cutoff and counts |
 | Raw deletion tombstone | `data_deletion_tombstones` | Tenant/provider/feed/raw hash and deletion-run evidence |
 | Lifecycle deletion tombstone | `lifecycle_deletion_tombstones` | Tenant/data-class/source-record identity plus deletion/minimization evidence |
+| Alert-history tombstone | `alert_history_tombstones` | Tenant/alert ID/material dedupe key/series revision plus retention-run evidence |
 
 Every operational table includes a non-null `operator_id`. Composite foreign
 keys include `operator_id`, so a record cannot reference an envelope, flight,
@@ -51,6 +52,10 @@ Approved application-lifecycle runs may delete old authorization events and
 expired session revocations or minimize an exclusively tenant-owned inactive
 identity. Typed lifecycle tombstones suppress restored audit/revocation rows and
 force restored identity mappings back to their minimized state.
+
+Approved terminal-alert runs delete only whole dismissed/resolved series after
+their latest alert/action activity expires. Alert-history tombstones suppress an
+exact logical replay while allowing new material evidence at the next revision.
 
 ## Versioning
 
