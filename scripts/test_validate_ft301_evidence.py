@@ -99,6 +99,52 @@ class Ft301EvidenceValidationTest(unittest.TestCase):
             self.assertTrue(any("evidence_id must be" in error for error in errors))
             self.assertTrue(any("missing provider/question rows" in error for error in errors))
 
+    def test_rejects_invalid_scores_and_unsupported_selection(self) -> None:
+        source = ROOT / "plans" / "provider-evaluation"
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "provider-evaluation"
+            shutil.copytree(source, directory)
+            score_path = directory / "provider-scores.csv"
+            with score_path.open(encoding="utf-8") as score_source:
+                scores = list(csv.DictReader(score_source))
+            scores[0].update({
+                "weight": "99",
+                "points": "6",
+                "status": "complete",
+                "notes": "out-of-range test",
+            })
+            scores[1].update({"points": "3", "status": "excluded"})
+            scores.pop()
+            self._write(score_path, scores)
+
+            decision_path = directory / "provider-decision.csv"
+            with decision_path.open(encoding="utf-8") as decision_source:
+                decisions = list(csv.DictReader(decision_source))
+            decisions[0].update({
+                "decision": "select",
+                "selected_provider": "flightaware_firehose",
+                "fallback": "flightaware_firehose",
+                "scoring_method_version": "latest",
+                "decision_date": "2026/07/21",
+                "od_002_status": "resolved",
+            })
+            self._write(decision_path, decisions)
+            shutil.copy(ROOT / "plans" / "DECISIONS.md", directory.parent / "DECISIONS.md")
+
+            errors = validate(directory, require_complete=True)
+            self.assertTrue(any("weight does not match" in error for error in errors))
+            self.assertTrue(any("points must be between" in error for error in errors))
+            self.assertTrue(any("excluded score cannot have points" in error for error in errors))
+            self.assertTrue(any("missing provider/dimension" in error for error in errors))
+            self.assertTrue(any("fallback must differ" in error for error in errors))
+            self.assertTrue(any("scoring_method_version" in error for error in errors))
+            self.assertTrue(any("decision_date must use" in error for error in errors))
+            self.assertTrue(any("every score completed" in error for error in errors))
+            self.assertTrue(any("pending or rejected response" in error for error in errors))
+            self.assertTrue(any("unaccepted required evidence" in error for error in errors))
+            self.assertTrue(any("still listed under open decisions" in error for error in errors))
+            self.assertTrue(any("resolution statement is missing" in error for error in errors))
+
     @staticmethod
     def _write(path: Path, rows: list[dict[str, str]]) -> None:
         with path.open("w", newline="", encoding="utf-8") as target:

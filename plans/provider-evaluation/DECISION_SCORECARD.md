@@ -36,6 +36,8 @@ Freeze metric thresholds and scoring bands before the scored trial begins.
 
 Each dimension receives 0–5 points from a pre-frozen rubric. Weighted total is `sum(points / 5 × weight)`. Publish the component scores, raw evidence references, uncertainty, and dissenting reviewer notes; never publish only the total.
 
+Record the component rows in `provider-scores.csv`. The validator requires both providers, all seven dimensions, the fixed 100-point weight set, expected evidence category, reviewer, and either a completed 0–5 score with notes or an exclusion reason. A selected provider cannot contain an excluded or pending score.
+
 ## Sensitivity and recommendation
 
 - Recalculate with coverage and freshness weights each varied by ±10 percentage points.
@@ -46,15 +48,6 @@ Each dimension receives 0–5 points from a pre-frozen rubric. Weighted total is
 
 ## Final record
 
-| Field | Value |
-| --- | --- |
-| Decision | Pending |
-| Selected provider | Pending |
-| Effective package and data layers | Pending |
-| Primary evidence window | Pending |
-| Legal approval | Pending |
-| Engineering approval | Pending |
-| Product approval | Pending |
-| Fallback provider | Pending |
-| Reconsideration triggers | Pending |
-| OD-002 update | Pending |
+The authoritative structured record is `provider-decision.csv`. It remains `pending` until the recommendation includes the selected provider or `no_select`, fallback, effective package, evidence window, three approval references, sensitivity result, termination/export plan, implementation estimate, reconsideration triggers, decision date, notes, and a resolved OD-002 state.
+
+For a selection, every score for the selected provider must be complete, every clause-level response must be accepted or an approved exception, and all four provider evidence categories must be accepted or an approved exception. For `no_select`, the selected-provider field stays empty and deterministic simulation remains the fallback.

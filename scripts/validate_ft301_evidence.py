@@ -20,7 +20,9 @@ REQUIRED_FILES = {
     "TRIAL_PROTOCOL.md",
     "DECISION_SCORECARD.md",
     "OUTREACH_REQUESTS.md",
+    "provider-decision.csv",
     "provider-question-responses.csv",
+    "provider-scores.csv",
     "trial-scorecard.csv",
     "cost-model.csv",
 }
@@ -86,6 +88,63 @@ EXPECTED_RESPONSE_EVIDENCE = {
     ("cirium_sky_stream", "R"): "CI-RIGHTS",
     ("cirium_sky_stream", "S"): "CI-SLA",
 }
+SCORE_DIMENSIONS = {
+    "target_flight_regional_coverage": (Decimal("30"), "TRIAL-RESULT"),
+    "freshness_data_quality": (Decimal("20"), "TRIAL-RESULT"),
+    "recovery_operational_reliability": (Decimal("15"), "TRIAL-RESULT"),
+    "flight_identity_operational_events": (Decimal("10"), "TRIAL-RESULT"),
+    "rights_retention_simplicity": (Decimal("10"), None),
+    "three_scale_total_cost": (Decimal("10"), None),
+    "implementation_support_fit": (Decimal("5"), None),
+}
+EXPECTED_SCORE_KEYS = {
+    (provider, dimension)
+    for provider in PROVIDERS
+    for dimension in SCORE_DIMENSIONS
+}
+SCORE_COLUMNS = (
+    "provider",
+    "dimension",
+    "weight",
+    "points",
+    "evidence_ids",
+    "reviewer",
+    "status",
+    "notes",
+)
+SCORE_STATUSES = {"pending", "complete", "excluded"}
+PROVIDER_EVIDENCE = {
+    "flightaware_firehose": {
+        "rights": "FA-RIGHTS",
+        "price": "FA-PRICE",
+        "sla": "FA-SLA",
+        "trial": "FA-TRIAL",
+    },
+    "cirium_sky_stream": {
+        "rights": "CI-RIGHTS",
+        "price": "CI-PRICE",
+        "sla": "CI-SLA",
+        "trial": "CI-TRIAL",
+    },
+}
+DECISION_COLUMNS = (
+    "decision",
+    "selected_provider",
+    "fallback",
+    "scoring_method_version",
+    "effective_package",
+    "primary_evidence_window",
+    "legal_approval_ref",
+    "engineering_approval_ref",
+    "product_approval_ref",
+    "sensitivity_result",
+    "termination_export_plan",
+    "implementation_estimate",
+    "reconsideration_triggers",
+    "decision_date",
+    "od_002_status",
+    "notes",
+)
 TRIAL_METRICS = {
     "expected_flight_identification",
     "position_availability",
@@ -186,33 +245,35 @@ def validate_questionnaire(path: Path) -> list[str]:
     return errors
 
 
-def validate_evidence_register(path: Path, require_complete: bool) -> list[str]:
-    rows, errors = markdown_table(path, EVIDENCE_COLUMNS)
+def validate_evidence_register(
+    rows: list[list[str]], require_complete: bool
+) -> list[str]:
+    errors: list[str] = []
     seen: set[str] = set()
     for line_offset, row in enumerate(rows, start=1):
         evidence_id, _, _, status, _, reference, received, owner, reviewer, _ = row
         if evidence_id in seen:
-            errors.append(f"{path.name}: duplicate evidence ID {evidence_id}")
+            errors.append(f"EVIDENCE_REGISTER.md: duplicate evidence ID {evidence_id}")
         seen.add(evidence_id)
         if evidence_id not in REQUIRED_EVIDENCE_IDS:
-            errors.append(f"{path.name}: unsupported evidence ID {evidence_id}")
+            errors.append(f"EVIDENCE_REGISTER.md: unsupported evidence ID {evidence_id}")
         if status not in EVIDENCE_STATUSES:
             errors.append(
-                f"{path.name} row {line_offset}: unsupported status {status!r}"
+                f"EVIDENCE_REGISTER.md row {line_offset}: unsupported status {status!r}"
             )
         if not owner or not reviewer:
-            errors.append(f"{path.name} row {line_offset}: owner and reviewer are required")
+            errors.append(f"EVIDENCE_REGISTER.md row {line_offset}: owner and reviewer are required")
         if status in {"received", *TERMINAL_EVIDENCE_STATUSES}:
             if not reference or reference.lower() == "pending":
-                errors.append(f"{path.name} row {line_offset}: received evidence needs a controlled reference")
+                errors.append(f"EVIDENCE_REGISTER.md row {line_offset}: received evidence needs a controlled reference")
             if not received or received.lower() == "pending":
-                errors.append(f"{path.name} row {line_offset}: received evidence needs a received date")
+                errors.append(f"EVIDENCE_REGISTER.md row {line_offset}: received evidence needs a received date")
         if require_complete and status not in TERMINAL_EVIDENCE_STATUSES:
-            errors.append(f"{path.name}: {evidence_id} is not in a terminal review state")
+            errors.append(f"EVIDENCE_REGISTER.md: {evidence_id} is not in a terminal review state")
 
     missing = sorted(REQUIRED_EVIDENCE_IDS - seen)
     if missing:
-        errors.append(f"{path.name}: missing evidence IDs {missing}")
+        errors.append(f"EVIDENCE_REGISTER.md: missing evidence IDs {missing}")
     return errors
 
 
@@ -279,6 +340,197 @@ def validate_question_responses(
     unexpected = sorted(seen - EXPECTED_RESPONSE_KEYS)
     if unexpected:
         errors.append(f"response matrix: unsupported provider/question rows {unexpected}")
+    return errors
+
+
+def expected_score_evidence(provider: str, dimension: str) -> str | None:
+    configured = SCORE_DIMENSIONS.get(dimension)
+    provider_evidence = PROVIDER_EVIDENCE.get(provider)
+    if configured is None or provider_evidence is None:
+        return None
+    if configured[1] is not None:
+        return configured[1]
+    return {
+        "rights_retention_simplicity": provider_evidence["rights"],
+        "three_scale_total_cost": provider_evidence["price"],
+        "implementation_support_fit": provider_evidence["sla"],
+    }.get(dimension)
+
+
+def validate_scores(
+    rows: list[dict[str, str]], require_complete: bool
+) -> list[str]:
+    errors: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    for line, row in enumerate(rows, start=2):
+        provider = row.get("provider", "")
+        dimension = row.get("dimension", "")
+        status = row.get("status", "")
+        key = (provider, dimension)
+        if provider not in PROVIDERS:
+            errors.append(f"score line {line}: unsupported provider {provider!r}")
+        if dimension not in SCORE_DIMENSIONS:
+            errors.append(f"score line {line}: unsupported dimension {dimension!r}")
+        if key in seen:
+            errors.append(f"score line {line}: duplicate provider/dimension")
+        seen.add(key)
+        if status not in SCORE_STATUSES:
+            errors.append(f"score line {line}: unsupported status {status!r}")
+        if not row.get("reviewer"):
+            errors.append(f"score line {line}: reviewer is required")
+
+        configured = SCORE_DIMENSIONS.get(dimension)
+        if configured is not None:
+            try:
+                if Decimal(row.get("weight", "")) != configured[0]:
+                    errors.append(f"score line {line}: weight does not match decision rubric")
+            except InvalidOperation:
+                errors.append(f"score line {line}: weight must be numeric")
+        expected_evidence = expected_score_evidence(provider, dimension)
+        if expected_evidence and row.get("evidence_ids") != expected_evidence:
+            errors.append(
+                f"score line {line}: evidence_ids must be {expected_evidence}"
+            )
+
+        if status == "complete":
+            if not row.get("points") or not row.get("notes"):
+                errors.append(f"score line {line}: complete score needs points and notes")
+            else:
+                try:
+                    points = Decimal(row["points"])
+                    if points < 0 or points > 5:
+                        errors.append(f"score line {line}: points must be between 0 and 5")
+                except InvalidOperation:
+                    errors.append(f"score line {line}: points must be numeric")
+        elif status == "excluded":
+            if row.get("points"):
+                errors.append(f"score line {line}: excluded score cannot have points")
+            if not row.get("notes"):
+                errors.append(f"score line {line}: excluded score needs a reason")
+        elif row.get("points"):
+            errors.append(f"score line {line}: pending score cannot have points")
+
+        if require_complete and status == "pending":
+            errors.append(f"score line {line}: score is still pending")
+
+    missing = sorted(EXPECTED_SCORE_KEYS - seen)
+    if missing:
+        errors.append(f"score matrix: missing provider/dimension rows {missing}")
+    unexpected = sorted(seen - EXPECTED_SCORE_KEYS)
+    if unexpected:
+        errors.append(f"score matrix: unsupported provider/dimension rows {unexpected}")
+    return errors
+
+
+def validate_decision(
+    rows: list[dict[str, str]],
+    score_rows: list[dict[str, str]],
+    response_rows: list[dict[str, str]],
+    evidence_rows: list[list[str]],
+    require_complete: bool,
+) -> list[str]:
+    if len(rows) != 1:
+        return [f"provider-decision.csv: expected exactly one row, found {len(rows)}"]
+    row = rows[0]
+    errors: list[str] = []
+    decision = row.get("decision", "")
+    selected = row.get("selected_provider", "")
+    fallback = row.get("fallback", "")
+    if decision not in {"pending", "select", "no_select"}:
+        errors.append(f"decision: unsupported decision {decision!r}")
+    if row.get("scoring_method_version") != "ft301-v1":
+        errors.append("decision: scoring_method_version must be ft301-v1")
+    if row.get("od_002_status") not in {"pending", "resolved"}:
+        errors.append("decision: od_002_status must be pending or resolved")
+    if decision == "pending":
+        if selected:
+            errors.append("decision: pending decision cannot select a provider")
+    elif decision == "select":
+        if selected not in PROVIDERS:
+            errors.append("decision: selected_provider must name a finalist")
+        if fallback not in (PROVIDERS | {"simulation"}):
+            errors.append("decision: fallback must name the other finalist or simulation")
+        if fallback == selected:
+            errors.append("decision: fallback must differ from selected_provider")
+    elif decision == "no_select":
+        if selected:
+            errors.append("decision: no_select cannot name a selected_provider")
+        if fallback != "simulation":
+            errors.append("decision: no_select fallback must be simulation")
+
+    if require_complete:
+        if decision == "pending":
+            errors.append("decision: final decision is still pending")
+        required = (
+            "effective_package",
+            "primary_evidence_window",
+            "legal_approval_ref",
+            "engineering_approval_ref",
+            "product_approval_ref",
+            "sensitivity_result",
+            "termination_export_plan",
+            "implementation_estimate",
+            "reconsideration_triggers",
+            "decision_date",
+            "notes",
+        )
+        missing = [field for field in required if not row.get(field)]
+        if missing:
+            errors.append(f"decision: final record missing {', '.join(missing)}")
+        if row.get("od_002_status") != "resolved":
+            errors.append("decision: OD-002 is not resolved")
+        if row.get("decision_date"):
+            try:
+                datetime.strptime(row["decision_date"], "%Y-%m-%d")
+            except ValueError:
+                errors.append("decision: decision_date must use YYYY-MM-DD")
+
+        if decision == "select" and selected in PROVIDERS:
+            selected_scores = [item for item in score_rows if item.get("provider") == selected]
+            if any(item.get("status") != "complete" for item in selected_scores):
+                errors.append("decision: selected provider must have every score completed")
+            selected_responses = [
+                item for item in response_rows if item.get("provider") == selected
+            ]
+            if any(
+                item.get("review_status") not in {"accepted", "exception"}
+                for item in selected_responses
+            ):
+                errors.append("decision: selected provider has a pending or rejected response")
+            evidence_statuses = {item[0]: item[3] for item in evidence_rows}
+            required_evidence = set(PROVIDER_EVIDENCE[selected].values()) | {
+                "TARGET-POP",
+                "TRIAL-RESULT",
+            }
+            if any(
+                evidence_statuses.get(evidence_id) not in {"accepted", "exception"}
+                for evidence_id in required_evidence
+            ):
+                errors.append("decision: selected provider has unaccepted required evidence")
+    return errors
+
+
+def validate_decision_log(
+    path: Path, decision_rows: list[dict[str, str]]
+) -> list[str]:
+    if len(decision_rows) != 1:
+        return []
+    status = decision_rows[0].get("od_002_status")
+    if not path.is_file():
+        if status == "resolved":
+            return ["decision log: DECISIONS.md is required to prove OD-002 resolution"]
+        return []
+    text = path.read_text(encoding="utf-8")
+    open_entry = re.search(r"^\|\s*OD-002\s*\|", text, flags=re.MULTILINE) is not None
+    resolution = "OD-002 is resolved" in text
+    errors: list[str] = []
+    if status == "resolved":
+        if open_entry:
+            errors.append("decision log: OD-002 is still listed under open decisions")
+        if not resolution:
+            errors.append("decision log: OD-002 resolution statement is missing")
+    elif status == "pending" and not open_entry:
+        errors.append("decision log: pending OD-002 is missing from open decisions")
     return errors
 
 
@@ -419,14 +671,33 @@ def validate(directory: Path, require_complete: bool = False) -> list[str]:
     trial = directory / "trial-scorecard.csv"
     cost = directory / "cost-model.csv"
     responses = directory / "provider-question-responses.csv"
+    scores = directory / "provider-scores.csv"
+    decision = directory / "provider-decision.csv"
     trial_rows, trial_errors = validate_table(trial, TRIAL_COLUMNS)
     cost_rows, cost_errors = validate_table(cost, COST_COLUMNS)
     response_rows, response_errors = validate_table(responses, RESPONSE_COLUMNS)
+    score_rows, score_errors = validate_table(scores, SCORE_COLUMNS)
+    decision_rows, decision_errors = validate_table(decision, DECISION_COLUMNS)
+    evidence_rows, evidence_table_errors = markdown_table(
+        directory / "EVIDENCE_REGISTER.md", EVIDENCE_COLUMNS
+    )
     return (
         validate_questionnaire(directory / "RIGHTS_AND_SERVICE_QUESTIONNAIRE.md")
-        + validate_evidence_register(directory / "EVIDENCE_REGISTER.md", require_complete)
+        + evidence_table_errors
+        + validate_evidence_register(evidence_rows, require_complete)
         + response_errors
         + validate_question_responses(response_rows, require_complete)
+        + score_errors
+        + validate_scores(score_rows, require_complete)
+        + decision_errors
+        + validate_decision(
+            decision_rows,
+            score_rows,
+            response_rows,
+            evidence_rows,
+            require_complete,
+        )
+        + validate_decision_log(directory.parent / "DECISIONS.md", decision_rows)
         + trial_errors
         + cost_errors
         + validate_trial(trial_rows, require_complete)
