@@ -8,7 +8,7 @@ Status: In progress
 
 Branch: `docs/ft-301-commercial-provider-selection`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) (draft)
 Owner: Product, legal, and engineering
 
 Resolve the provider feasibility work with a documented selection appropriate for the intended use.
