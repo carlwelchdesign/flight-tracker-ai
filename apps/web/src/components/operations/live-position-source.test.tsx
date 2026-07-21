@@ -89,6 +89,33 @@ describe("live position source presentation", () => {
     expect(retry).toHaveBeenCalledOnce();
   });
 
+  it("shows a high-latency timeout as degraded while replay stays selectable", async () => {
+    const useReplay = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <LivePositionSource
+        status={{
+          ...current,
+          state: "degraded",
+          consecutive_failures: 1,
+          last_error_code: "timeout",
+        }}
+        message={null}
+        liveFlightsVisible
+        replayAvailable
+        onUseReplay={useReplay}
+        onRetry={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Live positions degraded · replay preserved",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Source condition: timeout");
+    await user.click(screen.getByRole("button", { name: "Use replay view" }));
+    expect(useReplay).toHaveBeenCalledOnce();
+  });
+
   it("keeps replay as the complete default when the external layer is disabled", () => {
     render(
       <LivePositionSource

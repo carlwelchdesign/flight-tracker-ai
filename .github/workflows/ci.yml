@@ -203,11 +203,19 @@ jobs:
           grep --quiet '"lifecycle":"acknowledged"' /tmp/alert-detail.json
           grep --quiet '"workflow_version":2' /tmp/alert-detail.json
           grep --quiet '"actor_id":"ci-admin"' /tmp/alert-detail.json
-      - name: Verify schema and route-rule contracts
+      - name: Run FT-402 database recovery drill
+        run: |
+          postgres_container="$(docker ps --filter 'ancestor=postgis/postgis:17-3.5' --format '{{.ID}}' | head -1)"
+          test -n "$postgres_container"
+          FT402_POSTGRES_CONTAINER="$postgres_container" \
+            FT402_ALLOW_DESTRUCTIVE_RECOVERY=true \
+            scripts/run_ft402_database_recovery.sh
+      - name: Verify schema, route-rule, and resilience contracts
         env:
           TEST_DATABASE_URL: postgres://flight_tracker:flight_tracker@127.0.0.1:5432/flight_tracker?sslmode=disable
         run: >-
           cargo test --locked -p flight-tracker-api
           --test schema_contract
           --test route_hazard_postgis_review
+          --test resilience_drills
           -- --nocapture

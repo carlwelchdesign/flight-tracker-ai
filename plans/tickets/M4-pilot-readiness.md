@@ -50,11 +50,12 @@ Scope-reconciliation evidence (2026-07-21): FT-005 and ADR-010 remove commercial
 
 ## FT-402 — Run resilience and failure drills
 
-Status: Not started
+Status: Complete
 
 Branch: `feat/ft-402-resilience-drills`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `73e7157`
+Pull request: [#22](https://github.com/carlwelchdesign/flight-tracker-ai/pull/22)
+Owner: Backend, reliability, and full-stack engineering
 
 Demonstrate a reliable recruiter-facing experience under feed, database, worker, network, and malformed-data failures.
 
@@ -62,14 +63,31 @@ Dependencies: FT-302, FT-304
 
 Acceptance checklist:
 
-- [ ] Free-feed outage and high-latency checks produce visible degraded states and leave replay available.
-- [ ] Worker restart does not duplicate or lose lifecycle history beyond documented guarantees.
-- [ ] Database recovery procedure is tested.
-- [ ] Malformed and adversarial provider payloads are rejected or quarantined.
-- [ ] Alert backlog recovery behavior is measured.
-- [ ] Demo and developer runbooks are updated from the findings.
+- [x] Free-feed outage and high-latency checks produce visible degraded states and leave replay available.
+- [x] Worker restart does not duplicate or lose lifecycle history beyond documented guarantees.
+- [x] Database recovery procedure is tested.
+- [x] Malformed and adversarial provider payloads are rejected or quarantined.
+- [x] Alert backlog recovery behavior is measured.
+- [x] Demo and developer runbooks are updated from the findings.
 
-Verification evidence: Pending.
+Verification evidence: focused Rust tests prove bounded timeout,
+degraded/unavailable/recovered source transitions, malformed top-level failure,
+invalid-record rejection, freshest-duplicate selection, and the one-megabyte
+response cap. React behavior proves a timeout is visibly degraded and replay
+remains directly selectable. [`RESILIENCE_DRILLS.md`](../RESILIENCE_DRILLS.md),
+[`OPERATIONS_RUNBOOK.md`](../OPERATIONS_RUNBOOK.md),
+[`BACKUP_RESTORE_RUNBOOK.md`](../BACKUP_RESTORE_RUNBOOK.md), and
+[`PORTFOLIO_DEMO_RUNBOOK.md`](../PORTFOLIO_DEMO_RUNBOOK.md) record the measured
+contract and honest recovery boundary. CI run
+[29856364366](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29856364366)
+passes Rust, web, and API/PostGIS checks. The PostGIS worker replacement keeps
+one alert and its workflow-version-2 append-only comment; 208 queued batches
+drain in 1,286 ms; a forced 273-batch overflow reports 257 skipped batches and
+recovers from a complete replay window in 33 ms; and the isolated logical
+restore verifies PostGIS, migration state, and exact controlled row counts in
+3,520 ms with zero controlled transactions lost. These are CI rehearsal
+measurements, not hosted SLA claims; FT-404 retains the representative managed
+recovery gate.
 
 ## FT-403 — Validate the recruiter and hiring-manager demo
 

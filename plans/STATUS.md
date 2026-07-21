@@ -5,12 +5,12 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: None — FT-302 is complete; FT-402 is next
+- Active ticket: None — FT-402 is complete; FT-403 is next
 - Branch: None
-- Pull request: [#21](https://github.com/carlwelchdesign/flight-tracker-ai/pull/21) (verified delivery)
+- Pull request: [#22](https://github.com/carlwelchdesign/flight-tracker-ai/pull/22) (verified delivery)
 - Owner: Product and engineering
-- Overall status: M0, M1, M2, and M3 are complete; M4 is 1/4 complete, with resilience drills, recruiter-demo validation, and public portfolio deployment still explicit gates
-- Next action: Start FT-402 on `test/ft-402-resilience-drills` and run the bounded provider, replay, queue, and recovery drills defined in M4.
+- Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
+- Next action: Start FT-403 on `docs/ft-403-portfolio-demo-validation` and run the focused recruiter/hiring-manager usability evaluation defined in M4.
 
 ## Milestone checklist
 
@@ -29,7 +29,7 @@ Last updated: 2026-07-21
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
 | M3 | 4 | 4 |
-| M4 | 1 | 4 |
+| M4 | 2 | 4 |
 | M5 | 0 | 3 |
 
 ## Handoff notes
@@ -61,6 +61,7 @@ Last updated: 2026-07-21
 - FT-301 commercial preparation package is merged through PR #15 at `c8d8a78`; PR #16 records the corrected procurement handoff. This research is retained for an optional future production track and is not an active portfolio-release gate.
 - FT-004 upgrades checkout and setup-node to their official Node 24 action-runtime releases through PR #17 at implementation commit `715d7d6`; CI run `29832129375` passed all three jobs with zero check annotations while preserving application Node.js `20.20.1`.
 - FT-401 is delivered through PR [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) at portfolio closeout commit `e28ffa1`. CI run [29851083689](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29851083689) passes Rust, web, and API/PostGIS checks. The review documents and enforces trust boundaries, threat modeling, lifecycle/backup/incident controls, and ten owned findings; repository approval remains separate from FT-404 public-deployment approval.
+- FT-402 is delivered through PR [#22](https://github.com/carlwelchdesign/flight-tracker-ai/pull/22) at final implementation commit `73e7157`. CI run [29856364366](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29856364366) passes Rust, web, and API/PostGIS checks. It proves visible source timeout/outage fallback, adversarial-input rejection, durable alert history across worker replacement, measured bounded/overflow backlog behavior, and an isolated logical PostGIS restore while preserving the honest FT-404 hosted-recovery boundary.
 - F401-004 is closed at implementation commit `e9e5f76`: operator-scoped membership foreign keys now protect both current alert assignments and assignment audit rows. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) proves direct-database and authenticated-API cross-tenant rejection plus valid same-tenant assignment.
 - Browser policy implementation commit `dc08690` adds strict nonce-aware Clerk CSP and production response hardening. CI run [29833848250](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833848250), the standalone header smoke, and all 30 web tests pass; F401-005 is controlled by FT-404's pre-publication hosted-Clerk smoke.
 - F401-010 is closed at implementation commit `38cf7b7`: public health/readiness probes now expose one status field, while detailed worker/database/PostGIS diagnostics require authorization. CI run [29834083229](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834083229) verifies the public, unauthorized, authenticated, PostGIS, BFF, and console contracts.
