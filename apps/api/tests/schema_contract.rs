@@ -55,6 +55,7 @@ const REQUIRED_TABLES: &[&str] = &[
     "retention_runs",
     "data_deletion_tombstones",
     "lifecycle_deletion_tombstones",
+    "alert_history_tombstones",
 ];
 
 async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthService, String) {
@@ -677,6 +678,216 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
             .unwrap(),
         requester.subject
     );
+
+    let eligible_series = format!("retention-terminal-{}", Uuid::new_v4());
+    let eligible_first = Uuid::new_v4();
+    let eligible_second = Uuid::new_v4();
+    let eligible_first_dedupe = format!("{eligible_series}:1");
+    let eligible_second_dedupe = format!("{eligible_series}:2");
+    let current_terminal = Uuid::new_v4();
+    let current_series = format!("retention-current-{}", Uuid::new_v4());
+    let mixed_first = Uuid::new_v4();
+    let mixed_second = Uuid::new_v4();
+    let mixed_series = format!("retention-mixed-{}", Uuid::new_v4());
+    let mixed_first_dedupe = format!("{mixed_series}:1");
+    let mixed_second_dedupe = format!("{mixed_series}:2");
+    let other_terminal = Uuid::new_v4();
+    let other_series = format!("retention-other-{}", Uuid::new_v4());
+    for (id, tenant, lifecycle, series, revision, supersedes, dedupe) in [
+        (
+            eligible_first,
+            operator_id,
+            "resolved",
+            eligible_series.as_str(),
+            1,
+            None,
+            eligible_first_dedupe.as_str(),
+        ),
+        (
+            eligible_second,
+            operator_id,
+            "resolved",
+            eligible_series.as_str(),
+            2,
+            Some(eligible_first),
+            eligible_second_dedupe.as_str(),
+        ),
+        (
+            current_terminal,
+            operator_id,
+            "resolved",
+            current_series.as_str(),
+            1,
+            None,
+            current_series.as_str(),
+        ),
+        (
+            mixed_first,
+            operator_id,
+            "resolved",
+            mixed_series.as_str(),
+            1,
+            None,
+            mixed_first_dedupe.as_str(),
+        ),
+        (
+            mixed_second,
+            operator_id,
+            "open",
+            mixed_series.as_str(),
+            2,
+            Some(mixed_first),
+            mixed_second_dedupe.as_str(),
+        ),
+        (
+            other_terminal,
+            other_operator_id,
+            "resolved",
+            other_series.as_str(),
+            1,
+            None,
+            other_series.as_str(),
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO alerts (
+                id, operator_id, schema_version, event_time, received_at,
+                processed_at, alert_type, severity, lifecycle, rule_id,
+                rule_version, dedupe_key, series_key, alert_revision,
+                supersedes_alert_id, attention_score, score_version, evidence
+            ) VALUES ($1,$2,1,$3,$3,$3,'retention_test','information',$4,
+                      'retention_rule',1,$5,$6,$7,$8,5,1,'{}')
+            "#,
+        )
+        .bind(id)
+        .bind(tenant.as_uuid())
+        .bind(now - Duration::hours(2))
+        .bind(lifecycle)
+        .bind(dedupe)
+        .bind(series)
+        .bind(revision)
+        .bind(supersedes)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    for (id, alert_id, occurred_at) in [
+        (Uuid::new_v4(), eligible_second, now - Duration::hours(2)),
+        (Uuid::new_v4(), current_terminal, now),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO alert_actions (
+                id, operator_id, alert_id, schema_version, action, actor_id,
+                occurred_at, idempotency_key
+            ) VALUES ($1,$2,$3,1,'resolve','retention-test',$4,$5)
+            "#,
+        )
+        .bind(id)
+        .bind(operator_id.as_uuid())
+        .bind(alert_id)
+        .bind(occurred_at)
+        .bind(format!("retention-action-{id}"))
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    sqlx::query(
+        r#"
+        INSERT INTO alert_evidence (operator_id, alert_id, source_envelope_id, ordinal)
+        VALUES ($1,$2,$3,0)
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(eligible_second)
+    .bind(current_id)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let alert_run = complete_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::TerminalAlertHistory,
+        now,
+    )
+    .await;
+    let alert_counts = alert_run.deletion_counts.unwrap();
+    assert_eq!(alert_counts["alerts"], 2);
+    assert_eq!(alert_counts["alert_actions"], 1);
+    assert_eq!(alert_counts["alert_evidence"], 1);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM alerts WHERE id = ANY($1)")
+            .bind(vec![eligible_first, eligible_second])
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM alerts WHERE id = ANY($1)")
+            .bind(vec![
+                current_terminal,
+                mixed_first,
+                mixed_second,
+                other_terminal
+            ])
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        4
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM alert_history_tombstones WHERE operator_id = $1 AND retention_run_id = $2",
+        )
+        .bind(operator_id.as_uuid())
+        .bind(alert_run.id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        2
+    );
+    let replayed_alert = sqlx::query(
+        r#"
+        INSERT INTO alerts (
+            id, operator_id, schema_version, event_time, received_at, processed_at,
+            alert_type, severity, lifecycle, rule_id, rule_version, dedupe_key,
+            series_key, alert_revision, attention_score, score_version, evidence
+        ) VALUES ($1,$2,1,$3,$3,$3,'retention_test','information','resolved',
+                  'retention_rule',1,$4,$5,1,5,1,'{}')
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(operator_id.as_uuid())
+    .bind(now - Duration::hours(2))
+    .bind(&eligible_first_dedupe)
+    .bind(&eligible_series)
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(replayed_alert.rows_affected(), 0);
+    let new_material_alert = sqlx::query(
+        r#"
+        INSERT INTO alerts (
+            id, operator_id, schema_version, event_time, received_at, processed_at,
+            alert_type, severity, lifecycle, rule_id, rule_version, dedupe_key,
+            series_key, alert_revision, attention_score, score_version, evidence
+        ) VALUES ($1,$2,1,$3,$3,$3,'retention_test','information','open',
+                  'retention_rule',1,$4,$5,3,5,1,'{}')
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(operator_id.as_uuid())
+    .bind(now)
+    .bind(format!("{eligible_series}:3"))
+    .bind(&eligible_series)
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(new_material_alert.rows_affected(), 1);
 }
 
 async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool) {

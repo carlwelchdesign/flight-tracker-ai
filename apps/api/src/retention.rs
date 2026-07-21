@@ -29,6 +29,7 @@ pub enum RetentionDataClass {
     AuthorizationAudit,
     SessionRevocation,
     IdentityMapping,
+    TerminalAlertHistory,
 }
 
 impl RetentionDataClass {
@@ -38,6 +39,7 @@ impl RetentionDataClass {
             Self::AuthorizationAudit => "authorization_audit",
             Self::SessionRevocation => "session_revocation",
             Self::IdentityMapping => "identity_mapping",
+            Self::TerminalAlertHistory => "terminal_alert_history",
         }
     }
 
@@ -47,6 +49,7 @@ impl RetentionDataClass {
             Self::AuthorizationAudit => "authorization_audit_events",
             Self::SessionRevocation => "auth_session_revocations",
             Self::IdentityMapping => "auth_identities_minimized",
+            Self::TerminalAlertHistory => "alerts",
         }
     }
 }
@@ -60,6 +63,7 @@ impl TryFrom<&str> for RetentionDataClass {
             "authorization_audit" => Ok(Self::AuthorizationAudit),
             "session_revocation" => Ok(Self::SessionRevocation),
             "identity_mapping" => Ok(Self::IdentityMapping),
+            "terminal_alert_history" => Ok(Self::TerminalAlertHistory),
             _ => Err(RetentionError::InvalidConfiguration),
         }
     }
@@ -148,6 +152,52 @@ struct EligibleEnvelope {
     feed: String,
     raw_payload_sha256: String,
 }
+
+#[derive(sqlx::FromRow)]
+struct AlertHistoryInventory {
+    alerts: i64,
+    alert_actions: i64,
+    alert_evidence: i64,
+}
+
+#[derive(sqlx::FromRow)]
+struct EligibleAlert {
+    id: Uuid,
+    dedupe_key: String,
+    series_key: String,
+    alert_revision: i32,
+}
+
+const ALERT_HISTORY_INVENTORY_SQL: &str = r#"
+    WITH eligible_series AS (
+        SELECT alert.series_key
+        FROM alerts alert
+        LEFT JOIN alert_actions action
+          ON action.operator_id = alert.operator_id AND action.alert_id = alert.id
+        WHERE alert.operator_id = $1
+        GROUP BY alert.series_key
+        HAVING BOOL_AND(alert.lifecycle IN ('dismissed', 'resolved'))
+           AND MAX(GREATEST(
+               alert.event_time,
+               alert.received_at,
+               alert.processed_at,
+               COALESCE(action.occurred_at, alert.processed_at)
+           )) < $2
+    ), eligible_alerts AS (
+        SELECT alert.id
+        FROM alerts alert
+        JOIN eligible_series series ON series.series_key = alert.series_key
+        WHERE alert.operator_id = $1
+    )
+    SELECT
+        (SELECT COUNT(*) FROM eligible_alerts) AS alerts,
+        (SELECT COUNT(*) FROM alert_actions action
+         JOIN eligible_alerts alert ON alert.id = action.alert_id
+         WHERE action.operator_id = $1) AS alert_actions,
+        (SELECT COUNT(*) FROM alert_evidence evidence
+         JOIN eligible_alerts alert ON alert.id = evidence.alert_id
+         WHERE evidence.operator_id = $1) AS alert_evidence
+    "#;
 
 impl RetentionStore {
     pub fn new(database: PgPool) -> Self {
@@ -625,6 +675,18 @@ async fn inventory_counts(
     provider: &str,
     cutoff_at: DateTime<Utc>,
 ) -> Result<Value, sqlx::Error> {
+    if data_class == RetentionDataClass::TerminalAlertHistory {
+        let inventory = sqlx::query_as::<_, AlertHistoryInventory>(ALERT_HISTORY_INVENTORY_SQL)
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_one(database)
+            .await?;
+        return Ok(json!({
+            "alerts": inventory.alerts,
+            "alert_actions": inventory.alert_actions,
+            "alert_evidence": inventory.alert_evidence,
+        }));
+    }
     let count = match data_class {
         RetentionDataClass::ProviderRawPayload => {
             sqlx::query_scalar::<_, i64>(
@@ -665,6 +727,7 @@ async fn inventory_counts(
                 .fetch_one(database)
                 .await?
         }
+        RetentionDataClass::TerminalAlertHistory => unreachable!(),
     };
     Ok(json!({ data_class.inventory_key(): count }))
 }
@@ -676,6 +739,18 @@ async fn inventory_counts_transaction(
     provider: &str,
     cutoff_at: DateTime<Utc>,
 ) -> Result<Value, sqlx::Error> {
+    if data_class == RetentionDataClass::TerminalAlertHistory {
+        let inventory = sqlx::query_as::<_, AlertHistoryInventory>(ALERT_HISTORY_INVENTORY_SQL)
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_one(&mut **transaction)
+            .await?;
+        return Ok(json!({
+            "alerts": inventory.alerts,
+            "alert_actions": inventory.alert_actions,
+            "alert_evidence": inventory.alert_evidence,
+        }));
+    }
     let count = match data_class {
         RetentionDataClass::ProviderRawPayload => {
             sqlx::query_scalar::<_, i64>(
@@ -716,6 +791,7 @@ async fn inventory_counts_transaction(
                 .fetch_one(&mut **transaction)
                 .await?
         }
+        RetentionDataClass::TerminalAlertHistory => unreachable!(),
     };
     Ok(json!({ data_class.inventory_key(): count }))
 }
@@ -783,7 +859,91 @@ async fn execute_data_class(
         RetentionDataClass::IdentityMapping => {
             execute_identity_minimization(transaction, operator_id, run, now).await
         }
+        RetentionDataClass::TerminalAlertHistory => {
+            execute_terminal_alert_history(transaction, operator_id, run, now).await
+        }
     }
+}
+
+async fn execute_terminal_alert_history(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    run: &RetentionRunView,
+    now: DateTime<Utc>,
+) -> Result<u64, RetentionError> {
+    let alerts = sqlx::query_as::<_, EligibleAlert>(
+        r#"
+        WITH eligible_series AS (
+            SELECT alert.series_key
+            FROM alerts alert
+            LEFT JOIN alert_actions action
+              ON action.operator_id = alert.operator_id AND action.alert_id = alert.id
+            WHERE alert.operator_id = $1
+            GROUP BY alert.series_key
+            HAVING BOOL_AND(alert.lifecycle IN ('dismissed', 'resolved'))
+               AND MAX(GREATEST(
+                   alert.event_time,
+                   alert.received_at,
+                   alert.processed_at,
+                   COALESCE(action.occurred_at, alert.processed_at)
+               )) < $2
+        )
+        SELECT alert.id, alert.dedupe_key, alert.series_key, alert.alert_revision
+        FROM alerts alert
+        JOIN eligible_series series ON series.series_key = alert.series_key
+        WHERE alert.operator_id = $1
+        ORDER BY alert.series_key, alert.alert_revision
+        FOR UPDATE OF alert
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(run.cutoff_at)
+    .fetch_all(&mut **transaction)
+    .await?;
+
+    for alert in &alerts {
+        sqlx::query(
+            r#"
+            INSERT INTO alert_history_tombstones (
+                id, operator_id, retention_run_id, alert_id, dedupe_key,
+                series_key, alert_revision, deleted_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            "#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(operator_id.as_uuid())
+        .bind(run.id)
+        .bind(alert.id)
+        .bind(&alert.dedupe_key)
+        .bind(&alert.series_key)
+        .bind(alert.alert_revision)
+        .bind(now)
+        .execute(&mut **transaction)
+        .await?;
+    }
+
+    let alert_ids = alerts.iter().map(|alert| alert.id).collect::<Vec<_>>();
+    let actions =
+        sqlx::query("DELETE FROM alert_actions WHERE operator_id = $1 AND alert_id = ANY($2)")
+            .bind(operator_id.as_uuid())
+            .bind(&alert_ids)
+            .execute(&mut **transaction)
+            .await?
+            .rows_affected();
+    let evidence =
+        sqlx::query("DELETE FROM alert_evidence WHERE operator_id = $1 AND alert_id = ANY($2)")
+            .bind(operator_id.as_uuid())
+            .bind(&alert_ids)
+            .execute(&mut **transaction)
+            .await?
+            .rows_affected();
+    let deleted_alerts = sqlx::query("DELETE FROM alerts WHERE operator_id = $1 AND id = ANY($2)")
+        .bind(operator_id.as_uuid())
+        .bind(&alert_ids)
+        .execute(&mut **transaction)
+        .await?
+        .rows_affected();
+    Ok(actions + evidence + deleted_alerts)
 }
 
 async fn execute_raw_payloads(
@@ -1094,6 +1254,10 @@ mod tests {
         assert_eq!(
             RetentionDataClass::try_from("authorization_audit").unwrap(),
             RetentionDataClass::AuthorizationAudit
+        );
+        assert_eq!(
+            RetentionDataClass::try_from("terminal_alert_history").unwrap(),
+            RetentionDataClass::TerminalAlertHistory
         );
         assert!(RetentionDataClass::try_from("passenger_records").is_err());
     }

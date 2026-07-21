@@ -156,6 +156,8 @@ pub enum AlertStoreError {
     Lifecycle(#[from] LifecycleError),
     #[error("stored alert lifecycle is invalid")]
     InvalidStoredLifecycle,
+    #[error("alert series exhausted its supported revision range")]
+    AlertRevisionExhausted,
 }
 
 #[derive(Clone)]
@@ -191,6 +193,18 @@ impl AlertStore {
             return Ok(CreateAlertResult::Duplicate(id));
         }
 
+        if let Some(id) = sqlx::query_scalar::<_, Uuid>(
+            "SELECT alert_id FROM alert_history_tombstones WHERE operator_id = $1 AND dedupe_key = $2",
+        )
+        .bind(candidate.operator_id.as_uuid())
+        .bind(&candidate.dedupe_key)
+        .fetch_optional(&mut *transaction)
+        .await?
+        {
+            transaction.rollback().await?;
+            return Ok(CreateAlertResult::Duplicate(id));
+        }
+
         let previous = sqlx::query_as::<_, (Uuid, i32, String)>(
             r#"
             SELECT id, alert_revision, lifecycle
@@ -205,7 +219,21 @@ impl AlertStore {
         .bind(&candidate.series_key)
         .fetch_optional(&mut *transaction)
         .await?;
-        let alert_revision = previous.as_ref().map_or(1, |(_, revision, _)| revision + 1);
+        let deleted_revision = sqlx::query_scalar::<_, Option<i32>>(
+            "SELECT MAX(alert_revision) FROM alert_history_tombstones WHERE operator_id = $1 AND series_key = $2",
+        )
+        .bind(candidate.operator_id.as_uuid())
+        .bind(&candidate.series_key)
+        .fetch_one(&mut *transaction)
+        .await?
+        .unwrap_or(0);
+        let current_revision = previous
+            .as_ref()
+            .map_or(0, |(_, revision, _)| *revision)
+            .max(deleted_revision);
+        let alert_revision = current_revision
+            .checked_add(1)
+            .ok_or(AlertStoreError::AlertRevisionExhausted)?;
         let id = Uuid::new_v5(
             &candidate.operator_id.as_uuid(),
             candidate.dedupe_key.as_bytes(),

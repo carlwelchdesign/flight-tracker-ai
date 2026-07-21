@@ -155,7 +155,9 @@ fn map_error(error: AlertStoreError) -> ApiError {
         AlertStoreError::InvalidActionIdentity
         | AlertStoreError::IdempotencyConflict
         | AlertStoreError::Lifecycle(_) => (StatusCode::CONFLICT, "invalid_alert_action"),
-        AlertStoreError::Database(_) | AlertStoreError::InvalidStoredLifecycle => {
+        AlertStoreError::Database(_)
+        | AlertStoreError::InvalidStoredLifecycle
+        | AlertStoreError::AlertRevisionExhausted => {
             (StatusCode::SERVICE_UNAVAILABLE, "alert_service_unavailable")
         }
     };
