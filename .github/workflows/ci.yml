@@ -18,6 +18,11 @@ jobs:
         run: >-
           python3 scripts/validate_ft301_evidence.py
           && python3 scripts/test_validate_ft301_evidence.py
+      - name: Validate FT-401 review structure
+        run: >-
+          python3 scripts/validate_ft401_review.py
+          && python3 scripts/test_validate_ft401_review.py
+          && python3 scripts/test_verify_ft401_hosted_drill.py
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.97.1
@@ -49,8 +54,17 @@ jobs:
         env:
           AUTH_MODE: development
           INTERNAL_AUTH_SECRET: ci-internal-auth-secret-at-least-thirty-two-bytes
+          INTERNAL_AUTH_KEY_ID: ci-primary
           DEV_AUTH_TENANT_ID: ci-flight-tracker
           DEV_AUTH_SUBJECT: ci-admin
+      - name: Verify internal assertion secret is absent from browser assets
+        env:
+          INTERNAL_AUTH_SECRET: ci-internal-auth-secret-at-least-thirty-two-bytes
+        run: |
+          if grep --recursive --fixed-strings --quiet -- "$INTERNAL_AUTH_SECRET" .next/static; then
+            echo "Internal assertion secret was found in browser assets"
+            exit 1
+          fi
 
   integration:
     name: API and PostGIS smoke test
@@ -84,6 +98,7 @@ jobs:
           APP_ENV: development
           AUTH_MODE: development
           INTERNAL_AUTH_SECRET: ci-internal-auth-secret-at-least-thirty-two-bytes
+          INTERNAL_AUTH_KEY_ID: ci-primary
           AUTH_ASSERTION_ISSUER: flight-tracker-web
           AUTH_ASSERTION_AUDIENCE: flight-tracker-api
           DEV_AUTH_OPERATOR_ID: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
@@ -105,8 +120,8 @@ jobs:
             fi
             sleep 2
           done
-          curl --fail --silent http://127.0.0.1:8080/health | grep '"status":"ok"'
-          grep '"postgis":"ok"' /tmp/readiness.json
+          test "$(curl --fail --silent http://127.0.0.1:8080/health)" = '{"status":"ok"}'
+          test "$(cat /tmp/readiness.json)" = '{"status":"ready"}'
       - name: Verify replay alert lifecycle
         run: |
           assertion="$(python3 - <<'PY'
@@ -114,7 +129,7 @@ jobs:
           def encode(value):
               return base64.urlsafe_b64encode(json.dumps(value, separators=(',', ':')).encode()).decode().rstrip('=')
           now = int(time.time())
-          header = encode({'alg': 'HS256', 'typ': 'JWT'})
+          header = encode({'alg': 'HS256', 'typ': 'JWT', 'kid': 'ci-primary'})
           payload = encode({
               'iss': 'flight-tracker-web', 'aud': 'flight-tracker-api', 'sub': 'ci-admin',
               'provider': 'development', 'tenant': 'ci-flight-tracker', 'sid': 'ci-session',

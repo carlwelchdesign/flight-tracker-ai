@@ -42,6 +42,6 @@ Read [plans/README.md](plans/README.md) before implementation. Every ticket uses
 
 ## Hosted identity and Vercel
 
-The Next.js app can be deployed to Vercel with `AUTH_MODE=clerk`, Clerk publishable and secret keys, `INTERNAL_AUTH_SECRET`, `AUTH_ASSERTION_ISSUER`, `AUTH_ASSERTION_AUDIENCE`, and an `API_BASE_URL` that points to the deployed Rust service. Configure the same internal assertion secret, issuer, and audience on Rust, with `APP_ENV=production` and `AUTH_MODE=clerk`.
+The Next.js app can be deployed to Vercel with `AUTH_MODE=clerk`, `OPERATIONS_MODE=evaluation`, Clerk publishable and secret keys, `INTERNAL_AUTH_KEY_ID`, `INTERNAL_AUTH_SECRET`, `AUTH_ASSERTION_ISSUER`, `AUTH_ASSERTION_AUDIENCE`, and an `API_BASE_URL` that points to the deployed Rust service. Configure the same active assertion key ID/secret, issuer, and audience on Rust, with `APP_ENV=production` and `AUTH_MODE=clerk`. Rust also accepts one explicit previous key pair during the controlled procedure in [plans/CREDENTIAL_ROTATION_RUNBOOK.md](plans/CREDENTIAL_ROTATION_RUNBOOK.md).
 
 Vercel hosts the web interface and its server-side BFF. The Rust API and PostgreSQL/PostGIS remain separately deployed services unless the project later adopts Vercel Services. Before a hosted user can access operational data, create the Clerk organization and its matching app operator, identity, and membership records.

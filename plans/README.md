@@ -21,12 +21,17 @@ Build a portfolio demonstration inspired by Flight Science: fleet monitoring, av
 11. [ROUTE_HAZARD_RULES.md](ROUTE_HAZARD_RULES.md) — versioned correlation policy, evidence, precision, and golden cases
 12. [ALERT_LIFECYCLE.md](ALERT_LIFECYCLE.md) — explainable ranking, dedupe, supersession, human actions, and audit behavior
 13. [IDENTITY_TENANT_ISOLATION.md](IDENTITY_TENANT_ISOLATION.md) — identity boundary, app roles, revocation, and fail-closed tenant enforcement
-14. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
-15. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
-16. [tickets/README.md](tickets/README.md) — ticket index and update rules
-17. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
-18. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
-19. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
+14. [CREDENTIAL_ROTATION_RUNBOOK.md](CREDENTIAL_ROTATION_RUNBOOK.md) — key IDs, planned rotation, emergency revocation, rollback, and drill evidence
+15. [AUDIT_REVIEW_RUNBOOK.md](AUDIT_REVIEW_RUNBOOK.md) — administrator review, redacted export, monitoring signals, and incident drill
+16. [RETENTION_DELETION_RUNBOOK.md](RETENTION_DELETION_RUNBOOK.md) — two-person policy/run approval, deletion evidence, tombstones, and failure handling
+17. [DATA_LIFECYCLE_INCIDENT_POLICY.md](DATA_LIFECYCLE_INCIDENT_POLICY.md) — retention, deletion, backup, restoration, and incident baseline
+18. [SECURITY_PRIVACY_TRUST_REVIEW.md](SECURITY_PRIVACY_TRUST_REVIEW.md) — FT-401 threat model, trust controls, and approval gate
+19. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
+20. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
+21. [tickets/README.md](tickets/README.md) — ticket index and update rules
+22. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
+23. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
+24. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
 
 ## Planning rules
 

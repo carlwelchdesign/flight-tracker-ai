@@ -21,6 +21,7 @@ Selection is a single shared state. A selection made on the map or board updates
 - The map and board are equal primary surfaces for spatial and comparative scanning.
 - The detail panel is the evidence surface for the selected flight.
 - The dispatcher queue is a separate evidence and action surface. It shows score components, rule/score/route/hazard versions, proximity, lifecycle, assignment, and audit history. Severity, status, flight, event time, and assigned-user filters sit above the bounded review workspace.
+- Administrators also receive a tenant-scoped audit review below the operational workspace with redacted export and explicit privileged-action monitoring signals. Other roles do not receive or access this surface.
 - Attention language remains descriptive (`watch`, `normal`) and never claims to be a safety determination.
 - Timeline entries retain their source and event time so operators can distinguish observation from receipt.
 
@@ -40,6 +41,7 @@ Selection is a single shared state. A selection made on the map or board updates
 - **Action pending/error:** controls are disabled while a command is in flight; validation and server errors remain visible without discarding the selected evidence.
 - **Concurrent action:** the stale command is rejected, current detail is reloaded, and the dispatcher is told to review the winner's state before retrying.
 - **Assignment directory unavailable:** the queue, evidence, and other actions remain available while assignment controls explain the partial outage.
+- **Audit review unavailable:** the administrator surface states that review is unavailable without hiding the operational console or presenting incomplete evidence as complete.
 
 ## Accessibility and interaction
 

@@ -2,7 +2,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use chrono::{Duration, TimeZone, Utc};
+use chrono::{Duration, SecondsFormat, TimeZone, Utc};
 use flight_tracker_api::{
     alerting::{
         AlertActionRequest, AlertQueueFilter, AlertStore, AlertStoreError, AssignmentFilter,
@@ -10,8 +10,8 @@ use flight_tracker_api::{
         candidate_from_route_hazard,
     },
     auth::{
-        AssertionClaims, AssertionConfig, AuthRole, AuthService, AuthStore, DevelopmentIdentity,
-        InternalAssertionVerifier, SessionRevocation,
+        AssertionClaims, AssertionConfig, AssertionKey, AuthRole, AuthService, AuthStore,
+        DevelopmentIdentity, InternalAssertionVerifier, SessionRevocation,
     },
     build_router,
     domain::{
@@ -19,6 +19,10 @@ use flight_tracker_api::{
         OperatorId,
     },
     replay::ReplayScenario,
+    retention::{
+        CreateRetentionPolicy, CreateRetentionSchedule, PreviewRetentionRun, RetentionDataClass,
+        RetentionError, RetentionStore,
+    },
     weather::noaa::{
         NoaaFeed, NoaaPayload, NoaaStore, PersistedNoaaRecord, SourceHealthTracker, prepare_records,
     },
@@ -47,9 +51,25 @@ const REQUIRED_TABLES: &[&str] = &[
     "operator_memberships",
     "auth_session_revocations",
     "authorization_audit_events",
+    "retention_policies",
+    "retention_runs",
+    "data_deletion_tombstones",
+    "lifecycle_deletion_tombstones",
+    "alert_history_tombstones",
+    "operational_fact_tombstones",
+    "retention_schedules",
+    "retention_schedule_attempts",
 ];
 
 async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthService, String) {
+    authenticated_service_with_role(pool, operator_id, AuthRole::Administrator).await
+}
+
+async fn authenticated_service_with_role(
+    pool: &PgPool,
+    operator_id: OperatorId,
+    role: AuthRole,
+) -> (AuthService, String) {
     const SECRET: &str = "schema-contract-internal-secret-at-least-32-bytes";
     let store = AuthStore::new(pool.clone());
     store
@@ -60,7 +80,7 @@ async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthS
             external_tenant_id: format!("test-{}", operator_id.as_uuid()),
             subject: "schema-contract-admin".into(),
             display_name: "Schema Contract Administrator".into(),
-            role: AuthRole::Administrator,
+            role,
         })
         .await
         .unwrap();
@@ -77,14 +97,20 @@ async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthS
         nbf: now.timestamp() as u64,
         exp: (now + Duration::seconds(60)).timestamp() as u64,
     };
+    let mut header = Header::new(Algorithm::HS256);
+    header.kid = Some("schema-contract-primary".into());
     let token = encode(
-        &Header::new(Algorithm::HS256),
+        &header,
         &claims,
         &EncodingKey::from_secret(SECRET.as_bytes()),
     )
     .unwrap();
     let verifier = InternalAssertionVerifier::new(AssertionConfig {
-        secret: SECRET.into(),
+        active_key: AssertionKey {
+            id: "schema-contract-primary".into(),
+            secret: SECRET.into(),
+        },
+        previous_key: None,
         issuer: "schema-contract-web".into(),
         audience: "schema-contract-api".into(),
         leeway_seconds: 0,
@@ -148,7 +174,1531 @@ async fn canonical_schema_migrates_with_spatial_and_tenant_invariants() {
     assert_cross_operator_source_reference_is_rejected(&pool).await;
     assert_noaa_records_are_transactional_idempotent_and_revisioned(&pool).await;
     assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(&pool).await;
+    assert_audit_review_export_and_monitoring_are_tenant_safe(&pool).await;
+    assert_raw_retention_requires_approval_and_suppresses_restore(&pool).await;
     assert_identity_tenant_revocation_and_audit_are_fail_closed(&pool).await;
+}
+
+async fn test_auth_context(
+    pool: &PgPool,
+    operator_id: OperatorId,
+    subject: &str,
+    role: AuthRole,
+) -> flight_tracker_api::auth::AuthContext {
+    let store = AuthStore::new(pool.clone());
+    let tenant = format!("retention-{}", operator_id.as_uuid());
+    store
+        .bootstrap_development(&DevelopmentIdentity {
+            operator_id,
+            operator_code: format!("R{}", &operator_id.as_uuid().simple().to_string()[..6]),
+            operator_name: "Retention Test".into(),
+            external_tenant_id: tenant.clone(),
+            subject: subject.into(),
+            display_name: subject.into(),
+            role,
+        })
+        .await
+        .unwrap();
+    let now = Utc::now();
+    store
+        .resolve(&AssertionClaims {
+            iss: "test-web".into(),
+            aud: "test-api".into(),
+            sub: subject.into(),
+            provider: "development".into(),
+            tenant,
+            sid: format!("session-{subject}"),
+            jti: Uuid::new_v4().to_string(),
+            iat: now.timestamp() as u64,
+            nbf: now.timestamp() as u64,
+            exp: (now + Duration::minutes(5)).timestamp() as u64,
+        })
+        .await
+        .unwrap()
+}
+
+async fn complete_retention_run(
+    store: &RetentionStore,
+    requester: &flight_tracker_api::auth::AuthContext,
+    approver: &flight_tracker_api::auth::AuthContext,
+    data_class: RetentionDataClass,
+    now: chrono::DateTime<Utc>,
+) -> flight_tracker_api::retention::RetentionRunView {
+    complete_scoped_retention_run(store, requester, approver, data_class, "application", now).await
+}
+
+async fn complete_scoped_retention_run(
+    store: &RetentionStore,
+    requester: &flight_tracker_api::auth::AuthContext,
+    approver: &flight_tracker_api::auth::AuthContext,
+    data_class: RetentionDataClass,
+    provider: &str,
+    now: chrono::DateTime<Utc>,
+) -> flight_tracker_api::retention::RetentionRunView {
+    let scope = data_class.as_str();
+    let policy = store
+        .create_policy(
+            requester,
+            &CreateRetentionPolicy {
+                data_class,
+                provider: provider.into(),
+                retention_seconds: 3_600,
+                approval_reference: format!("legal:FT-401/{scope}-v1"),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    store
+        .approve_policy(approver, policy.id, now)
+        .await
+        .unwrap();
+    let run = store
+        .preview_run(
+            requester,
+            &PreviewRetentionRun {
+                policy_id: policy.id,
+                evidence_reference: format!("incident:FT-401/{scope}-run-1"),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    store.approve_run(approver, run.id, now).await.unwrap();
+    store.execute_run(requester, run.id, now).await.unwrap()
+}
+
+async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &PgPool) {
+    let operator_id = OperatorId::new();
+    let other_operator_id = OperatorId::new();
+    let requester = test_auth_context(
+        pool,
+        operator_id,
+        &format!("retention-requester-{}", Uuid::new_v4()),
+        AuthRole::Administrator,
+    )
+    .await;
+    let approver = test_auth_context(
+        pool,
+        operator_id,
+        &format!("retention-approver-{}", Uuid::new_v4()),
+        AuthRole::Administrator,
+    )
+    .await;
+    let other = test_auth_context(
+        pool,
+        other_operator_id,
+        &format!("retention-other-{}", Uuid::new_v4()),
+        AuthRole::Administrator,
+    )
+    .await;
+    let now = chrono::DateTime::<Utc>::from_timestamp_micros(Utc::now().timestamp_micros())
+        .expect("current time is representable at PostgreSQL precision");
+    let old_id = Uuid::new_v4();
+    let current_id = Uuid::new_v4();
+    let other_id = Uuid::new_v4();
+    let old_hash = "c".repeat(64);
+    for (id, tenant, received_at, hash, payload) in [
+        (
+            old_id,
+            operator_id,
+            now - Duration::hours(2),
+            old_hash.clone(),
+            serde_json::json!({"secretRaw": "expired"}),
+        ),
+        (
+            current_id,
+            operator_id,
+            now - Duration::minutes(30),
+            "d".repeat(64),
+            serde_json::json!({"currentRaw": true}),
+        ),
+        (
+            other_id,
+            other_operator_id,
+            now - Duration::hours(2),
+            "e".repeat(64),
+            serde_json::json!({"otherTenantRaw": true}),
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO provider_envelopes (
+                id, operator_id, schema_version, provider, feed, provider_record_id,
+                received_at, raw_payload_sha256, raw_payload
+            ) VALUES ($1,$2,1,'retention-test','positions',$3,$4,$5,$6)
+            "#,
+        )
+        .bind(id)
+        .bind(tenant.as_uuid())
+        .bind(id.to_string())
+        .bind(received_at)
+        .bind(hash)
+        .bind(payload)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    let store = RetentionStore::new(pool.clone());
+    let policy = store
+        .create_policy(
+            &requester,
+            &CreateRetentionPolicy {
+                data_class: RetentionDataClass::ProviderRawPayload,
+                provider: "retention-test".into(),
+                retention_seconds: 3_600,
+                approval_reference: "legal:FT-401/raw-v1".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    assert!(matches!(
+        store.approve_policy(&requester, policy.id, now).await,
+        Err(RetentionError::SeparationOfDuties)
+    ));
+    let policy = store
+        .approve_policy(&approver, policy.id, now)
+        .await
+        .unwrap();
+    assert_eq!(policy.status, "approved");
+    assert!(
+        store
+            .list_policies(other.operator_id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
+    let substituted_run = store
+        .preview_run(
+            &requester,
+            &PreviewRetentionRun {
+                policy_id: policy.id,
+                evidence_reference: "incident:FT-401/raw-substitution-probe".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    let substituted_fingerprint = substituted_run.preview_fingerprint.as_deref().unwrap();
+    assert_eq!(substituted_fingerprint.len(), 64);
+    assert!(
+        substituted_fingerprint
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    );
+    sqlx::query(
+        r#"
+        UPDATE provider_envelopes
+        SET received_at = CASE id WHEN $1 THEN $3 WHEN $2 THEN $4 END
+        WHERE id = ANY($5)
+        "#,
+    )
+    .bind(old_id)
+    .bind(current_id)
+    .bind(now - Duration::minutes(30))
+    .bind(now - Duration::hours(2))
+    .bind(vec![old_id, current_id])
+    .execute(pool)
+    .await
+    .unwrap();
+    store
+        .approve_run(&approver, substituted_run.id, now)
+        .await
+        .unwrap();
+    assert!(matches!(
+        store.execute_run(&requester, substituted_run.id, now).await,
+        Err(RetentionError::InventoryChanged)
+    ));
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM provider_envelopes WHERE id = ANY($1) AND raw_payload_deleted_at IS NULL",
+        )
+        .bind(vec![old_id, current_id])
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        2
+    );
+    sqlx::query(
+        r#"
+        UPDATE provider_envelopes
+        SET received_at = CASE id WHEN $1 THEN $3 WHEN $2 THEN $4 END
+        WHERE id = ANY($5)
+        "#,
+    )
+    .bind(old_id)
+    .bind(current_id)
+    .bind(now - Duration::hours(2))
+    .bind(now - Duration::minutes(30))
+    .bind(vec![old_id, current_id])
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let run = store
+        .preview_run(
+            &requester,
+            &PreviewRetentionRun {
+                policy_id: policy.id,
+                evidence_reference: "incident:FT-401/raw-run-1".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    assert_eq!(run.preview_counts["provider_envelopes"], 1);
+    assert_eq!(
+        run.preview_fingerprint.as_deref(),
+        Some(substituted_fingerprint)
+    );
+    assert!(matches!(
+        store.approve_run(&requester, run.id, now).await,
+        Err(RetentionError::SeparationOfDuties)
+    ));
+    store.approve_run(&approver, run.id, now).await.unwrap();
+    let completed = store.execute_run(&requester, run.id, now).await.unwrap();
+    assert_eq!(completed.status, "completed");
+    assert_eq!(completed.deletion_counts.unwrap()["provider_envelopes"], 1);
+
+    let payloads = sqlx::query_as::<_, (Uuid, Value, Option<chrono::DateTime<Utc>>)>(
+        r#"
+        SELECT id, raw_payload, raw_payload_deleted_at
+        FROM provider_envelopes
+        WHERE id = ANY($1)
+        ORDER BY id
+        "#,
+    )
+    .bind(vec![old_id, current_id, other_id])
+    .fetch_all(pool)
+    .await
+    .unwrap();
+    let expired = payloads.iter().find(|row| row.0 == old_id).unwrap();
+    assert_eq!(expired.1, serde_json::json!({}));
+    assert_eq!(expired.2, Some(now));
+    assert_eq!(
+        payloads.iter().find(|row| row.0 == current_id).unwrap().1,
+        serde_json::json!({"currentRaw": true})
+    );
+    assert_eq!(
+        payloads.iter().find(|row| row.0 == other_id).unwrap().1,
+        serde_json::json!({"otherTenantRaw": true})
+    );
+
+    sqlx::query("DELETE FROM provider_envelopes WHERE id = $1")
+        .bind(old_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    let restored_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO provider_envelopes (
+            id, operator_id, schema_version, provider, feed, provider_record_id,
+            received_at, raw_payload_sha256, raw_payload
+        ) VALUES ($1,$2,1,'retention-test','positions',$3,$4,$5,$6)
+        "#,
+    )
+    .bind(restored_id)
+    .bind(operator_id.as_uuid())
+    .bind(restored_id.to_string())
+    .bind(now - Duration::hours(2))
+    .bind(&old_hash)
+    .bind(serde_json::json!({"secretRaw": "restored"}))
+    .execute(pool)
+    .await
+    .unwrap();
+    let restored = sqlx::query_as::<_, (Value, Option<chrono::DateTime<Utc>>)>(
+        "SELECT raw_payload, raw_payload_deleted_at FROM provider_envelopes WHERE id = $1",
+    )
+    .bind(restored_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(restored, (serde_json::json!({}), Some(now)));
+
+    let completion_audit = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(*) FROM authorization_audit_events
+        WHERE operator_id = $1 AND action = 'retention.run.completed'
+          AND target_id = $2
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(run.id.to_string())
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(completion_audit, 1);
+
+    let old_audit_id = Uuid::new_v4();
+    let current_audit_id = Uuid::new_v4();
+    let other_audit_id = Uuid::new_v4();
+    for (id, context, occurred_at) in [
+        (old_audit_id, &requester, now - Duration::hours(2)),
+        (current_audit_id, &requester, now),
+        (other_audit_id, &other, now - Duration::hours(2)),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO authorization_audit_events (
+                id, operator_id, actor_identity_id, action, target_type,
+                target_id, occurred_at, metadata
+            ) VALUES ($1,$2,$3,'membership.updated','operator_membership',$4,$5,'{}')
+            "#,
+        )
+        .bind(id)
+        .bind(context.operator_id.as_uuid())
+        .bind(context.identity_id)
+        .bind(id.to_string())
+        .bind(occurred_at)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    let audit_run = complete_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::AuthorizationAudit,
+        now,
+    )
+    .await;
+    assert_eq!(
+        audit_run.deletion_counts.unwrap()["authorization_audit_events"],
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM authorization_audit_events WHERE id = $1",
+        )
+        .bind(old_audit_id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM authorization_audit_events WHERE id = ANY($1)",
+        )
+        .bind(vec![current_audit_id, other_audit_id])
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        2
+    );
+    let restored_audit = sqlx::query(
+        r#"
+        INSERT INTO authorization_audit_events (
+            id, operator_id, actor_identity_id, action, target_type,
+            target_id, occurred_at, metadata
+        ) VALUES ($1,$2,$3,'membership.updated','operator_membership',$4,$5,'{}')
+        "#,
+    )
+    .bind(old_audit_id)
+    .bind(operator_id.as_uuid())
+    .bind(requester.identity_id)
+    .bind(old_audit_id.to_string())
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(restored_audit.rows_affected(), 0);
+
+    let old_revocation_id = Uuid::new_v4();
+    let current_revocation_id = Uuid::new_v4();
+    let old_session_id = format!("expired-{}", Uuid::new_v4());
+    for (id, session_id, expires_at) in [
+        (
+            old_revocation_id,
+            old_session_id.clone(),
+            now - Duration::hours(2),
+        ),
+        (
+            current_revocation_id,
+            format!("current-{}", Uuid::new_v4()),
+            now + Duration::hours(1),
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO auth_session_revocations (
+                id, provider, session_id, identity_id, operator_id,
+                revoked_by_identity_id, reason, revoked_at, expires_at
+            ) VALUES ($1,'development',$2,$3,$4,$3,'retention test',$5,$6)
+            "#,
+        )
+        .bind(id)
+        .bind(session_id)
+        .bind(requester.identity_id)
+        .bind(operator_id.as_uuid())
+        .bind(expires_at - Duration::hours(1))
+        .bind(expires_at)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    let revocation_run = complete_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::SessionRevocation,
+        now,
+    )
+    .await;
+    assert_eq!(
+        revocation_run.deletion_counts.unwrap()["auth_session_revocations"],
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM auth_session_revocations WHERE id = $1",
+        )
+        .bind(old_revocation_id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM auth_session_revocations WHERE id = $1",
+        )
+        .bind(current_revocation_id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        1
+    );
+    let restored_revocation = sqlx::query(
+        r#"
+        INSERT INTO auth_session_revocations (
+            id, provider, session_id, identity_id, operator_id,
+            revoked_by_identity_id, reason, revoked_at, expires_at
+        ) VALUES ($1,'development',$2,$3,$4,$3,'restored reason',$5,$6)
+        "#,
+    )
+    .bind(old_revocation_id)
+    .bind(old_session_id)
+    .bind(requester.identity_id)
+    .bind(operator_id.as_uuid())
+    .bind(now - Duration::hours(3))
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(restored_revocation.rows_affected(), 0);
+
+    let minimized_subject = format!("retention-minimize-{}", Uuid::new_v4());
+    let minimized =
+        test_auth_context(pool, operator_id, &minimized_subject, AuthRole::Viewer).await;
+    sqlx::query(
+        r#"
+        UPDATE operator_memberships
+        SET status = 'revoked', revoked_at = $3, updated_at = $3
+        WHERE operator_id = $1 AND identity_id = $2
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(minimized.identity_id)
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    let identity_run = complete_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::IdentityMapping,
+        now,
+    )
+    .await;
+    assert_eq!(
+        identity_run.deletion_counts.unwrap()["auth_identities_minimized"],
+        1
+    );
+    let minimized_row =
+        sqlx::query_as::<_, (String, Option<String>, Option<chrono::DateTime<Utc>>)>(
+            "SELECT subject, display_name, disabled_at FROM auth_identities WHERE id = $1",
+        )
+        .bind(minimized.identity_id)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        minimized_row,
+        (
+            format!("deleted:{}", minimized.identity_id),
+            None,
+            Some(now)
+        )
+    );
+    sqlx::query(
+        "UPDATE auth_identities SET subject = $2, display_name = 'Restored Name', disabled_at = NULL WHERE id = $1",
+    )
+    .bind(minimized.identity_id)
+    .bind(&minimized_subject)
+    .execute(pool)
+    .await
+    .unwrap();
+    let suppressed_restore = sqlx::query_as::<_, (String, Option<String>)>(
+        "SELECT subject, display_name FROM auth_identities WHERE id = $1",
+    )
+    .bind(minimized.identity_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        suppressed_restore,
+        (format!("deleted:{}", minimized.identity_id), None)
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, String>("SELECT subject FROM auth_identities WHERE id = $1")
+            .bind(requester.identity_id)
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        requester.subject
+    );
+
+    let eligible_series = format!("retention-terminal-{}", Uuid::new_v4());
+    let eligible_first = Uuid::new_v4();
+    let eligible_second = Uuid::new_v4();
+    let eligible_first_dedupe = format!("{eligible_series}:1");
+    let eligible_second_dedupe = format!("{eligible_series}:2");
+    let current_terminal = Uuid::new_v4();
+    let current_series = format!("retention-current-{}", Uuid::new_v4());
+    let mixed_first = Uuid::new_v4();
+    let mixed_second = Uuid::new_v4();
+    let mixed_series = format!("retention-mixed-{}", Uuid::new_v4());
+    let mixed_first_dedupe = format!("{mixed_series}:1");
+    let mixed_second_dedupe = format!("{mixed_series}:2");
+    let other_terminal = Uuid::new_v4();
+    let other_series = format!("retention-other-{}", Uuid::new_v4());
+    for (id, tenant, lifecycle, series, revision, supersedes, dedupe) in [
+        (
+            eligible_first,
+            operator_id,
+            "resolved",
+            eligible_series.as_str(),
+            1,
+            None,
+            eligible_first_dedupe.as_str(),
+        ),
+        (
+            eligible_second,
+            operator_id,
+            "resolved",
+            eligible_series.as_str(),
+            2,
+            Some(eligible_first),
+            eligible_second_dedupe.as_str(),
+        ),
+        (
+            current_terminal,
+            operator_id,
+            "resolved",
+            current_series.as_str(),
+            1,
+            None,
+            current_series.as_str(),
+        ),
+        (
+            mixed_first,
+            operator_id,
+            "resolved",
+            mixed_series.as_str(),
+            1,
+            None,
+            mixed_first_dedupe.as_str(),
+        ),
+        (
+            mixed_second,
+            operator_id,
+            "open",
+            mixed_series.as_str(),
+            2,
+            Some(mixed_first),
+            mixed_second_dedupe.as_str(),
+        ),
+        (
+            other_terminal,
+            other_operator_id,
+            "resolved",
+            other_series.as_str(),
+            1,
+            None,
+            other_series.as_str(),
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO alerts (
+                id, operator_id, schema_version, event_time, received_at,
+                processed_at, alert_type, severity, lifecycle, rule_id,
+                rule_version, dedupe_key, series_key, alert_revision,
+                supersedes_alert_id, attention_score, score_version, evidence
+            ) VALUES ($1,$2,1,$3,$3,$3,'retention_test','information',$4,
+                      'retention_rule',1,$5,$6,$7,$8,5,1,'{}')
+            "#,
+        )
+        .bind(id)
+        .bind(tenant.as_uuid())
+        .bind(now - Duration::hours(2))
+        .bind(lifecycle)
+        .bind(dedupe)
+        .bind(series)
+        .bind(revision)
+        .bind(supersedes)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    for (id, alert_id, occurred_at) in [
+        (Uuid::new_v4(), eligible_second, now - Duration::hours(2)),
+        (Uuid::new_v4(), current_terminal, now),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO alert_actions (
+                id, operator_id, alert_id, schema_version, action, actor_id,
+                occurred_at, idempotency_key
+            ) VALUES ($1,$2,$3,1,'resolve','retention-test',$4,$5)
+            "#,
+        )
+        .bind(id)
+        .bind(operator_id.as_uuid())
+        .bind(alert_id)
+        .bind(occurred_at)
+        .bind(format!("retention-action-{id}"))
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    sqlx::query(
+        r#"
+        INSERT INTO alert_evidence (operator_id, alert_id, source_envelope_id, ordinal)
+        VALUES ($1,$2,$3,0)
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(eligible_second)
+    .bind(current_id)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let alert_run = complete_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::TerminalAlertHistory,
+        now,
+    )
+    .await;
+    let alert_counts = alert_run.deletion_counts.unwrap();
+    assert_eq!(alert_counts["alerts"], 2);
+    assert_eq!(alert_counts["alert_actions"], 1);
+    assert_eq!(alert_counts["alert_evidence"], 1);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM alerts WHERE id = ANY($1)")
+            .bind(vec![eligible_first, eligible_second])
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM alerts WHERE id = ANY($1)")
+            .bind(vec![
+                current_terminal,
+                mixed_first,
+                mixed_second,
+                other_terminal
+            ])
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        4
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM alert_history_tombstones WHERE operator_id = $1 AND retention_run_id = $2",
+        )
+        .bind(operator_id.as_uuid())
+        .bind(alert_run.id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        2
+    );
+    let replayed_alert = sqlx::query(
+        r#"
+        INSERT INTO alerts (
+            id, operator_id, schema_version, event_time, received_at, processed_at,
+            alert_type, severity, lifecycle, rule_id, rule_version, dedupe_key,
+            series_key, alert_revision, attention_score, score_version, evidence
+        ) VALUES ($1,$2,1,$3,$3,$3,'retention_test','information','resolved',
+                  'retention_rule',1,$4,$5,1,5,1,'{}')
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(operator_id.as_uuid())
+    .bind(now - Duration::hours(2))
+    .bind(&eligible_first_dedupe)
+    .bind(&eligible_series)
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(replayed_alert.rows_affected(), 0);
+    let new_material_alert = sqlx::query(
+        r#"
+        INSERT INTO alerts (
+            id, operator_id, schema_version, event_time, received_at, processed_at,
+            alert_type, severity, lifecycle, rule_id, rule_version, dedupe_key,
+            series_key, alert_revision, attention_score, score_version, evidence
+        ) VALUES ($1,$2,1,$3,$3,$3,'retention_test','information','open',
+                  'retention_rule',1,$4,$5,3,5,1,'{}')
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(operator_id.as_uuid())
+    .bind(now)
+    .bind(format!("{eligible_series}:3"))
+    .bind(&eligible_series)
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(new_material_alert.rows_affected(), 1);
+
+    let fact_provider = "fact-retention";
+    let fact_old_envelope = Uuid::new_v4();
+    let fact_current_envelope = Uuid::new_v4();
+    let other_provider_envelope = Uuid::new_v4();
+    let other_tenant_envelope = Uuid::new_v4();
+    for (id, tenant, provider, received_at, hash) in [
+        (
+            fact_old_envelope,
+            operator_id,
+            fact_provider,
+            now - Duration::hours(2),
+            "1".repeat(64),
+        ),
+        (
+            fact_current_envelope,
+            operator_id,
+            fact_provider,
+            now,
+            "2".repeat(64),
+        ),
+        (
+            other_provider_envelope,
+            operator_id,
+            "other-fact-provider",
+            now - Duration::hours(2),
+            "3".repeat(64),
+        ),
+        (
+            other_tenant_envelope,
+            other_operator_id,
+            fact_provider,
+            now - Duration::hours(2),
+            "4".repeat(64),
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO provider_envelopes (
+                id, operator_id, schema_version, provider, feed,
+                provider_record_id, event_time, received_at, processed_at,
+                raw_payload_sha256, raw_payload
+            ) VALUES ($1,$2,1,$3,'normalized-facts',$4,$5,$5,$5,$6,'{}')
+            "#,
+        )
+        .bind(id)
+        .bind(tenant.as_uuid())
+        .bind(provider)
+        .bind(id.to_string())
+        .bind(received_at)
+        .bind(hash)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    let eligible_flight = Uuid::new_v4();
+    let active_flight = Uuid::new_v4();
+    let referenced_flight = Uuid::new_v4();
+    for (id, status) in [
+        (eligible_flight, "landed"),
+        (active_flight, "active"),
+        (referenced_flight, "landed"),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO flights (
+                id, operator_id, source_envelope_id, schema_version,
+                event_time, received_at, processed_at, callsign, status
+            ) VALUES ($1,$2,$3,1,$4,$4,$4,$5,$6)
+            "#,
+        )
+        .bind(id)
+        .bind(operator_id.as_uuid())
+        .bind(fact_old_envelope)
+        .bind(now - Duration::hours(2))
+        .bind(format!("RET{}", &id.simple().to_string()[..5]))
+        .bind(status)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    let eligible_position = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO aircraft_positions (
+            id, operator_id, flight_id, source_envelope_id, schema_version,
+            event_time, received_at, processed_at, position, source_quality
+        ) VALUES ($1,$2,$3,$4,1,$5,$5,$5,ST_SetSRID(ST_Point(-122.0,37.0),4326),'observed')
+        "#,
+    )
+    .bind(eligible_position)
+    .bind(operator_id.as_uuid())
+    .bind(eligible_flight)
+    .bind(fact_old_envelope)
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    let eligible_route = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO planned_routes (
+            id, operator_id, flight_id, source_envelope_id, schema_version,
+            event_time, received_at, processed_at, route_version,
+            effective_from, effective_to, path
+        ) VALUES ($1,$2,$3,$4,1,$5,$5,$5,1,$5,$5,
+                  ST_SetSRID(ST_GeomFromText('LINESTRING(-122 37,-121 38)'),4326))
+        "#,
+    )
+    .bind(eligible_route)
+    .bind(operator_id.as_uuid())
+    .bind(eligible_flight)
+    .bind(fact_old_envelope)
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let eligible_observation = Uuid::new_v4();
+    let current_observation = Uuid::new_v4();
+    let other_provider_observation = Uuid::new_v4();
+    let other_tenant_observation = Uuid::new_v4();
+    for (id, tenant, envelope, observed_at, station) in [
+        (
+            eligible_observation,
+            operator_id,
+            fact_old_envelope,
+            now - Duration::hours(2),
+            "KOLD",
+        ),
+        (
+            current_observation,
+            operator_id,
+            fact_current_envelope,
+            now,
+            "KCUR",
+        ),
+        (
+            other_provider_observation,
+            operator_id,
+            other_provider_envelope,
+            now - Duration::hours(2),
+            "KOTH",
+        ),
+        (
+            other_tenant_observation,
+            other_operator_id,
+            other_tenant_envelope,
+            now - Duration::hours(2),
+            "KXTN",
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO airport_observations (
+                id, operator_id, source_envelope_id, schema_version,
+                event_time, received_at, processed_at, station_code,
+                report_type, raw_text, provider_received_at, position,
+                visibility_greater_than, flight_category
+            ) VALUES ($1,$2,$3,1,$4,$4,$4,$5,'METAR','retention fixture',$4,
+                      ST_SetSRID(ST_Point(-122.0,37.0),4326),false,'visual')
+            "#,
+        )
+        .bind(id)
+        .bind(tenant.as_uuid())
+        .bind(envelope)
+        .bind(observed_at)
+        .bind(station)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    let eligible_hazard_first = Uuid::new_v4();
+    let eligible_hazard_second = Uuid::new_v4();
+    let hazard_series = format!("retention-hazard-{}", Uuid::new_v4());
+    for (id, revision, supersedes) in [
+        (eligible_hazard_first, 1, None),
+        (eligible_hazard_second, 2, Some(eligible_hazard_first)),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO weather_hazards (
+                id, operator_id, source_envelope_id, schema_version,
+                event_time, received_at, processed_at, hazard_type, severity,
+                valid_from, valid_to, footprint, external_series_id, revision,
+                supersedes_id, status, issued_at, provider_received_at
+            ) VALUES ($1,$2,$3,1,$4,$4,$4,'retention_test','advisory',$4,$4,
+                      ST_SetSRID(ST_GeomFromText('POLYGON((-123 36,-121 36,-121 38,-123 36))'),4326),
+                      $5,$6,$7,'cancelled',$4,$4)
+            "#,
+        )
+        .bind(id)
+        .bind(operator_id.as_uuid())
+        .bind(fact_old_envelope)
+        .bind(now - Duration::hours(2))
+        .bind(&hazard_series)
+        .bind(revision)
+        .bind(supersedes)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    let referenced_alert = Uuid::new_v4();
+    let referenced_series = format!("retention-referenced-{}", Uuid::new_v4());
+    sqlx::query(
+        r#"
+        INSERT INTO alerts (
+            id, operator_id, schema_version, event_time, received_at, processed_at,
+            flight_id, alert_type, severity, lifecycle, rule_id, rule_version,
+            dedupe_key, series_key, alert_revision, attention_score,
+            score_version, evidence
+        ) VALUES ($1,$2,1,$3,$3,$3,$4,'retention_test','information','open',
+                  'retention_rule',1,$5,$5,1,5,1,'{}')
+        "#,
+    )
+    .bind(referenced_alert)
+    .bind(operator_id.as_uuid())
+    .bind(now - Duration::hours(2))
+    .bind(referenced_flight)
+    .bind(&referenced_series)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let fact_run = complete_scoped_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::NormalizedOperationalFact,
+        fact_provider,
+        now,
+    )
+    .await;
+    let fact_counts = fact_run.deletion_counts.unwrap();
+    assert_eq!(fact_counts["airport_observations"], 1);
+    assert_eq!(fact_counts["flights"], 1);
+    assert_eq!(fact_counts["aircraft_positions"], 1);
+    assert_eq!(fact_counts["planned_routes"], 1);
+    assert_eq!(fact_counts["weather_hazards"], 2);
+    for (table, id) in [
+        ("airport_observations", eligible_observation),
+        ("flights", eligible_flight),
+        ("aircraft_positions", eligible_position),
+        ("planned_routes", eligible_route),
+        ("weather_hazards", eligible_hazard_first),
+        ("weather_hazards", eligible_hazard_second),
+    ] {
+        let count =
+            sqlx::query_scalar::<_, i64>(&format!("SELECT COUNT(*) FROM {table} WHERE id = $1"))
+                .bind(id)
+                .fetch_one(pool)
+                .await
+                .unwrap();
+        assert_eq!(count, 0, "{table} fact should be deleted");
+    }
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM flights WHERE id = ANY($1)",)
+            .bind(vec![active_flight, referenced_flight])
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM airport_observations WHERE id = ANY($1)",
+        )
+        .bind(vec![
+            current_observation,
+            other_provider_observation,
+            other_tenant_observation
+        ])
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        3
+    );
+    let restored_observation = sqlx::query(
+        r#"
+        INSERT INTO airport_observations (
+            id, operator_id, source_envelope_id, schema_version, event_time,
+            received_at, processed_at, station_code, report_type, raw_text,
+            provider_received_at, position, visibility_greater_than, flight_category
+        ) VALUES ($1,$2,$3,1,$4,$4,$4,'KOLD','METAR','restored fixture',$4,
+                  ST_SetSRID(ST_Point(-122.0,37.0),4326),false,'visual')
+        "#,
+    )
+    .bind(eligible_observation)
+    .bind(operator_id.as_uuid())
+    .bind(fact_old_envelope)
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(restored_observation.rows_affected(), 0);
+
+    let scheduled_audit_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO authorization_audit_events (
+            id, operator_id, actor_identity_id, action, target_type,
+            target_id, occurred_at, metadata
+        ) VALUES ($1,$2,$3,'membership.updated','operator_membership',$4,$5,'{}')
+        "#,
+    )
+    .bind(scheduled_audit_id)
+    .bind(operator_id.as_uuid())
+    .bind(requester.identity_id)
+    .bind(scheduled_audit_id.to_string())
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    let schedule = store
+        .create_schedule(
+            &requester,
+            &CreateRetentionSchedule {
+                policy_id: audit_run.policy_id,
+                cadence_seconds: 3_600,
+                first_run_at: now,
+                approval_reference: "legal:FT-401/audit-schedule-v1".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    assert!(matches!(
+        store.approve_schedule(&requester, schedule.id, now).await,
+        Err(RetentionError::SeparationOfDuties)
+    ));
+    assert!(
+        store
+            .list_schedules(other.operator_id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let schedule = store
+        .approve_schedule(&approver, schedule.id, now)
+        .await
+        .unwrap();
+    assert_eq!(schedule.status, "active");
+    assert_eq!(store.run_due_schedules(now, 10).await.unwrap(), 1);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM authorization_audit_events WHERE id = $1",
+        )
+        .bind(scheduled_audit_id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(store.run_due_schedules(now, 10).await.unwrap(), 0);
+    let completed_attempts = store
+        .list_schedule_attempts(operator_id, schedule.id)
+        .await
+        .unwrap();
+    assert_eq!(completed_attempts.len(), 1);
+    assert_eq!(completed_attempts[0].status, "completed");
+    assert!(completed_attempts[0].retention_run_id.is_some());
+    assert_eq!(
+        completed_attempts[0]
+            .preview_fingerprint
+            .as_deref()
+            .map(str::len),
+        Some(64)
+    );
+    let advanced = store
+        .list_schedules(operator_id)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|item| item.id == schedule.id)
+        .unwrap();
+    assert_eq!(advanced.next_run_at, now + Duration::hours(1));
+    assert_eq!(advanced.consecutive_failures, 0);
+    store
+        .pause_schedule(&approver, schedule.id, now)
+        .await
+        .unwrap();
+
+    let inactive_actor_schedule = store
+        .create_schedule(
+            &requester,
+            &CreateRetentionSchedule {
+                policy_id: audit_run.policy_id,
+                cadence_seconds: 3_600,
+                first_run_at: now,
+                approval_reference: "legal:FT-401/audit-schedule-inactive-actor".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    store
+        .approve_schedule(&approver, inactive_actor_schedule.id, now)
+        .await
+        .unwrap();
+    sqlx::query(
+        r#"
+        UPDATE operator_memberships
+        SET status = 'revoked', revoked_at = $3, updated_at = $3
+        WHERE operator_id = $1 AND identity_id = $2
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(requester.identity_id)
+    .bind(now)
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(store.run_due_schedules(now, 10).await.unwrap(), 1);
+    let failed_schedule = store
+        .list_schedules(operator_id)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|item| item.id == inactive_actor_schedule.id)
+        .unwrap();
+    assert_eq!(failed_schedule.status, "paused");
+    assert_eq!(failed_schedule.consecutive_failures, 1);
+    assert_eq!(
+        failed_schedule.last_error_code.as_deref(),
+        Some("schedule_authorization_inactive")
+    );
+    let failed_attempts = store
+        .list_schedule_attempts(operator_id, inactive_actor_schedule.id)
+        .await
+        .unwrap();
+    assert_eq!(failed_attempts.len(), 1);
+    assert_eq!(failed_attempts[0].status, "failed");
+    assert_eq!(
+        failed_attempts[0].error_code.as_deref(),
+        Some("schedule_authorization_inactive")
+    );
+
+    let integrity = store.retention_integrity(operator_id, now).await.unwrap();
+    assert!(integrity.healthy);
+    assert_eq!(integrity.paused_schedules, 1);
+    assert_eq!(integrity.failed_attempts_24h, 1);
+    let integrity_probe_tombstone = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO lifecycle_deletion_tombstones (
+            id, operator_id, retention_run_id, data_class, record_id, deleted_at
+        ) VALUES ($1,$2,$3,'authorization_audit',$4,$5)
+        "#,
+    )
+    .bind(integrity_probe_tombstone)
+    .bind(operator_id.as_uuid())
+    .bind(audit_run.id)
+    .bind(current_audit_id)
+    .bind(now)
+    .execute(pool)
+    .await
+    .unwrap();
+    let detected = store.retention_integrity(operator_id, now).await.unwrap();
+    assert!(!detected.healthy);
+    assert_eq!(detected.violations.authorization_audit, 1);
+    let other_integrity = store
+        .retention_integrity(other.operator_id, now)
+        .await
+        .unwrap();
+    assert!(other_integrity.healthy);
+    assert_eq!(other_integrity.violations.authorization_audit, 0);
+    sqlx::query("DELETE FROM lifecycle_deletion_tombstones WHERE id = $1")
+        .bind(integrity_probe_tombstone)
+        .execute(pool)
+        .await
+        .unwrap();
+    assert!(
+        store
+            .retention_integrity(operator_id, now)
+            .await
+            .unwrap()
+            .healthy
+    );
+}
+
+async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool) {
+    let operator_id = ReplayScenario::from_json(include_str!(
+        "../../../fixtures/replay/m2-route-hazard-v1.json"
+    ))
+    .unwrap()
+    .operator_id;
+    let other_operator_id = OperatorId::new();
+    let (auth, authorization) = authenticated_service(pool, operator_id).await;
+    let actor_identity_id = sqlx::query_scalar::<_, Uuid>(
+        "SELECT identity_id FROM operator_memberships WHERE operator_id = $1 AND role = 'administrator' LIMIT 1",
+    )
+    .bind(operator_id.as_uuid())
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    let raw_session_id = format!("sensitive-session-{}", Uuid::new_v4());
+    sqlx::query(
+        r#"
+        INSERT INTO authorization_audit_events (
+            id, operator_id, actor_identity_id, action, target_type,
+            target_id, occurred_at, metadata
+        ) VALUES ($1,$2,$3,'session.revoked','auth_session',$4,NOW(),$5)
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(operator_id.as_uuid())
+    .bind(actor_identity_id)
+    .bind(&raw_session_id)
+    .bind(serde_json::json!({
+        "provider": "development",
+        "identity_id": actor_identity_id,
+        "reason": "free-form reason must remain private"
+    }))
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let sensitive_comment = "Authorization: Bearer controlled-test-token-123456";
+    let sensitive_comment_action_id = Uuid::new_v4();
+    let alert_id = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM alerts WHERE operator_id = $1 ORDER BY event_time DESC LIMIT 1",
+    )
+    .bind(operator_id.as_uuid())
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"
+        INSERT INTO alert_actions (
+            id, operator_id, alert_id, schema_version, action, actor_id,
+            occurred_at, comment, idempotency_key
+        ) VALUES ($1,$2,$3,1,'comment','dispatcher:audit-scan',NOW(),$4,$5)
+        "#,
+    )
+    .bind(sensitive_comment_action_id)
+    .bind(operator_id.as_uuid())
+    .bind(alert_id)
+    .bind(sensitive_comment)
+    .bind(format!("audit-scan-{}", Uuid::new_v4()))
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let sensitive_reason = "Contact private.person@example.test for this controlled drill";
+    let sensitive_revocation_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO auth_session_revocations (
+            id, provider, session_id, identity_id, operator_id,
+            revoked_by_identity_id, reason, revoked_at, expires_at
+        ) VALUES ($1,'development',$2,$3,$4,$3,$5,NOW(),NOW() + INTERVAL '1 hour')
+        "#,
+    )
+    .bind(sensitive_revocation_id)
+    .bind(format!("audit-scan-session-{}", Uuid::new_v4()))
+    .bind(actor_identity_id)
+    .bind(operator_id.as_uuid())
+    .bind(sensitive_reason)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let (other_auth, _) = authenticated_service(pool, other_operator_id).await;
+    let other_identity_id = other_auth
+        .store()
+        .list_memberships(other_operator_id)
+        .await
+        .unwrap()[0]
+        .identity_id;
+    let cross_tenant_marker = format!("cross-tenant-{}", Uuid::new_v4());
+    sqlx::query(
+        r#"
+        INSERT INTO authorization_audit_events (
+            id, operator_id, actor_identity_id, action, target_type,
+            target_id, occurred_at, metadata
+        ) VALUES ($1,$2,$3,'membership.updated','operator_membership',$4,NOW(),'{}')
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(other_operator_id.as_uuid())
+    .bind(other_identity_id)
+    .bind(&cross_tenant_marker)
+    .execute(pool)
+    .await
+    .unwrap();
+    let cross_tenant_sensitive_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO auth_session_revocations (
+            id, provider, session_id, identity_id, operator_id,
+            revoked_by_identity_id, reason, revoked_at, expires_at
+        ) VALUES ($1,'development',$2,$3,$4,$3,$5,NOW(),NOW() + INTERVAL '1 hour')
+        "#,
+    )
+    .bind(cross_tenant_sensitive_id)
+    .bind(format!("cross-tenant-scan-session-{}", Uuid::new_v4()))
+    .bind(other_identity_id)
+    .bind(other_operator_id.as_uuid())
+    .bind("password=other-tenant-controlled-value")
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let app = build_router(pool.clone(), auth);
+    let review = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/admin/audit-events?limit=250")
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(review.status(), StatusCode::OK);
+    let review_body = String::from_utf8(
+        review
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(review_body.contains("session.revoked"));
+    assert!(!review_body.contains(&raw_session_id));
+    assert!(!review_body.contains("free-form reason"));
+    assert!(!review_body.contains(&cross_tenant_marker));
+
+    let from = (Utc::now() - Duration::hours(1)).to_rfc3339_opts(SecondsFormat::Secs, true);
+    let to = (Utc::now() + Duration::minutes(1)).to_rfc3339_opts(SecondsFormat::Secs, true);
+    let export = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/api/admin/audit-events/export?from={from}&to={to}"
+                ))
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(export.status(), StatusCode::OK);
+    assert_eq!(export.headers()["content-type"], "text/csv; charset=utf-8");
+    let export_body = String::from_utf8(
+        export
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(export_body.contains("session.revoked"));
+    assert!(!export_body.contains(&raw_session_id));
+    assert!(!export_body.contains("free-form reason"));
+    assert!(!export_body.contains(&cross_tenant_marker));
+
+    let signals = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/admin/audit-alerts")
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(signals.status(), StatusCode::OK);
+    let signals_body: Value =
+        serde_json::from_slice(&signals.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert!(
+        signals_body["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|signal| {
+                signal["code"] == "high_risk_action"
+                    && signal["message"] == "High-risk audit action recorded: session.revoked"
+            })
+    );
+    let sensitive_signals = signals_body["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|signal| signal["code"] == "sensitive_write_detected")
+        .collect::<Vec<_>>();
+    assert!(sensitive_signals.iter().any(|signal| {
+        signal["event_id"] == sensitive_comment_action_id.to_string()
+            && signal["severity"] == "critical"
+            && signal["message"] == "Potential sensitive content detected in dispatcher comment"
+    }));
+    assert!(sensitive_signals.iter().any(|signal| {
+        signal["event_id"] == sensitive_revocation_id.to_string()
+            && signal["severity"] == "warning"
+            && signal["message"]
+                == "Potential sensitive content detected in session revocation reason"
+    }));
+    let serialized_signals = signals_body.to_string();
+    assert!(!serialized_signals.contains(sensitive_comment));
+    assert!(!serialized_signals.contains(sensitive_reason));
+    assert!(!serialized_signals.contains("controlled-test-token"));
+    assert!(!serialized_signals.contains("private.person"));
+    assert!(!serialized_signals.contains(&cross_tenant_sensitive_id.to_string()));
+
+    let (viewer_auth, viewer_authorization) =
+        authenticated_service_with_role(pool, OperatorId::new(), AuthRole::Viewer).await;
+    let forbidden = build_router(pool.clone(), viewer_auth)
+        .oneshot(
+            Request::builder()
+                .uri("/api/admin/audit-events")
+                .header("authorization", viewer_authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(forbidden.status(), StatusCode::FORBIDDEN);
 }
 
 async fn assert_identity_tenant_revocation_and_audit_are_fail_closed(pool: &PgPool) {
@@ -215,6 +1765,28 @@ async fn assert_identity_tenant_revocation_and_audit_are_fail_closed(pool: &PgPo
         .await
         .unwrap();
     assert!(store.resolve(&claims).await.is_err());
+    let oversized_reason_error = sqlx::query(
+        r#"
+        INSERT INTO auth_session_revocations (
+            id, provider, session_id, identity_id, operator_id,
+            revoked_by_identity_id, reason, revoked_at, expires_at
+        ) VALUES ($1,'development',$2,$3,$4,$3,$5,$6,$7)
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(format!("oversized-reason-{}", Uuid::new_v4()))
+    .bind(context.identity_id)
+    .bind(operator_id.as_uuid())
+    .bind("x".repeat(501))
+    .bind(now)
+    .bind(now + Duration::minutes(5))
+    .execute(pool)
+    .await
+    .unwrap_err();
+    assert_check_violation(
+        oversized_reason_error,
+        "auth_session_revocations_reason_length",
+    );
     let audit = sqlx::query_as::<_, (Uuid, Uuid, String)>(
         "SELECT operator_id, actor_identity_id, action FROM authorization_audit_events WHERE target_id = $1",
     )
@@ -479,6 +2051,44 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
         .await
         .unwrap();
     let other_assignee = store.list_assignees(other_operator_id).await.unwrap()[0].clone();
+
+    let direct_alert_error = sqlx::query(
+        r#"
+        UPDATE alerts
+        SET assigned_identity_id = $3,
+            assigned_at = $4,
+            assigned_by_actor_id = 'direct-database-test'
+        WHERE operator_id = $1 AND id = $2
+        "#,
+    )
+    .bind(scenario.operator_id.as_uuid())
+    .bind(revised_id)
+    .bind(other_assignee.identity_id)
+    .bind(evaluated_at)
+    .execute(pool)
+    .await
+    .unwrap_err();
+    assert_foreign_key_violation(direct_alert_error, "alerts_assigned_membership_fk");
+
+    let direct_action_error = sqlx::query(
+        r#"
+        INSERT INTO alert_actions (
+            id, operator_id, alert_id, schema_version, action, actor_id,
+            occurred_at, idempotency_key, assigned_identity_id
+        ) VALUES ($1, $2, $3, 1, 'assign', 'direct-database-test', $4, $5, $6)
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(scenario.operator_id.as_uuid())
+    .bind(revised_id)
+    .bind(evaluated_at)
+    .bind(format!("direct-cross-tenant-{}", Uuid::new_v4()))
+    .bind(other_assignee.identity_id)
+    .execute(pool)
+    .await
+    .unwrap_err();
+    assert_foreign_key_violation(direct_action_error, "alert_actions_assigned_membership_fk");
+
     let cross_tenant_assign = AlertActionRequest {
         operator_id: scenario.operator_id,
         action: AlertActionKind::Assign,
@@ -495,6 +2105,128 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
             .await,
         Err(AlertStoreError::InvalidAssignee)
     ));
+
+    let (auth, authorization) = authenticated_service(pool, scenario.operator_id).await;
+    let api_response = build_router(pool.clone(), auth.clone())
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/alerts/{revised_id}/actions"))
+                .header("authorization", authorization.clone())
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "action": "assign",
+                        "idempotency_key": "api-cross-tenant-assign",
+                        "expected_workflow_version": 2,
+                        "comment": null,
+                        "assigned_identity_id": other_assignee.identity_id,
+                        "dismissal_reason": null
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(api_response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let api_body: Value =
+        serde_json::from_slice(&api_response.into_body().collect().await.unwrap().to_bytes())
+            .unwrap();
+    assert_eq!(api_body["error"]["code"], "invalid_assignee");
+
+    let oversized_comment_response = build_router(pool.clone(), auth.clone())
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/alerts/{revised_id}/actions"))
+                .header("authorization", authorization.clone())
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "action": "comment",
+                        "idempotency_key": "api-oversized-comment",
+                        "expected_workflow_version": 2,
+                        "comment": "x".repeat(2001),
+                        "assigned_identity_id": null,
+                        "dismissal_reason": null
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        oversized_comment_response.status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let oversized_comment_body: Value = serde_json::from_slice(
+        &oversized_comment_response
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes(),
+    )
+    .unwrap();
+    assert_eq!(oversized_comment_body["error"]["code"], "invalid_comment");
+
+    let oversized_key_response = build_router(pool.clone(), auth)
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/alerts/{revised_id}/actions"))
+                .header("authorization", authorization)
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "action": "acknowledge",
+                        "idempotency_key": "k".repeat(129),
+                        "expected_workflow_version": 2,
+                        "comment": null,
+                        "assigned_identity_id": null,
+                        "dismissal_reason": null
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        oversized_key_response.status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let oversized_key_body: Value = serde_json::from_slice(
+        &oversized_key_response
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes(),
+    )
+    .unwrap();
+    assert_eq!(oversized_key_body["error"]["code"], "invalid_alert_action");
+
+    let oversized_direct_comment = sqlx::query(
+        r#"
+        INSERT INTO alert_actions (
+            id, operator_id, alert_id, schema_version, action, actor_id,
+            occurred_at, comment, idempotency_key
+        ) VALUES ($1,$2,$3,1,'comment','direct-database-test',$4,$5,$6)
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(scenario.operator_id.as_uuid())
+    .bind(revised_id)
+    .bind(evaluated_at)
+    .bind("x".repeat(2001))
+    .bind(format!("direct-oversized-comment-{}", Uuid::new_v4()))
+    .execute(pool)
+    .await
+    .unwrap_err();
+    assert_check_violation(oversized_direct_comment, "alert_actions_comment_length");
 
     let assign = AlertActionRequest {
         operator_id: scenario.operator_id,
@@ -681,6 +2413,22 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
             .iter()
             .all(|alert| alert.assigned_identity_id.is_none())
     );
+}
+
+fn assert_foreign_key_violation(error: sqlx::Error, constraint: &str) {
+    let sqlx::Error::Database(database_error) = error else {
+        panic!("expected database constraint error, got {error}")
+    };
+    assert_eq!(database_error.code().as_deref(), Some("23503"));
+    assert_eq!(database_error.constraint(), Some(constraint));
+}
+
+fn assert_check_violation(error: sqlx::Error, constraint: &str) {
+    let sqlx::Error::Database(database_error) = error else {
+        panic!("expected database constraint error, got {error}")
+    };
+    assert_eq!(database_error.code().as_deref(), Some("23514"));
+    assert_eq!(database_error.constraint(), Some(constraint));
 }
 
 async fn assert_provider_record_revisions_are_allowed_but_identical_retries_are_rejected(
@@ -921,7 +2669,56 @@ async fn assert_noaa_records_are_transactional_idempotent_and_revisioned(pool: &
         .await
         .unwrap();
     let (auth, authorization) = authenticated_service(pool, operator_id).await;
-    let response = build_router(pool.clone(), auth)
+    let app = build_router(pool.clone(), auth);
+    let system_health = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/system/health")
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(system_health.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(
+        &system_health
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes(),
+    )
+    .unwrap();
+    assert_eq!(body["service"], "flight-tracker-api");
+    assert!(body["workers"].is_array());
+
+    let system_readiness = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/system/readiness")
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(system_readiness.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(
+        &system_readiness
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes(),
+    )
+    .unwrap();
+    assert_eq!(body["checks"]["database"], "ok");
+    assert_eq!(body["checks"]["postgis"], "ok");
+
+    let response = app
         .oneshot(
             Request::builder()
                 .uri("/api/source-health")

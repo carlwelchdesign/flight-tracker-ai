@@ -31,7 +31,7 @@ Startup fails before polling if the configured operator does not exist. Provider
 
 ## Persistence and revisions
 
-Each provider record becomes an immutable `provider_envelopes` row containing the raw JSON and SHA-256 hash. The matching normalized record is written in the same transaction:
+Each provider record becomes a `provider_envelopes` row with immutable source identity and SHA-256 evidence. Raw JSON remains available only until an approved retention run clears it and attaches a restore-suppression tombstone; normalized record identity is preserved. The matching normalized record is written in the same transaction:
 
 - METARs become `airport_observations` with report time, NOAA receipt time, local receipt/processing time, WGS84 point, wind in knots/true degrees, visibility in statute miles, ceiling in feet AGL, and flight category.
 - SIGMETs become versioned `weather_hazards` with issuance and validity times, NOAA receipt time, WGS84 polygon, flight-level altitude band, hazard/severity, stable external series identity, revision, superseded revision, and active/cancelled status.
@@ -56,7 +56,7 @@ Committed normalized events publish through the same ingestion/projection bounda
 
 ## Operations and recovery
 
-1. Check `/health` for `noaa_weather_ingestion` and `noaa_projection`. These workers should remain running during provider failures.
+1. Check authenticated `/api/system/health` for `noaa_weather_ingestion` and `noaa_projection`. These workers should remain running during provider failures.
 2. Check `/api/source-health` for the affected feed, timestamps, failure count, and error code.
 3. For `rate_limited`, confirm the interval is at least 60 seconds and only one deployment is polling for this operator/feed.
 4. For `timeout` or `provider_unavailable`, check the AviationWeather.gov status page and outbound network path.

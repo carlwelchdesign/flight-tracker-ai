@@ -1,9 +1,9 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -11,8 +11,15 @@ const MIN_SECRET_BYTES: usize = 32;
 const MAX_ASSERTION_LIFETIME_SECONDS: u64 = 60;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AssertionConfig {
+pub struct AssertionKey {
+    pub id: String,
     pub secret: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssertionConfig {
+    pub active_key: AssertionKey,
+    pub previous_key: Option<AssertionKey>,
     pub issuer: String,
     pub audience: String,
     pub leeway_seconds: u64,
@@ -36,6 +43,12 @@ pub struct AssertionClaims {
 pub enum AssertionError {
     #[error("internal assertion secret must contain at least 32 bytes")]
     WeakSecret,
+    #[error(
+        "internal assertion key IDs must use 1-64 ASCII letters, digits, dots, underscores, or hyphens"
+    )]
+    InvalidKeyId,
+    #[error("active and previous internal assertion keys must have distinct IDs and secrets")]
+    DuplicateKey,
     #[error("internal assertion issuer and audience must not be empty")]
     InvalidBoundary,
     #[error("authorization header must use one Bearer token")]
@@ -48,15 +61,20 @@ pub enum AssertionError {
 
 #[derive(Clone)]
 pub struct InternalAssertionVerifier {
-    decoding_key: DecodingKey,
+    decoding_keys: HashMap<String, DecodingKey>,
+    legacy_decoding_key: Option<DecodingKey>,
     validation: Validation,
     leeway_seconds: u64,
 }
 
 impl InternalAssertionVerifier {
     pub fn new(config: AssertionConfig) -> Result<Self, AssertionError> {
-        if config.secret.len() < MIN_SECRET_BYTES {
-            return Err(AssertionError::WeakSecret);
+        validate_key(&config.active_key)?;
+        if let Some(previous) = config.previous_key.as_ref() {
+            validate_key(previous)?;
+            if previous.id == config.active_key.id || previous.secret == config.active_key.secret {
+                return Err(AssertionError::DuplicateKey);
+            }
         }
         if config.issuer.trim().is_empty() || config.audience.trim().is_empty() {
             return Err(AssertionError::InvalidBoundary);
@@ -75,8 +93,21 @@ impl InternalAssertionVerifier {
             "sub".into(),
             "jti".into(),
         ]);
+        let active_decoding_key = DecodingKey::from_secret(config.active_key.secret.as_bytes());
+        let legacy_decoding_key = config
+            .previous_key
+            .is_none()
+            .then(|| active_decoding_key.clone());
+        let mut decoding_keys = HashMap::from([(config.active_key.id, active_decoding_key)]);
+        if let Some(previous) = config.previous_key {
+            decoding_keys.insert(
+                previous.id,
+                DecodingKey::from_secret(previous.secret.as_bytes()),
+            );
+        }
         Ok(Self {
-            decoding_key: DecodingKey::from_secret(config.secret.as_bytes()),
+            decoding_keys,
+            legacy_decoding_key,
             validation,
             leeway_seconds: config.leeway_seconds,
         })
@@ -93,7 +124,18 @@ impl InternalAssertionVerifier {
     }
 
     pub fn verify(&self, token: &str) -> Result<AssertionClaims, AssertionError> {
-        let claims = decode::<AssertionClaims>(token, &self.decoding_key, &self.validation)
+        let header = decode_header(token).map_err(|_| AssertionError::InvalidToken)?;
+        let decoding_key = match header.kid {
+            Some(key_id) => self
+                .decoding_keys
+                .get(&key_id)
+                .ok_or(AssertionError::InvalidToken)?,
+            None => self
+                .legacy_decoding_key
+                .as_ref()
+                .ok_or(AssertionError::InvalidToken)?,
+        };
+        let claims = decode::<AssertionClaims>(token, decoding_key, &self.validation)
             .map_err(|_| AssertionError::InvalidToken)?
             .claims;
         if [
@@ -121,6 +163,22 @@ impl InternalAssertionVerifier {
     }
 }
 
+fn validate_key(key: &AssertionKey) -> Result<(), AssertionError> {
+    if key.secret.len() < MIN_SECRET_BYTES {
+        return Err(AssertionError::WeakSecret);
+    }
+    if key.id.is_empty()
+        || key.id.len() > 64
+        || !key
+            .id
+            .bytes()
+            .all(|value| value.is_ascii_alphanumeric() || matches!(value, b'.' | b'_' | b'-'))
+    {
+        return Err(AssertionError::InvalidKeyId);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::Utc;
@@ -129,10 +187,15 @@ mod tests {
     use super::*;
 
     const SECRET: &str = "test-internal-assertion-secret-at-least-32-bytes";
+    const KEY_ID: &str = "test-primary-2026-07";
 
     fn config() -> AssertionConfig {
         AssertionConfig {
-            secret: SECRET.into(),
+            active_key: AssertionKey {
+                id: KEY_ID.into(),
+                secret: SECRET.into(),
+            },
+            previous_key: None,
             issuer: "test-web".into(),
             audience: "test-api".into(),
             leeway_seconds: 0,
@@ -155,9 +218,11 @@ mod tests {
         }
     }
 
-    fn token(claims: &AssertionClaims, secret: &str) -> String {
+    fn token(claims: &AssertionClaims, secret: &str, key_id: Option<&str>) -> String {
+        let mut header = Header::new(Algorithm::HS256);
+        header.kid = key_id.map(str::to_owned);
         encode(
-            &Header::new(Algorithm::HS256),
+            &header,
             claims,
             &EncodingKey::from_secret(secret.as_bytes()),
         )
@@ -168,7 +233,13 @@ mod tests {
     fn verifies_a_short_lived_bound_assertion() {
         let verifier = InternalAssertionVerifier::new(config()).unwrap();
         let claims = claims();
-        assert_eq!(verifier.verify(&token(&claims, SECRET)).unwrap(), claims);
+        assert_eq!(
+            verifier
+                .verify(&token(&claims, SECRET, Some(KEY_ID)))
+                .unwrap(),
+            claims
+        );
+        assert!(verifier.verify(&token(&claims, SECRET, None)).is_ok());
     }
 
     #[test]
@@ -178,34 +249,35 @@ mod tests {
         let mut expired = claims();
         expired.exp = (Utc::now().timestamp() - 10) as u64;
         assert!(matches!(
-            verifier.verify(&token(&expired, SECRET)),
+            verifier.verify(&token(&expired, SECRET, Some(KEY_ID))),
             Err(AssertionError::InvalidToken)
         ));
 
         let mut not_yet_valid = claims();
         not_yet_valid.nbf = (Utc::now().timestamp() + 60) as u64;
         assert!(matches!(
-            verifier.verify(&token(&not_yet_valid, SECRET)),
+            verifier.verify(&token(&not_yet_valid, SECRET, Some(KEY_ID))),
             Err(AssertionError::InvalidToken)
         ));
 
         let mut long_lived = claims();
         long_lived.exp = long_lived.iat + MAX_ASSERTION_LIFETIME_SECONDS + 1;
         assert!(matches!(
-            verifier.verify(&token(&long_lived, SECRET)),
+            verifier.verify(&token(&long_lived, SECRET, Some(KEY_ID))),
             Err(AssertionError::InvalidToken)
         ));
 
         let mut audience = claims();
         audience.aud = "other-api".into();
         assert!(matches!(
-            verifier.verify(&token(&audience, SECRET)),
+            verifier.verify(&token(&audience, SECRET, Some(KEY_ID))),
             Err(AssertionError::InvalidToken)
         ));
         assert!(matches!(
             verifier.verify(&token(
                 &claims(),
-                "different-secret-at-least-thirty-two-bytes"
+                "different-secret-at-least-thirty-two-bytes",
+                Some(KEY_ID),
             )),
             Err(AssertionError::InvalidToken)
         ));
@@ -213,7 +285,7 @@ mod tests {
         let mut empty = claims();
         empty.tenant = " ".into();
         assert!(matches!(
-            verifier.verify(&token(&empty, SECRET)),
+            verifier.verify(&token(&empty, SECRET, Some(KEY_ID))),
             Err(AssertionError::EmptyIdentityClaim)
         ));
     }
@@ -228,6 +300,64 @@ mod tests {
         assert!(matches!(
             verifier.verify_header("Bearer one two"),
             Err(AssertionError::InvalidAuthorizationHeader)
+        ));
+    }
+
+    #[test]
+    fn rotation_accepts_only_named_active_and_previous_keys() {
+        const PREVIOUS_ID: &str = "test-previous-2026-06";
+        const PREVIOUS_SECRET: &str = "previous-internal-assertion-secret-at-least-32-bytes";
+        let mut rotating = config();
+        rotating.previous_key = Some(AssertionKey {
+            id: PREVIOUS_ID.into(),
+            secret: PREVIOUS_SECRET.into(),
+        });
+        let verifier = InternalAssertionVerifier::new(rotating).unwrap();
+        let claims = claims();
+
+        assert!(
+            verifier
+                .verify(&token(&claims, SECRET, Some(KEY_ID)))
+                .is_ok()
+        );
+        assert!(
+            verifier
+                .verify(&token(&claims, PREVIOUS_SECRET, Some(PREVIOUS_ID)))
+                .is_ok()
+        );
+        assert!(matches!(
+            verifier.verify(&token(&claims, PREVIOUS_SECRET, Some("unknown-key"))),
+            Err(AssertionError::InvalidToken)
+        ));
+        assert!(matches!(
+            verifier.verify(&token(&claims, SECRET, None)),
+            Err(AssertionError::InvalidToken)
+        ));
+
+        let rotated = InternalAssertionVerifier::new(config()).unwrap();
+        assert!(matches!(
+            rotated.verify(&token(&claims, PREVIOUS_SECRET, Some(PREVIOUS_ID))),
+            Err(AssertionError::InvalidToken)
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_or_duplicate_key_configuration() {
+        let mut invalid_id = config();
+        invalid_id.active_key.id = "bad key".into();
+        assert!(matches!(
+            InternalAssertionVerifier::new(invalid_id),
+            Err(AssertionError::InvalidKeyId)
+        ));
+
+        let mut duplicate = config();
+        duplicate.previous_key = Some(AssertionKey {
+            id: "different-id".into(),
+            secret: SECRET.into(),
+        });
+        assert!(matches!(
+            InternalAssertionVerifier::new(duplicate),
+            Err(AssertionError::DuplicateKey)
         ));
     }
 }

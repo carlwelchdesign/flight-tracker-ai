@@ -32,8 +32,15 @@ export async function createInternalAssertion(): Promise<string> {
   if (Buffer.byteLength(secret) < 32) {
     throw new AuthSessionError("INTERNAL_AUTH_SECRET must contain at least 32 bytes", 500);
   }
+  const keyId = required("INTERNAL_AUTH_KEY_ID");
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(keyId)) {
+    throw new AuthSessionError(
+      "INTERNAL_AUTH_KEY_ID must use 1-64 ASCII letters, digits, dots, underscores, or hyphens",
+      500,
+    );
+  }
   const now = Math.floor(Date.now() / 1_000);
-  const header = encode({ alg: "HS256", typ: "JWT" });
+  const header = encode({ alg: "HS256", typ: "JWT", kid: keyId });
   const payload = encode({
     iss: process.env.AUTH_ASSERTION_ISSUER ?? "flight-tracker-web",
     aud: process.env.AUTH_ASSERTION_AUDIENCE ?? "flight-tracker-api",

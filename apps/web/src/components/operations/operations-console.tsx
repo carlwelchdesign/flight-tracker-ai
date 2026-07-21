@@ -25,6 +25,7 @@ import { OperationsBadges } from "./operations-badges";
 import type { ConnectionState, ServiceHealthState } from "./operations-health-model";
 import { OperationsStatusRegion } from "./operations-status";
 import { AlertQueue } from "./alert-queue";
+import { AuditReview } from "./audit-review";
 
 type ReplayPhase = "running" | "paused" | "completed" | "unavailable";
 
@@ -261,7 +262,7 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
     let cancelled = false;
     async function loadServiceHealth() {
       try {
-        const response = await fetch("/api/backend/health", { cache: "no-store" });
+        const response = await fetch("/api/backend/api/system/health", { cache: "no-store" });
         if (!response.ok) throw new Error(`Health check returned HTTP ${response.status}`);
         const health = parseBackendHealth(await response.json());
         if (cancelled) return;
@@ -504,8 +505,10 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
         </div>
       </div>
 
+      {authContext.role === "administrator" && <AuditReview refreshRevision={eventRevision} />}
+
       <footer className="operations-footer">
-        <span>Simulation environment</span>
+        <span>Advisory evidence workspace</span>
         <span>Source-attributed · human-reviewed decisions</span>
         <span>UTC / WGS84</span>
       </footer>

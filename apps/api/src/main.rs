@@ -10,6 +10,7 @@ use flight_tracker_api::{
     health::CriticalWorkerRegistry,
     ingestion::{IngestionHub, IngestionSubscription},
     replay::{ReplayHandle, ReplayScenario, spawn_replay_runtime},
+    retention::{RetentionStore, spawn_retention_scheduler},
     weather::noaa::{
         NoaaClient, NoaaClientConfig, NoaaRuntimeConfig, NoaaStore, RetryPolicy, spawn_noaa_runtime,
     },
@@ -109,6 +110,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         tracing::info!("NOAA aviation weather ingestion enabled");
     }
+
+    spawn_retention_scheduler(
+        RetentionStore::new(database.clone()),
+        Duration::from_secs(30),
+        workers.register("retention_scheduler"),
+    );
 
     let listener = TcpListener::bind(config.bind_address).await?;
     tracing::info!(address = %config.bind_address, "API listening");

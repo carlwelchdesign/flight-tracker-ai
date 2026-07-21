@@ -4,12 +4,15 @@
 //! short-lived signed assertion, then resolves tenant membership and role from
 //! PostgreSQL before an operational handler runs.
 
+mod audit;
 mod http;
 mod model;
+mod sensitive_write;
 mod service;
 mod store;
 mod token;
 
+pub use audit::{AuditStore, audit_router};
 pub use http::auth_router;
 pub use model::{AuthContext, AuthRole, Permission};
 pub use service::{AuthFailure, AuthService, authenticate_request, require};
@@ -17,4 +20,6 @@ pub use store::{
     AuthStore, DevelopmentIdentity, MembershipStatus, MembershipUpdate, MembershipView,
     SessionRevocation,
 };
-pub use token::{AssertionClaims, AssertionConfig, AssertionError, InternalAssertionVerifier};
+pub use token::{
+    AssertionClaims, AssertionConfig, AssertionError, AssertionKey, InternalAssertionVerifier,
+};

@@ -152,10 +152,15 @@ fn map_error(error: AlertStoreError) -> ApiError {
             (StatusCode::UNPROCESSABLE_ENTITY, "invalid_dismissal_reason")
         }
         AlertStoreError::InvalidComment => (StatusCode::UNPROCESSABLE_ENTITY, "invalid_comment"),
-        AlertStoreError::InvalidActionIdentity
-        | AlertStoreError::IdempotencyConflict
-        | AlertStoreError::Lifecycle(_) => (StatusCode::CONFLICT, "invalid_alert_action"),
-        AlertStoreError::Database(_) | AlertStoreError::InvalidStoredLifecycle => {
+        AlertStoreError::InvalidActionIdentity => {
+            (StatusCode::UNPROCESSABLE_ENTITY, "invalid_alert_action")
+        }
+        AlertStoreError::IdempotencyConflict | AlertStoreError::Lifecycle(_) => {
+            (StatusCode::CONFLICT, "invalid_alert_action")
+        }
+        AlertStoreError::Database(_)
+        | AlertStoreError::InvalidStoredLifecycle
+        | AlertStoreError::AlertRevisionExhausted => {
             (StatusCode::SERVICE_UNAVAILABLE, "alert_service_unavailable")
         }
     };

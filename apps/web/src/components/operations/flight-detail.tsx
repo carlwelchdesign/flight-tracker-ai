@@ -66,7 +66,7 @@ export function FlightDetail({
         <span className={`attention-dot attention-${attention.level}`} aria-hidden="true" />
         <div>
           <strong>{attention.reason}</strong>
-          <p>Advisory display only · verify source data before operational action.</p>
+          <p>Portfolio demonstration only · not for operational use · verify source data.</p>
         </div>
       </div>
 

@@ -9,6 +9,10 @@ use crate::domain::OperatorId;
 
 use super::{AssertionClaims, AuthContext, AuthRole};
 
+const MAX_REVOCATION_PROVIDER_CHARS: usize = 64;
+const MAX_REVOCATION_SESSION_ID_CHARS: usize = 256;
+const MAX_REVOCATION_REASON_CHARS: usize = 500;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DevelopmentIdentity {
     pub operator_id: OperatorId,
@@ -80,6 +84,8 @@ pub enum AuthStoreError {
     SelfLockout,
     #[error("revocation expiry must be later than the current time")]
     InvalidRevocationExpiry,
+    #[error("revocation provider, session ID, or reason is empty or exceeds its supported length")]
+    InvalidRevocationInput,
 }
 
 #[derive(Clone)]
@@ -313,11 +319,11 @@ impl AuthStore {
         actor: &AuthContext,
         request: &SessionRevocation,
     ) -> Result<(), AuthStoreError> {
-        if request.provider.trim().is_empty()
-            || request.session_id.trim().is_empty()
-            || request.reason.trim().is_empty()
-            || request.expires_at <= request.requested_at
-        {
+        let provider = bounded_revocation_field(&request.provider, MAX_REVOCATION_PROVIDER_CHARS)?;
+        let session_id =
+            bounded_revocation_field(&request.session_id, MAX_REVOCATION_SESSION_ID_CHARS)?;
+        let reason = bounded_revocation_field(&request.reason, MAX_REVOCATION_REASON_CHARS)?;
+        if request.expires_at <= request.requested_at {
             return Err(AuthStoreError::InvalidRevocationExpiry);
         }
         let mut transaction = self.database.begin().await?;
@@ -336,14 +342,14 @@ impl AuthStore {
         )
         .bind(Uuid::new_v5(
             &actor.operator_id.as_uuid(),
-            format!("{}:{}", request.provider, request.session_id).as_bytes(),
+            format!("{provider}:{session_id}").as_bytes(),
         ))
-        .bind(request.provider.trim())
-        .bind(request.session_id.trim())
+        .bind(provider)
+        .bind(session_id)
         .bind(request.identity_id)
         .bind(actor.operator_id.as_uuid())
         .bind(actor.identity_id)
-        .bind(request.reason.trim())
+        .bind(reason)
         .bind(request.requested_at)
         .bind(request.expires_at)
         .execute(&mut *transaction)
@@ -353,14 +359,22 @@ impl AuthStore {
             actor,
             "session.revoked",
             "auth_session",
-            request.session_id.trim(),
-            json!({"provider": request.provider.trim(), "identity_id": request.identity_id, "reason": request.reason.trim()}),
+            session_id,
+            json!({"provider": provider, "identity_id": request.identity_id, "reason": reason}),
             request.requested_at,
         )
         .await?;
         transaction.commit().await?;
         Ok(())
     }
+}
+
+fn bounded_revocation_field(value: &str, max_chars: usize) -> Result<&str, AuthStoreError> {
+    let value = value.trim();
+    if value.is_empty() || value.chars().count() > max_chars {
+        return Err(AuthStoreError::InvalidRevocationInput);
+    }
+    Ok(value)
 }
 
 async fn insert_audit(
@@ -391,4 +405,17 @@ async fn insert_audit(
     .execute(&mut **transaction)
     .await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn revocation_fields_are_trimmed_and_bounded_by_characters() {
+        assert_eq!(bounded_revocation_field(" reason ", 6).unwrap(), "reason");
+        assert!(bounded_revocation_field("   ", 500).is_err());
+        assert!(bounded_revocation_field(&"x".repeat(501), 500).is_err());
+        assert_eq!(bounded_revocation_field("éé", 2).unwrap(), "éé");
+    }
 }

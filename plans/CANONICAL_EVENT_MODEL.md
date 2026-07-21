@@ -34,10 +34,40 @@ provider payload -> ProviderEnvelope -> provider adapter -> CanonicalEvent -> pr
 | `Alert` | `alerts` and `alert_evidence` | Alert UUID, operator UUID, series/revision, material dedupe key, evidence envelopes |
 | `AlertAction` | `alert_actions` | Action UUID, operator/alert UUIDs, human actor and idempotency key |
 | `SourceHealth` | `source_health` | Health UUID, operator UUID, provider/feed identity |
+| Retention policy/run | `retention_policies`, `retention_runs` | Tenant/data-class/provider policy version, requester/approver/executor, cutoff, counts, and exact-key SHA-256 fingerprint |
+| Retention schedule/attempt | `retention_schedules`, `retention_schedule_attempts` | Exact policy version, cadence/next slot, standing two-person approval, inventory fingerprint, and run/failure evidence |
+| Raw deletion tombstone | `data_deletion_tombstones` | Tenant/provider/feed/raw hash and deletion-run evidence |
+| Lifecycle deletion tombstone | `lifecycle_deletion_tombstones` | Tenant/data-class/source-record identity plus deletion/minimization evidence |
+| Alert-history tombstone | `alert_history_tombstones` | Tenant/alert ID/material dedupe key/series revision plus retention-run evidence |
+| Operational-fact tombstone | `operational_fact_tombstones` | Tenant/provider/fact table/record ID plus retention-run evidence |
+| Retention integrity view | Read-only projection across current rows, tombstones, schedules, and attempts | Tenant-scoped resurrection violations plus operational restore diagnostics |
 
 Every operational table includes a non-null `operator_id`. Composite foreign
 keys include `operator_id`, so a record cannot reference an envelope, flight,
 hazard, or alert belonging to another operator even if application scoping fails.
+
+Provider envelope source identity and hash evidence remain stable. An approved
+raw-payload retention run may replace `raw_payload` with an empty object and
+attach a tombstone; the insert/update trigger prevents an identical deleted
+payload from being restored into the tenant.
+
+Approved application-lifecycle runs may delete old authorization events and
+expired session revocations or minimize an exclusively tenant-owned inactive
+identity. Typed lifecycle tombstones suppress restored audit/revocation rows and
+force restored identity mappings back to their minimized state.
+
+Approved terminal-alert runs delete only whole dismissed/resolved series after
+their latest alert/action activity expires. Alert-history tombstones suppress an
+exact logical replay while allowing new material evidence at the next revision.
+
+Approved normalized-fact runs delete old observations, whole unreferenced
+terminal flight aggregates, and whole unreferenced expired hazard series in
+dependency order. Provider-scoped fact tombstones suppress exact restoration.
+
+The administrator-only retention-integrity projection is read-only. It compares
+current tenant rows against every tombstone class and reports paused schedules
+and recent scheduled failures without weakening or mutating the underlying
+retention evidence.
 
 ## Versioning
 
