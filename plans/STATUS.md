@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-404 — Deploy the public portfolio and preview environments
-- Branch: `feat/ft-404-production-deployment`
-- Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
-- Owner: Platform, backend, security, and full-stack engineering
+- Active ticket: FT-405 — Live navigable flight tracker
+- Branch: `feat/ft-405-live-navigable-tracker`
+- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
+- Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Enroll the reviewer in the production Clerk organization and run
-  the authenticated browser and hosted FT-401 smoke before final promotion.
+- Next action: Push the verified live-map implementation, deploy the Render and
+  Vercel candidates, then prove live refresh and motion against ADSB.lol.
 
 ## Milestone checklist
 

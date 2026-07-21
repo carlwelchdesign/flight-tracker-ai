@@ -3,9 +3,9 @@
 Status: In progress
 
 Branch: `feat/ft-405-live-navigable-tracker`
-Latest implementation commit: Pending
+Latest implementation commit: `3da313b`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
 Owner: Full-stack product engineering
 
 ## Outcome
@@ -27,55 +27,56 @@ authoritative routes, schedules, delays, or complete coverage.
 
 ### Public data boundary
 
-- [ ] Rust exposes a public, operator-bound, sanitized live-position snapshot
+- [x] Rust exposes a public, operator-bound, sanitized live-position snapshot
       containing only aircraft identity, position, motion, observation time,
-      freshness, source state, region, and required attribution.
-- [ ] The endpoint is fixed to the configured portfolio operator and cannot be
+      freshness, source state, region, and required attribution. Evidence:
+      `tests::public_live_positions_are_operator_bound_and_sanitized`.
+- [x] The endpoint is fixed to the configured portfolio operator and cannot be
       used to enumerate tenants, choose arbitrary regions, or request individual
-      aircraft.
+      aircraft. Evidence: fixed runtime injection plus Rust HTTP contract test.
 - [ ] Raw and normalized ADSB.lol records remain ephemeral and are never written
       to PostgreSQL, logs, analytics, browser storage, exports, or backups.
-- [ ] Rust and Next.js preserve `Cache-Control: no-store`, bounded response size,
+- [x] Rust and Next.js preserve `Cache-Control: no-store`, bounded response size,
       provider attribution, and fail-closed configuration.
 - [ ] Production enables one bounded ADSB.lol region with a 30-second-or-slower
       poll interval and a project-identifying user agent.
 
 ### Navigable map
 
-- [ ] MapLibre GL JS replaces the fixed SVG as the primary public map.
-- [ ] Users can pan, zoom, rotate, use keyboard controls, reset north, and fit
+- [x] MapLibre GL JS replaces the fixed SVG as the primary public map.
+- [x] Users can pan, zoom, rotate, use keyboard controls, reset north, and fit
       the camera to currently visible traffic.
-- [ ] The basemap uses a keyless provider approved for this portfolio demo and
+- [x] The basemap uses a keyless provider approved for this portfolio demo and
       shows required OpenStreetMap/OpenFreeMap attribution.
 - [ ] Aircraft, weather hazards, airports, and selected state remain legible
       against the dark basemap across desktop and mobile layouts.
-- [ ] The flight list and map selection stay synchronized.
+- [x] The flight list and map selection stay synchronized.
 
 ### Realtime motion and truthfulness
 
-- [ ] The browser refreshes the sanitized snapshot at the provider cadence and
+- [x] The browser refreshes the sanitized snapshot at the provider cadence and
       updates aircraft without a page reload.
-- [ ] Aircraft position and heading animate smoothly between accepted snapshots;
+- [x] Aircraft position and heading animate smoothly between accepted snapshots;
       reduced-motion users receive immediate non-animated updates.
 - [ ] The UI distinguishes observed time, received time, snapshot age, stale
       aircraft, provider state, and interpolated presentation.
 - [ ] Callsign, altitude, speed, heading, vertical rate, squawk, and source
       quality are shown only when supplied by the live position source.
-- [ ] No live aircraft is assigned a fabricated origin, destination, route,
+- [x] No live aircraft is assigned a fabricated origin, destination, route,
       schedule, delay, airline, or operational status.
 
 ### Failure and fallback
 
 - [ ] Connecting, current, stale, degraded, unavailable, and disabled states are
       visible without clearing the last accepted picture.
-- [ ] If live data is unavailable, the public map offers and automatically
+- [x] If live data is unavailable, the public map offers and automatically
       preserves a clearly labeled deterministic replay demonstration.
-- [ ] Retrying live data does not restart the page or discard the selected
+- [x] Retrying live data does not restart the page or discard the selected
       aircraft unnecessarily.
 
 ### Verification and release
 
-- [ ] Rust contract, tenant-boundary, no-store, payload-limit, stale-data, and
+- [x] Rust contract, tenant-boundary, no-store, payload-limit, stale-data, and
       provider-failure tests pass.
 - [ ] Web parser, polling, interpolation, reduced-motion, selection, fallback,
       accessibility, and MapLibre lifecycle tests pass.
@@ -98,3 +99,14 @@ authoritative routes, schedules, delays, or complete coverage.
 - Keep deterministic replay as a product-quality fallback, not as the default
   impression when current live data is available.
 
+## Current evidence
+
+- Implementation commit `3da313b` adds the sanitized Rust endpoint, same-origin
+  public proxy, MapLibre/OpenFreeMap experience, 30-second polling, bounded
+  interpolation, source states, selection, truthful details, and replay fallback.
+- Local verification: Rust formatting, 90 Rust tests, Clippy with warnings denied,
+  TypeScript, ESLint, 63 web tests, and `next build` pass.
+- Browser verification at desktop and 390x844 proves the basemap, attribution,
+  map controls, aircraft markers, list/detail selection, zoom interaction, replay
+  fallback, no framework overlay, and no mobile horizontal overflow. Hosted live
+  refresh and production activation remain open.
