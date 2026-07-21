@@ -34,8 +34,8 @@ provider payload -> ProviderEnvelope -> provider adapter -> CanonicalEvent -> pr
 | `Alert` | `alerts` and `alert_evidence` | Alert UUID, operator UUID, series/revision, material dedupe key, evidence envelopes |
 | `AlertAction` | `alert_actions` | Action UUID, operator/alert UUIDs, human actor and idempotency key |
 | `SourceHealth` | `source_health` | Health UUID, operator UUID, provider/feed identity |
-| Retention policy/run | `retention_policies`, `retention_runs` | Tenant/data-class/provider policy version, requester/approver/executor, cutoff and counts |
-| Retention schedule/attempt | `retention_schedules`, `retention_schedule_attempts` | Exact policy version, cadence/next slot, standing two-person approval, run/failure evidence |
+| Retention policy/run | `retention_policies`, `retention_runs` | Tenant/data-class/provider policy version, requester/approver/executor, cutoff, counts, and exact-key SHA-256 fingerprint |
+| Retention schedule/attempt | `retention_schedules`, `retention_schedule_attempts` | Exact policy version, cadence/next slot, standing two-person approval, inventory fingerprint, and run/failure evidence |
 | Raw deletion tombstone | `data_deletion_tombstones` | Tenant/provider/feed/raw hash and deletion-run evidence |
 | Lifecycle deletion tombstone | `lifecycle_deletion_tombstones` | Tenant/data-class/source-record identity plus deletion/minimization evidence |
 | Alert-history tombstone | `alert_history_tombstones` | Tenant/alert ID/material dedupe key/series revision plus retention-run evidence |

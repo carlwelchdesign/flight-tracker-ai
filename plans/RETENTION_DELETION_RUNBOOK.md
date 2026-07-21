@@ -23,9 +23,9 @@ All routes require the named administrator-only `ManageRetention` permission and
 
 1. Create a draft policy with `POST /api/admin/retention/policies`. Supply a safe provider identifier, retention seconds, and an opaque approval reference. Retention must be between one hour and ten years.
 2. A different administrator approves the policy with `POST /api/admin/retention/policies/{id}/approve`. Approval retires the prior approved policy for the same tenant/data-class/provider scope.
-3. Create an inventory with `POST /api/admin/retention/runs/preview`. The run fixes the policy version, provider, cutoff, counts, requester, time, and controlled evidence reference.
+3. Create an inventory with `POST /api/admin/retention/runs/preview`. The run fixes the policy version, provider, cutoff, counts, SHA-256 fingerprint of the exact eligible record keys, requester, time, and controlled evidence reference.
 4. A different administrator approves the run with `POST /api/admin/retention/runs/{id}/approve`.
-5. Execute with `POST /api/admin/retention/runs/{id}/execute`. Execution locks and recounts the fixed scope. It refuses to run if inventory changed or exceeds 10,000 records.
+5. Execute with `POST /api/admin/retention/runs/{id}/execute`. Execution uses a repeatable-read transaction, recounts and re-fingerprints the fixed scope, then locks and mutates it. It refuses to run if the exact record keys changed—even when aggregate counts stayed equal—or if the scope exceeds 10,000 records.
 6. Verify the completed run counts, tombstone count, and `retention.run.completed` authorization audit event.
 
 Policy and evidence references accept only bounded identifier characters; they are not free-form note channels.
@@ -34,7 +34,9 @@ Policy and evidence references accept only bounded identifier characters; they a
 
 An administrator may create a schedule for one exact approved policy version with a cadence between one hour and 31 days. A different administrator must activate it. The Rust retention scheduler is a supervised critical worker and turns each due slot into one bounded approved run, using the schedule creator as requester/executor and the schedule approver as the standing second-person approval.
 
-Each attempt records its scheduled slot, preview counts, resulting retention run, completion time, or bounded failure code. Cadence advances from the original slot without drift and a slot cannot execute twice. A new policy version retires the prior active schedule. Inactive/disabled administrators, a retired policy, an oversized scope, or an inventory mismatch pause the schedule and require a new reviewed schedule rather than silently retrying deletion.
+Each attempt records its scheduled slot, preview counts, exact-inventory fingerprint when a bounded inventory was reached, resulting retention run, completion time, or bounded failure code. Cadence advances from the original slot without drift and a slot cannot execute twice. A new policy version retires the prior active schedule. Inactive/disabled administrators, a retired policy, an oversized scope, or an inventory mismatch pause the schedule and require a new reviewed schedule rather than silently retrying deletion.
+
+Runs created before migration `20260721001100` have no exact-inventory fingerprint and fail closed at execution. Create and separately approve a new preview; do not populate a historical fingerprint manually.
 
 ## Tombstones and restoration
 
