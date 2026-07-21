@@ -450,7 +450,7 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
         .await
         .unwrap();
     assert_eq!(run.preview_counts["provider_envelopes"], 1);
-    assert_ne!(
+    assert_eq!(
         run.preview_fingerprint.as_deref(),
         Some(substituted_fingerprint)
     );
