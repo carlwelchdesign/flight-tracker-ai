@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { authMode } from "@/lib/auth-server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,12 +18,12 @@ export const metadata: Metadata = {
   description: "Source-attributed airline operations monitoring and advisory intelligence.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
+  const document = (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
@@ -30,4 +31,7 @@ export default function RootLayout({
       <body className="min-h-full">{children}</body>
     </html>
   );
+  if (authMode() === "development") return document;
+  const { ClerkProvider } = await import("@clerk/nextjs");
+  return <ClerkProvider>{document}</ClerkProvider>;
 }

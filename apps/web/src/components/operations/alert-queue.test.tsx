@@ -68,7 +68,7 @@ describe("dispatcher alert queue", () => {
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
 
-    render(<AlertQueue operatorId={operatorId} refreshRevision={0} />);
+    render(<AlertQueue canManage refreshRevision={0} />);
 
     expect(await screen.findByRole("heading", { name: "80/100 attention" })).toBeInTheDocument();
     expect(screen.getByText("Hazard severity")).toBeInTheDocument();
@@ -80,6 +80,10 @@ describe("dispatcher alert queue", () => {
       expect.stringContaining(`/alerts/${baseAlert.id}/actions`),
       expect.objectContaining({ method: "POST" }),
     );
+    const actionCall = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
+    const body = JSON.parse(String(actionCall?.[1]?.body));
+    expect(body).not.toHaveProperty("operator_id");
+    expect(body).not.toHaveProperty("actor_id");
   });
 
   it("requires a reason before dismissal", async () => {
@@ -88,7 +92,7 @@ describe("dispatcher alert queue", () => {
         ? Response.json({ ...baseAlert, actions: [] })
         : Response.json({ data: [baseAlert] })));
     const user = userEvent.setup();
-    render(<AlertQueue operatorId={operatorId} refreshRevision={0} />);
+    render(<AlertQueue canManage refreshRevision={0} />);
 
     await user.click(await screen.findByRole("button", { name: "Dismiss with reason" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/enter a dismissal reason/i);
