@@ -39,9 +39,15 @@ use metrics::{ApiMetrics, observe_request};
 use observability::correlate_request;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
 use retention::{RetentionStore, retention_router};
-use weather::weather_router;
+use weather::{public_weather_router, weather_router};
 
 pub const SERVICE_NAME: &str = "flight-tracker-api";
+
+#[derive(Clone, Copy, Default)]
+pub struct PublicPortfolioOperators {
+    pub live_positions: Option<OperatorId>,
+    pub weather: Option<OperatorId>,
+}
 
 #[derive(Clone)]
 pub struct ApiState {
@@ -227,7 +233,7 @@ pub fn build_router_with_runtime_and_live_positions(
         workers,
         subscriptions,
         live_positions,
-        None,
+        PublicPortfolioOperators::default(),
         auth,
     )
 }
@@ -238,7 +244,7 @@ pub fn build_router_with_runtime_and_public_live_positions(
     workers: CriticalWorkerRegistry,
     subscriptions: Vec<IngestionSubscription>,
     live_positions: LivePositionStatusStore,
-    public_live_operator: Option<OperatorId>,
+    public_operators: PublicPortfolioOperators,
     auth: AuthService,
 ) -> Router {
     let fleet = FleetStore::new(2_048);
@@ -267,7 +273,7 @@ pub fn build_router_with_runtime_and_public_live_positions(
         fleet,
         workers,
         live_positions,
-        public_live_operator,
+        public_operators,
         auth,
     )
 }
@@ -284,7 +290,7 @@ pub fn build_router_with_services(
         fleet,
         CriticalWorkerRegistry::default(),
         LivePositionStatusStore::default(),
-        None,
+        PublicPortfolioOperators::default(),
         auth,
     )
 }
@@ -295,7 +301,7 @@ fn build_router_with_services_and_health(
     fleet: FleetStore,
     workers: CriticalWorkerRegistry,
     live_positions: LivePositionStatusStore,
-    public_live_operator: Option<OperatorId>,
+    public_operators: PublicPortfolioOperators,
     auth: AuthService,
 ) -> Router {
     let audit_store = AuditStore::new(database.clone());
@@ -303,6 +309,7 @@ fn build_router_with_services_and_health(
     let metrics = ApiMetrics::default();
     let fleet_routes = fleet_router(fleet.clone(), metrics.clone());
     let weather_routes = weather_router(database.clone());
+    let public_weather_routes = public_weather_router(database.clone(), public_operators.weather);
     let alert_routes = alert_router(AlertStore::new(database.clone()));
     let public = Router::new()
         .route("/health", get(health))
@@ -314,7 +321,7 @@ fn build_router_with_services_and_health(
             fleet: fleet.clone(),
             workers: workers.clone(),
             live_positions: live_positions.clone(),
-            public_live_operator,
+            public_live_operator: public_operators.live_positions,
         });
     let mut protected = Router::new()
         .route("/api/source-health", get(source_health))
@@ -339,7 +346,7 @@ fn build_router_with_services_and_health(
             fleet,
             workers,
             live_positions,
-            public_live_operator,
+            public_live_operator: public_operators.live_positions,
         })
         .merge(fleet_routes)
         .merge(weather_routes)
@@ -349,6 +356,7 @@ fn build_router_with_services_and_health(
         .merge(retention_router(retention_store))
         .layer(middleware::from_fn_with_state(auth, authenticate_request))
         .merge(public)
+        .merge(public_weather_routes)
         .layer(middleware::from_fn_with_state(metrics, observe_request))
         .layer(middleware::from_fn(correlate_request))
         .layer(middleware::from_fn(secure_transport_headers))
@@ -765,6 +773,31 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn public_weather_fails_closed_and_never_caches_when_disabled() {
+        let database = unavailable_database();
+        let response = build_router(database.clone(), test_auth(&database))
+            .oneshot(
+                Request::get("/api/public/weather")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(
+            response.headers().get(header::CACHE_CONTROL),
+            Some(&HeaderValue::from_static("no-store"))
+        );
+        let payload: Value =
+            serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes())
+                .unwrap();
+        assert_eq!(payload["state"], "unavailable");
+        assert_eq!(payload["hazards"], serde_json::json!([]));
+        assert_eq!(payload["observations"], serde_json::json!([]));
+    }
+
+    #[tokio::test]
     async fn public_live_positions_are_operator_bound_and_sanitized() {
         let scenario = ReplayScenario::from_json(include_str!(
             "../../../fixtures/replay/m1-operations-v1.json"
@@ -808,7 +841,10 @@ mod tests {
             fleet,
             CriticalWorkerRegistry::default(),
             live_positions,
-            Some(scenario.operator_id),
+            PublicPortfolioOperators {
+                live_positions: Some(scenario.operator_id),
+                weather: None,
+            },
             test_auth(&database),
         );
         let response = app

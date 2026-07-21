@@ -15,10 +15,15 @@ import {
   type PublicAircraft,
   type PublicLiveSnapshot,
 } from "@/lib/public-live-positions";
+import {
+  parsePublicWeatherSnapshot,
+  type PublicWeatherSnapshot,
+} from "@/lib/public-weather";
 import { displayCallsign, LiveTrackerMap } from "./live-tracker-map";
 import { PortfolioOrientation } from "./portfolio-orientation";
 
 const POLL_INTERVAL_MS = 30_000;
+const WEATHER_POLL_INTERVAL_MS = 60_000;
 const REPLAY_AIRCRAFT = replayAircraft();
 
 export function PublicFlightTrackerDemo() {
@@ -27,6 +32,9 @@ export function PublicFlightTrackerDemo() {
   const [loading, setLoading] = useState(true);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [trajectoryHistory, setTrajectoryHistory] = useState<TrajectoryHistory>(() => new Map());
+  const [weather, setWeather] = useState<PublicWeatherSnapshot | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherRefreshFailed, setWeatherRefreshFailed] = useState(false);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -49,6 +57,20 @@ export function PublicFlightTrackerDemo() {
     }
   }, []);
 
+  const refreshWeather = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch("/api/public/weather", { cache: "no-store", signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setWeather(parsePublicWeatherSnapshot(await response.json()));
+      setWeatherRefreshFailed(false);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setWeatherRefreshFailed(true);
+    } finally {
+      setWeatherLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     const initial = window.setTimeout(() => void refresh(controller.signal), 0);
@@ -60,6 +82,17 @@ export function PublicFlightTrackerDemo() {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const initial = window.setTimeout(() => void refreshWeather(controller.signal), 0);
+    const timer = window.setInterval(() => void refreshWeather(controller.signal), WEATHER_POLL_INTERVAL_MS);
+    return () => {
+      controller.abort();
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
+  }, [refreshWeather]);
+
   const hasAcceptedLivePicture = (snapshot?.data.length ?? 0) > 0;
   const useReplay = !hasAcceptedLivePicture && !loading;
   const aircraft = useReplay ? REPLAY_AIRCRAFT : snapshot?.data ?? [];
@@ -68,6 +101,7 @@ export function PublicFlightTrackerDemo() {
   const selected = aircraft.find((item) => item.id === selectedId) ?? aircraft[0] ?? null;
   const selectedTrail = selected && !useReplay ? trajectoryHistory.get(selected.id) ?? [] : [];
   const selectedProjection = selected && !useReplay ? estimateTrajectory(selected) : null;
+  const weatherState = weather?.state ?? (weatherLoading ? "loading" : "unavailable");
 
   return (
     <main className="operations-shell live-tracker-shell">
@@ -118,6 +152,10 @@ export function PublicFlightTrackerDemo() {
           mode={mode}
           trail={selectedTrail}
           projection={selectedProjection}
+          weather={weather}
+          weatherState={weatherState}
+          weatherRetained={weatherRefreshFailed && weather !== null}
+          onRetryWeather={() => void refreshWeather()}
           onSelect={setSelectedId}
         />
         <section className="ops-panel live-traffic-panel" id="live-flight-list" aria-labelledby="traffic-title">

@@ -129,6 +129,8 @@ authoritative routes, schedules, delays, or complete coverage.
 
 ## Remaining before ticket completion
 
+- Public airport/METAR and SIGMET overlays are owned by stacked follow-up
+  [`FT-408-public-weather-map-layers.md`](FT-408-public-weather-map-layers.md).
 - Observed trails and estimated short-term trajectories are owned by stacked
   follow-up [`FT-406-flight-trajectories.md`](FT-406-flight-trajectories.md).
 - Add airport and NOAA hazard/weather overlays to the navigable map and verify

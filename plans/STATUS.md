@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-405 — Live navigable flight tracker
-- Branch: `feat/ft-405-live-navigable-tracker`
-- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
+- Active ticket: FT-408 — Public NOAA weather map layers
+- Branch: `feat/ft-408-public-weather-map-layers`
+- Pull request: Pending
 - Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Complete FT-405's airport and NOAA hazard/weather overlays,
-  direct motion lifecycle tests, and forced hosted degraded-state exercise.
+- Next action: Add the sanitized public NOAA snapshot and MapLibre
+  airport/METAR and SIGMET layers, then verify live and degraded behavior.
 
 ## Milestone checklist
 
@@ -24,6 +24,10 @@ Last updated: 2026-07-21
 
 ## Current product correction
 
+- FT-408 is in progress on `feat/ft-408-public-weather-map-layers`. It ports the
+  existing NOAA METAR and SIGMET capability to the public navigable map through
+  a fixed-operator sanitized Rust read boundary. See
+  [`FT-408-public-weather-map-layers.md`](tickets/FT-408-public-weather-map-layers.md).
 - FT-407 is complete and merged through stacked PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27). It corrects
   the public live-map glyph axis without changing ADS-B headings, trajectory
   math, or the protected console's separate north-facing SVG marker. See
