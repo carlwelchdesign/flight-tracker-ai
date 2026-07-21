@@ -228,8 +228,14 @@ readiness responses with HSTS, PostGIS and migrations ready, and
 in both environments; their temporary verifier identities were removed.
 Vercel preview `dpl_FNbngNWmbKNSafY5rvNypHjPaPzS` passes the sanitized protected
 preview contract, and refreshed production deployment
-`dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` is the current public alias and passes the
-publication-ready public-boundary verifier. Reviewer enrollment and
+`dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` passes the publication-ready public-boundary
+verifier. Commit `790e022` then corrects a strict-CSP regression by opting
+Clerk's provider into dynamic rendering so the browser script receives the
+request nonce. CI run
+[`29867545134`](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29867545134)
+passes all jobs. Production deployment `dpl_9Mtv1MzkUR9swi8ycM7yDga1e3RM` is
+the current public alias; its Clerk script includes the nonce and `/sign-in`
+visibly renders the production email/password form. Reviewer enrollment and
 authenticated browser/FT-401 smoke remain open.
 
 On 2026-07-21, Neon retained the manual production snapshot

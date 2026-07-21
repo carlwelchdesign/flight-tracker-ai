@@ -92,7 +92,7 @@ three Vercel environments. Preview and Production now have distinct
 Clerk Production now uses live keys while Preview uses test keys. The production
 domain is `flight-tracker-ai-one.vercel.app`, required organization membership
 is enabled, and organization `Flight Tracker Portfolio` exists. Production
-deployment `dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` serves the public signed-out state
+deployment `dpl_9Mtv1MzkUR9swi8ycM7yDga1e3RM` serves the public signed-out state
 and production Clerk sign-in flow without exposing configuration details.
 The pooled and direct database URLs both require TLS, target AWS `us-east-1`,
 and differ as expected by pooler usage. The direct connection enabled and
@@ -125,6 +125,13 @@ environment's distinct internal assertion secret and was then removed from
 both databases. Public verifier evidence passes for protected Vercel preview
 `dpl_FNbngNWmbKNSafY5rvNypHjPaPzS` and publication-ready production deployment
 `dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` without emitting origins, bodies, or secrets.
+Commit `790e022` corrects a later strict-CSP regression by enabling Clerk's
+dynamic provider mode so its browser script receives the request nonce. CI run
+[`29867545134`](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29867545134)
+passes all jobs. The protected preview and public deployment
+`dpl_9Mtv1MzkUR9swi8ycM7yDga1e3RM` both include the nonce on the Clerk script,
+and the public `/sign-in` route visibly renders the production email/password
+form.
 
 ## Vercel server-only configuration
 
