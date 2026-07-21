@@ -37,6 +37,7 @@ Development uses the same signed assertion and database membership path. `AUTH_M
 | Use development replay controls | no | no | yes | yes |
 | Read tenant-scoped service metrics | no | no | yes | yes |
 | List/change memberships and revoke sessions | no | no | no | yes |
+| Review/export redacted tenant audit evidence and monitoring signals | no | no | no | yes |
 
 Roles are ordered only for this fixed policy version; handlers ask for named permissions, not numeric role levels. Hosted-provider organization roles are not authoritative for application actions.
 
@@ -52,7 +53,7 @@ The active hosted organization becomes the assertion's external tenant. Rust map
 - Dispatcher write: alert actions. Actor and operator are taken from `AuthContext`.
 - Operator write: development replay controls.
 - Operator diagnostic: `/metrics`, filtered to the active operator where labels contain tenant data.
-- Administrator: membership list/update and session revocation.
+- Administrator: membership list/update, session revocation, tenant-scoped redacted audit review/export, and privileged-action monitoring.
 
 Background ingestion and replay workers continue using configured operator identities; they do not impersonate a human.
 
@@ -77,5 +78,6 @@ For Vercel, configure `AUTH_MODE=clerk`, Clerk's publishable and secret keys, th
 - PostGIS tests proving cross-tenant list/detail/source/alert/action access fails closed.
 - SSE tests proving replay and live delivery do not cross tenants.
 - Concurrency/idempotency tests for membership changes and session revocation.
+- Audit tests proving administrator-only access, cross-tenant exclusion, bounded redacted export, and high-risk/burst monitoring.
 - UI tests for signed-in, expired, revoked, insufficient-role, loading, and recovery states.
 - Production configuration rejects development auth and missing secrets.

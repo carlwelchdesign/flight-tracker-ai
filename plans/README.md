@@ -22,12 +22,15 @@ Build an operations-intelligence console inspired by Flight Science: live fleet 
 12. [ALERT_LIFECYCLE.md](ALERT_LIFECYCLE.md) — explainable ranking, dedupe, supersession, human actions, and audit behavior
 13. [IDENTITY_TENANT_ISOLATION.md](IDENTITY_TENANT_ISOLATION.md) — identity boundary, app roles, revocation, and fail-closed tenant enforcement
 14. [CREDENTIAL_ROTATION_RUNBOOK.md](CREDENTIAL_ROTATION_RUNBOOK.md) — key IDs, planned rotation, emergency revocation, rollback, and drill evidence
-15. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
-16. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
-17. [tickets/README.md](tickets/README.md) — ticket index and update rules
-18. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
-19. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
-20. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
+15. [AUDIT_REVIEW_RUNBOOK.md](AUDIT_REVIEW_RUNBOOK.md) — administrator review, redacted export, monitoring signals, and incident drill
+16. [DATA_LIFECYCLE_INCIDENT_POLICY.md](DATA_LIFECYCLE_INCIDENT_POLICY.md) — retention, deletion, backup, restoration, and incident baseline
+17. [SECURITY_PRIVACY_TRUST_REVIEW.md](SECURITY_PRIVACY_TRUST_REVIEW.md) — FT-401 threat model, trust controls, and approval gate
+18. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
+19. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
+20. [tickets/README.md](tickets/README.md) — ticket index and update rules
+21. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
+22. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
+23. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
 
 ## Planning rules
 
