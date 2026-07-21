@@ -27,3 +27,7 @@ export const HOSTED_IDENTITY_CSP: NonNullable<
     "object-src": ["none"],
   },
 };
+
+export const HOSTED_CLERK_PROVIDER_OPTIONS = {
+  dynamic: true,
+} as const;
