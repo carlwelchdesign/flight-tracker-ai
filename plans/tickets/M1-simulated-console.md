@@ -50,11 +50,11 @@ Verification evidence: `plans/FLEET_API.md`; focused projection, HTTP, SSE, metr
 
 ## FT-103 — Build map, flight board, and flight detail experience
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-103-operations-console`
 Final implementation commit: `160f5f6`
-Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (draft; checks pending)
+Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (required checks passing; ready for human review)
 Owner: Frontend engineering with product-design review
 
 Create the desktop operations interface with synchronized map and table selection.
@@ -70,7 +70,7 @@ Acceptance checklist:
 - [x] Keyboard navigation and basic screen-reader labels are verified.
 - [x] Dense layouts remain usable at the agreed minimum desktop viewport.
 
-Verification evidence: `plans/OPERATIONS_CONSOLE.md`; 31 passing Rust tests; strict workspace Clippy; Rust formatting and release build; 5 passing frontend interaction, stale-data, collision, empty-state, and payload-validation tests; dependency audit with 0 vulnerabilities; frontend lint, typecheck, and production build; Compose configuration and diff hygiene; browser-verified live, disconnected, empty, timeline, replay-control, pointer-selection, and synchronized-selection behavior; no horizontal page overflow at 1440x900, the agreed 1180x720 minimum, 820x900, or 390x844; implementation commit `160f5f6`; PR [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7), with required checks pending.
+Verification evidence: `plans/OPERATIONS_CONSOLE.md`; 31 passing Rust tests; strict workspace Clippy; Rust formatting and release build; 5 passing frontend interaction, stale-data, collision, empty-state, and payload-validation tests; dependency audit with 0 vulnerabilities; frontend lint, typecheck, and production build; Compose configuration and diff hygiene; browser-verified live, disconnected, empty, timeline, replay-control, pointer-selection, and synchronized-selection behavior; no horizontal page overflow at 1440x900, the agreed 1180x720 minimum, 820x900, or 390x844; implementation commit `160f5f6`; PR [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7), with Rust, web, and API/PostGIS smoke checks passing.
 
 ## FT-104 — Add source health and operational observability
 

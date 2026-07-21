@@ -5,12 +5,12 @@ Last updated: 2026-07-20
 ## Current state
 
 - Current milestone: M1 — Simulated operations console
-- Active ticket: FT-103 — Build map, flight board, and flight detail experience
-- Branch: `feat/ft-103-operations-console`
-- Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (draft; checks pending)
-- Owner: Frontend engineering with product-design review
-- Overall status: M0, FT-101, and FT-102 are merged; FT-103 operations console is in progress
-- Next action: Wait for PR #7 required checks, resolve any findings, then record the green result and move the verified PR to ready for human review.
+- Active ticket: None — FT-103 is complete and awaiting human merge approval
+- Branch: None — completed ticket branch is `feat/ft-103-operations-console`
+- Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (required checks passing; ready for human review)
+- Owner: Unassigned pending merge
+- Overall status: M0, FT-101, and FT-102 are merged; FT-103 is verified and ready to merge
+- Next action: Human merges PR #7, local `main` fast-forwards, then FT-104 starts on its dedicated branch.
 
 ## Milestone checklist
 
@@ -26,7 +26,7 @@ Last updated: 2026-07-20
 | Milestone | Complete | Total |
 | --- | ---: | ---: |
 | M0 | 3 | 3 |
-| M1 | 2 | 4 |
+| M1 | 3 | 4 |
 | M2 | 0 | 4 |
 | M3 | 0 | 4 |
 | M4 | 0 | 4 |
@@ -43,7 +43,7 @@ Last updated: 2026-07-20
 - FT-003 is merged through PR #2 at `7edfa2a`; M0 is complete.
 - FT-101 is merged through PR #5 at `efc2cf6` with all required checks passing.
 - FT-102 is merged through PR #6 at `aed432d` with all required checks passing.
-- FT-103 is implemented at `160f5f6` on PR #7; synchronized console behavior and responsive browser verification are complete, with required PR checks pending.
+- FT-103 is implemented at `160f5f6` on PR #7; synchronized console behavior, responsive browser verification, and all required PR checks are complete. Merge remains human-controlled.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
