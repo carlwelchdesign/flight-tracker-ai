@@ -67,6 +67,24 @@ export function fleetReferenceTime(flights: FlightView[]): number | null {
   return values.length > 0 ? Math.max(...values) : null;
 }
 
+export function fleetTiming(flights: FlightView[]): {
+  lastEventTime: number | null;
+  lastReceivedTime: number | null;
+} {
+  const eventTimes = flights.flatMap((view) => [
+    parseTime(view.flight.times.event_time),
+    parseTime(view.latest_position?.times.event_time ?? null),
+  ]);
+  const receivedTimes = flights.flatMap((view) => [
+    parseTime(view.flight.times.received_at),
+    parseTime(view.latest_position?.times.received_at ?? null),
+  ]);
+  return {
+    lastEventTime: maximumTime(eventTimes),
+    lastReceivedTime: maximumTime(receivedTimes),
+  };
+}
+
 export function freshness(
   view: FlightView,
   referenceTime: number | null,
@@ -152,4 +170,9 @@ function parseTime(value: string | null): number | null {
   if (!value) return null;
   const result = Date.parse(value);
   return Number.isFinite(result) ? result : null;
+}
+
+function maximumTime(values: Array<number | null>): number | null {
+  const valid = values.filter((value): value is number => value !== null);
+  return valid.length > 0 ? Math.max(...valid) : null;
 }

@@ -55,6 +55,7 @@ pub struct ReplayStatus {
     pub emitted_events: usize,
     pub virtual_elapsed_ms: u64,
     pub virtual_time: DateTime<Utc>,
+    pub feed_outage: bool,
 }
 
 pub struct ReplayEngine {
@@ -64,6 +65,7 @@ pub struct ReplayEngine {
     cursor: usize,
     elapsed_ms: u64,
     fractional_remainder: u128,
+    feed_outage: bool,
 }
 
 impl ReplayEngine {
@@ -75,6 +77,7 @@ impl ReplayEngine {
             cursor: 0,
             elapsed_ms: 0,
             fractional_remainder: 0,
+            feed_outage: false,
         }
     }
 
@@ -90,6 +93,7 @@ impl ReplayEngine {
             emitted_events: self.cursor,
             virtual_elapsed_ms: self.elapsed_ms,
             virtual_time: self.scenario.start_time + elapsed,
+            feed_outage: self.feed_outage,
         }
     }
 
@@ -112,6 +116,7 @@ impl ReplayEngine {
         self.cursor = 0;
         self.elapsed_ms = 0;
         self.fractional_remainder = 0;
+        self.feed_outage = false;
         self.status()
     }
 
@@ -121,11 +126,16 @@ impl ReplayEngine {
         self.status()
     }
 
+    pub fn set_feed_outage(&mut self, active: bool) -> ReplayStatus {
+        self.feed_outage = active;
+        self.status()
+    }
+
     pub fn advance(
         &mut self,
         wall_delta: Duration,
     ) -> Result<Vec<NormalizedEventBatch>, ScenarioError> {
-        if self.phase != ReplayPhase::Running {
+        if self.phase != ReplayPhase::Running || self.feed_outage {
             return Ok(Vec::new());
         }
 
@@ -190,5 +200,19 @@ mod tests {
         engine.pause();
         engine.advance(Duration::from_secs(1)).unwrap();
         assert_eq!(engine.status().virtual_elapsed_ms, 1_000);
+    }
+
+    #[test]
+    fn simulated_feed_outage_suspends_events_until_restored() {
+        let mut engine = ReplayEngine::new(fixture());
+        engine.resume();
+        let outage = engine.set_feed_outage(true);
+        assert!(outage.feed_outage);
+        assert!(engine.advance(Duration::from_secs(60)).unwrap().is_empty());
+        assert_eq!(engine.status().virtual_elapsed_ms, 0);
+
+        engine.set_feed_outage(false);
+        assert!(!engine.advance(Duration::from_secs(60)).unwrap().is_empty());
+        assert_eq!(engine.status().virtual_elapsed_ms, 60_000);
     }
 }

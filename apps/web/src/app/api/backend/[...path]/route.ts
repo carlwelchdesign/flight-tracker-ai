@@ -5,9 +5,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const ALLOWED_PATHS = [
+  /^(?:health|readiness)$/,
   /^api\/flights(?:\/[^/]+(?:\/timeline)?)?$/,
   /^api\/events\/stream$/,
-  /^api\/dev\/replay(?:\/(?:pause|resume|reset|speed))?$/,
+  /^api\/dev\/replay(?:\/(?:pause|resume|reset|speed|outage))?$/,
 ];
 
 type RouteContext = {
@@ -39,7 +40,7 @@ async function forward(
   const target = new URL(`${getApiBaseUrl()}/${backendPath}`);
   target.search = request.nextUrl.search;
   const headers = new Headers();
-  for (const name of ["accept", "content-type", "last-event-id"]) {
+  for (const name of ["accept", "content-type", "last-event-id", "x-correlation-id"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
@@ -53,7 +54,7 @@ async function forward(
       signal: request.signal,
     });
     const responseHeaders = new Headers();
-    for (const name of ["content-type", "cache-control"]) {
+    for (const name of ["content-type", "cache-control", "x-correlation-id"]) {
       const value = response.headers.get(name);
       if (value) responseHeaders.set(name, value);
     }

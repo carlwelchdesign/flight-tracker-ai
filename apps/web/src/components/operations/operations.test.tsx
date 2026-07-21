@@ -1,13 +1,21 @@
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { FlightView, Hazard } from "@/lib/fleet-api";
 import { parseFlightPage } from "@/lib/fleet-api";
 import { FlightBoard } from "./flight-board";
 import { FlightDetail } from "./flight-detail";
 import { OperationsMap } from "./operations-map";
-import { attentionLevel, fleetReferenceTime, freshness, scheduleVariance } from "./operations-model";
+import {
+  attentionLevel,
+  fleetReferenceTime,
+  fleetTiming,
+  freshness,
+  scheduleVariance,
+} from "./operations-model";
+import { OperationsBadges } from "./operations-badges";
+import { OperationsStatusRegion } from "./operations-status";
 
 const flights = [
   flight("101", "FT101", "SFO", "LAX", "active", -121.95, 37.25, "2026-07-20T16:01:00Z"),
@@ -103,6 +111,81 @@ describe("operational presentation rules", () => {
     expect(() => parseFlightPage({ data: [{}], pagination: {} })).toThrow(
       "Fleet API returned an unexpected list payload",
     );
+  });
+
+  it("keeps event and receipt timing distinct", () => {
+    const delayedReceipt: FlightView = {
+      ...flights[2],
+      latest_position: {
+        ...flights[2].latest_position!,
+        times: {
+          ...flights[2].latest_position!.times,
+          received_at: "2026-07-20T16:04:30Z",
+        },
+      },
+    };
+    expect(fleetTiming([flights[0], flights[1], delayedReceipt])).toEqual({
+      lastEventTime: Date.parse("2026-07-20T16:03:00Z"),
+      lastReceivedTime: Date.parse("2026-07-20T16:04:30Z"),
+    });
+  });
+});
+
+describe("operations health presentation", () => {
+  it("distinguishes healthy service and stream state", () => {
+    render(
+      <OperationsBadges
+        connection="live"
+        serviceHealth={{ state: "healthy", workers: [] }}
+      />,
+    );
+    expect(screen.getByText("Service healthy")).toBeInTheDocument();
+    expect(screen.getByText("Stream live")).toBeInTheDocument();
+  });
+
+  it("makes a simulated feed outage obvious and recoverable", async () => {
+    const restore = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <OperationsStatusRegion
+        connection="live"
+        serviceHealth={{ state: "healthy", workers: [] }}
+        feedOutage
+        error={null}
+        onRetry={() => undefined}
+        onDismiss={() => undefined}
+        onRestoreFeed={restore}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Simulation feed outage");
+    await user.click(screen.getByRole("button", { name: "Restore feed" }));
+    expect(restore).toHaveBeenCalledOnce();
+  });
+
+  it("names a failed critical worker when service health degrades", () => {
+    render(
+      <OperationsStatusRegion
+        connection="live"
+        serviceHealth={{
+          state: "degraded",
+          workers: [
+            {
+              name: "replay_runtime",
+              state: "failed",
+              last_heartbeat_at: null,
+              detail: "scenario loop stopped",
+            },
+          ],
+          message: "replay_runtime (failed)",
+        }}
+        feedOutage={false}
+        error={null}
+        onRetry={() => undefined}
+        onDismiss={() => undefined}
+        onRestoreFeed={() => undefined}
+      />,
+    );
+    expect(screen.getByText("replay_runtime (failed)")).toBeInTheDocument();
   });
 });
 

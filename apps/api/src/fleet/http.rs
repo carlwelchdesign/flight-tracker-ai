@@ -11,10 +11,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use crate::{
-    domain::FlightId,
-    metrics::{ApiMetrics, observe_request},
-};
+use crate::{domain::FlightId, metrics::ApiMetrics};
 
 use super::{FleetEvent, FleetStore};
 
@@ -98,10 +95,6 @@ pub fn fleet_router(store: FleetStore, metrics: ApiMetrics) -> Router {
         .route("/api/flights/{flight_id}/timeline", get(flight_timeline))
         .route("/api/events/stream", get(event_stream))
         .route("/metrics", get(metrics_endpoint))
-        .layer(axum::middleware::from_fn_with_state(
-            metrics,
-            observe_request,
-        ))
         .with_state(state)
 }
 
@@ -237,13 +230,16 @@ const fn default_page_size() -> usize {
 mod tests {
     use std::time::Duration;
 
-    use axum::{body::Body, http::Request};
+    use axum::{body::Body, http::Request, middleware};
     use http_body_util::BodyExt;
     use serde_json::Value;
     use tower::ServiceExt;
 
     use super::*;
-    use crate::replay::{ReplayScenario, ScenarioEvent};
+    use crate::{
+        metrics::observe_request,
+        replay::{ReplayScenario, ScenarioEvent},
+    };
 
     fn fixture() -> ReplayScenario {
         ReplayScenario::from_json(include_str!(
@@ -404,7 +400,8 @@ mod tests {
     #[tokio::test]
     async fn metrics_endpoint_exposes_request_latency_and_stream_counters() {
         let metrics = ApiMetrics::default();
-        let app = fleet_router(FleetStore::new(16), metrics);
+        let app = fleet_router(FleetStore::new(16), metrics.clone())
+            .layer(middleware::from_fn_with_state(metrics, observe_request));
         app.clone()
             .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())
             .await

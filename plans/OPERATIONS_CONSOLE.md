@@ -16,7 +16,7 @@ Selection is a single shared state. A selection made on the map or board updates
 
 ## Information hierarchy
 
-- The header carries product identity, connection state, data age, and development-only replay controls.
+- The header carries product identity, distinct service and stream states, last event and receipt times, and development-only replay/outage controls.
 - The map and board are equal primary surfaces for spatial and comparative scanning.
 - The detail panel is the evidence surface for the selected flight.
 - Attention language remains descriptive (`watch`, `normal`) and never claims to be a safety determination.
@@ -28,6 +28,8 @@ Selection is a single shared state. A selection made on the map or board updates
 - **Empty:** the board explains that no active flights are available and offers a simulation start action when replay controls exist.
 - **Disconnected:** an explicit banner says live updates are unavailable while the last known snapshot remains visible.
 - **Reconnecting:** the connection label and banner explain that the stream is recovering.
+- **Source outage:** a prominent development banner says source events are intentionally suspended while the healthy service and stream remain distinguishable.
+- **Critical worker degraded:** service health names the worker state without hiding the last accepted operational picture.
 - **Stale:** flights whose last observation exceeds the freshness threshold are labeled stale in the board and detail panel.
 - **Partial data:** a warning identifies when the initial fleet or a later refresh failed while retained data remains usable.
 - **Fatal error:** the route-level error view provides a retry action.

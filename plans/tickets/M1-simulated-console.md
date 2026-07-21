@@ -54,7 +54,7 @@ Status: Complete
 
 Branch: `feat/ft-103-operations-console`
 Final implementation commit: `160f5f6`
-Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (required checks passing; ready for human review)
+Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (merged at `18a5a23`)
 Owner: Frontend engineering with product-design review
 
 Create the desktop operations interface with synchronized map and table selection.
@@ -74,11 +74,12 @@ Verification evidence: `plans/OPERATIONS_CONSOLE.md`; 31 passing Rust tests; str
 
 ## FT-104 — Add source health and operational observability
 
-Status: Not started
+Status: Complete
 
 Branch: `feat/ft-104-source-health-observability`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `c03c4f0`
+Pull request: [#8](https://github.com/carlwelchdesign/flight-tracker-ai/pull/8)
+Owner: Full-stack engineering
 
 Make replay and service health visible to operators and developers.
 
@@ -86,10 +87,10 @@ Dependencies: FT-102, FT-103
 
 Acceptance checklist:
 
-- [ ] UI shows last event time, last received time, and connection state.
-- [ ] Rust service emits structured logs with correlation IDs.
-- [ ] Health and readiness reflect database and critical-worker state.
-- [ ] A simulated feed outage produces an obvious degraded UI state.
-- [ ] A short troubleshooting runbook is documented.
+- [x] UI shows last event time, last received time, and connection state.
+- [x] Rust service emits structured logs with correlation IDs.
+- [x] Health and readiness reflect database and critical-worker state.
+- [x] A simulated feed outage produces an obvious degraded UI state.
+- [x] A short troubleshooting runbook is documented.
 
-Verification evidence: Pending.
+Verification evidence: `plans/OPERATIONS_RUNBOOK.md`; focused worker-health, correlation-ID, JSON-log, replay-outage, public-route, health, readiness, proxy-parser, timing, badge, outage, and degraded-worker tests; 34 passing Rust library tests, 3 binary tests, and the schema contract test; strict workspace Clippy; Rust formatting and release build; 11 passing frontend tests; dependency audit, lint, typecheck, and production build; Compose configuration and diff hygiene; browser-verified distinct event and receipt times, healthy service/stream state, simulated outage and recovery, degraded/reconnecting state with the last accepted picture retained, and no horizontal overflow at the agreed 1180x720 minimum; implementation commit `c03c4f0`; PR [#8](https://github.com/carlwelchdesign/flight-tracker-ai/pull/8), with Rust, web, and API/PostGIS smoke checks passing.

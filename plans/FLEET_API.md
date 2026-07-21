@@ -46,7 +46,7 @@ The FT-102 projection is deliberately in-memory for the deterministic M1 console
 
 ## Metrics
 
-Every fleet/API request emits a structured tracing event with method, path, status, and latency in microseconds. SSE connection open/close transitions emit the active connection count. `GET /metrics` exposes Prometheus text counters:
+Every API request receives an `x-correlation-id`. A caller-supplied ID is preserved only when it is a safe 1–128 character identifier; otherwise the API creates a UUID. The response repeats the ID. JSON tracing events include correlation ID, method, path, status, and latency in microseconds. Projection logs use the provider-envelope UUID as their correlation ID, and replay lifecycle logs use the scenario ID. SSE connection open/close transitions emit the active connection count. `GET /metrics` exposes Prometheus text counters:
 
 - `flight_tracker_api_requests_total`
 - `flight_tracker_api_latency_microseconds_total`

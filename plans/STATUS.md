@@ -4,18 +4,18 @@ Last updated: 2026-07-20
 
 ## Current state
 
-- Current milestone: M1 — Simulated operations console
-- Active ticket: None — FT-103 is complete and awaiting human merge approval
-- Branch: None — completed ticket branch is `feat/ft-103-operations-console`
-- Pull request: [#7](https://github.com/carlwelchdesign/flight-tracker-ai/pull/7) (required checks passing; ready for human review)
-- Owner: Unassigned pending merge
-- Overall status: M0, FT-101, and FT-102 are merged; FT-103 is verified and ready to merge
-- Next action: Human merges PR #7, local `main` fast-forwards, then FT-104 starts on its dedicated branch.
+- Current milestone: M2 — Live weather and hazard intelligence
+- Active ticket: None
+- Branch: `feat/ft-104-source-health-observability`
+- Pull request: [#8](https://github.com/carlwelchdesign/flight-tracker-ai/pull/8) (ready for human review)
+- Owner: Unassigned
+- Overall status: M0 and M1 implementation are complete; FT-104 is awaiting human review and merge
+- Next action: Review and merge PR #8, sync `main`, then start FT-201 on `feat/ft-201-noaa-weather-ingestion`.
 
 ## Milestone checklist
 
 - [x] M0 — Foundation and feasibility
-- [ ] M1 — Simulated operations console
+- [x] M1 — Simulated operations console
 - [ ] M2 — Live weather and hazard intelligence
 - [ ] M3 — Commercial flight data and operational workflow
 - [ ] M4 — Pilot readiness and operational hardening
@@ -26,7 +26,7 @@ Last updated: 2026-07-20
 | Milestone | Complete | Total |
 | --- | ---: | ---: |
 | M0 | 3 | 3 |
-| M1 | 3 | 4 |
+| M1 | 4 | 4 |
 | M2 | 0 | 4 |
 | M3 | 0 | 4 |
 | M4 | 0 | 4 |
@@ -43,7 +43,8 @@ Last updated: 2026-07-20
 - FT-003 is merged through PR #2 at `7edfa2a`; M0 is complete.
 - FT-101 is merged through PR #5 at `efc2cf6` with all required checks passing.
 - FT-102 is merged through PR #6 at `aed432d` with all required checks passing.
-- FT-103 is implemented at `160f5f6` on PR #7; synchronized console behavior, responsive browser verification, and all required PR checks are complete. Merge remains human-controlled.
+- FT-103 is merged through PR #7 at `18a5a23` with all required checks passing.
+- FT-104 implementation is complete at `c03c4f0` through PR #8; Rust, web, and API/PostGIS smoke checks pass, and the PR awaits human review and merge.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
