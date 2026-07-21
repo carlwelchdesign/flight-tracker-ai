@@ -13,6 +13,9 @@ describe("public flight tracker demo", () => {
     expect(screen.getByRole("heading", { name: "Aircraft" })).toBeInTheDocument();
     expect(await screen.findByText(/replay demonstration/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "FT101" })).toBeInTheDocument();
+    const selectedAircraft = screen.getByRole("heading", { name: "FT101" });
+    const currentPicture = screen.getByRole("heading", { name: "Aircraft" });
+    expect(selectedAircraft.compareDocumentPosition(currentPicture) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("link", { name: /review an alert/i })).not.toBeInTheDocument();
     expect(screen.getByText(/sign in to review alerts and protected actions/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /protected operations console/i })).toHaveAttribute(

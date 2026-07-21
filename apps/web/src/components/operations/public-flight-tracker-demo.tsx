@@ -158,36 +158,38 @@ export function PublicFlightTrackerDemo() {
           onRetryWeather={() => void refreshWeather()}
           onSelect={setSelectedId}
         />
-        <section className="ops-panel live-traffic-panel" id="live-flight-list" aria-labelledby="traffic-title">
-          <div className="ops-panel-heading">
-            <div><p className="ops-eyebrow">Current picture</p><h2 id="traffic-title">Aircraft</h2></div>
-            <span className="traffic-count">{aircraft.length}</span>
-          </div>
-          <div className="live-aircraft-list">
-            {aircraft.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={item.id === selected?.id ? "live-flight-row is-selected" : "live-flight-row"}
-                onClick={() => setSelectedId(item.id)}
-              >
-                <strong>{displayCallsign(item)}</strong>
-                <span>{formatAltitude(item)} · {formatSpeed(item)}</span>
-                <time dateTime={item.observed_at}>
-                  {isAircraftStale(item, snapshot?.status ?? null) ? "Stale · " : ""}{formatAge(item.observed_at)}
-                </time>
-              </button>
-            ))}
-            {!loading && aircraft.length === 0 && <p className="empty-traffic">No aircraft are visible in this regional snapshot.</p>}
-          </div>
-        </section>
-        <AircraftInspector
-          aircraft={selected}
-          mode={mode}
-          status={snapshot?.status ?? null}
-          trail={selectedTrail}
-          projection={selectedProjection}
-        />
+        <div className="live-tracker-sidebar">
+          <AircraftInspector
+            aircraft={selected}
+            mode={mode}
+            status={snapshot?.status ?? null}
+            trail={selectedTrail}
+            projection={selectedProjection}
+          />
+          <section className="ops-panel live-traffic-panel" id="live-flight-list" aria-labelledby="traffic-title">
+            <div className="ops-panel-heading">
+              <div><p className="ops-eyebrow">Current picture</p><h2 id="traffic-title">Aircraft</h2></div>
+              <span className="traffic-count">{aircraft.length}</span>
+            </div>
+            <div className="live-aircraft-list">
+              {aircraft.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={item.id === selected?.id ? "live-flight-row is-selected" : "live-flight-row"}
+                  onClick={() => setSelectedId(item.id)}
+                >
+                  <strong>{displayCallsign(item)}</strong>
+                  <span>{formatAltitude(item)} · {formatSpeed(item)}</span>
+                  <time dateTime={item.observed_at}>
+                    {isAircraftStale(item, snapshot?.status ?? null) ? "Stale · " : ""}{formatAge(item.observed_at)}
+                  </time>
+                </button>
+              ))}
+              {!loading && aircraft.length === 0 && <p className="empty-traffic">No aircraft are visible in this regional snapshot.</p>}
+            </div>
+          </section>
+        </div>
       </div>
 
       <footer className="operations-footer live-footer">
