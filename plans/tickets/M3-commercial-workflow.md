@@ -37,7 +37,7 @@ Historical evidence: PR [#15](https://github.com/carlwelchdesign/flight-tracker-
 
 ## FT-302 — Integrate best-effort live aircraft positions
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-302-live-flight-integration`
 Final implementation commit: `fe8957b`
@@ -72,8 +72,12 @@ linked ODbL attribution, and preserves an explicit replay action during
 degraded/unavailable states. Repository verification passes 84 Rust library
 tests, 11 binary configuration tests, 4 integration/schema tests, strict
 Clippy, formatting, 50 web tests, lint, typecheck, and a production Next.js
-build. API/PostGIS verification remains assigned to CI because the local
-PostgreSQL 14 service does not have PostGIS installed.
+build. API/PostGIS verification remained assigned to CI because the local
+PostgreSQL 14 service does not have PostGIS installed. CI run
+[29855008220](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29855008220)
+passes Rust, web, and API/PostGIS checks, including authenticated
+disabled-by-default source state and end-to-end fleet/status `no-store`
+headers.
 
 ## FT-303 — Add identity, roles, and tenant isolation
 
