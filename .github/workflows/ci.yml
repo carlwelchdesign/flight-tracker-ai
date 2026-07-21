@@ -22,6 +22,7 @@ jobs:
         run: >-
           python3 scripts/validate_ft401_review.py
           && python3 scripts/test_validate_ft401_review.py
+          && python3 scripts/test_verify_ft401_hosted_drill.py
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.97.1
