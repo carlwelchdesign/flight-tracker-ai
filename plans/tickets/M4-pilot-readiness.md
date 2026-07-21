@@ -17,15 +17,22 @@ Dependencies: FT-301, FT-303, FT-304
 
 Preparation scope: review the implemented FT-303/FT-304 boundaries now; keep provider-specific attribution, retention, deletion, and licensing controls open until FT-301 supplies the controlling contract.
 
+Preparation checklist:
+
+- [x] Audit implemented authentication, tenancy, ingestion, audit, privileged-action, and advisory-language boundaries.
+- [x] Create the threat model and proposed data lifecycle, backup, and incident-response baseline.
+- [x] Record severity, owner, deadline gate, treatment, and verification for every finding.
+- [ ] Resolve FT-301 and implement the selected provider's controlling obligations.
+
 Acceptance checklist:
 
-- [ ] Threat model covers credentials, tenant isolation, ingestion abuse, and privileged actions.
-- [ ] Retention, deletion, backup, and incident-response policies are documented.
+- [x] Threat model covers credentials, tenant isolation, ingestion abuse, and privileged actions.
+- [x] Retention, deletion, backup, and incident-response policies are documented.
 - [ ] Advisory-only product language is reviewed and consistent.
 - [ ] Provider attribution and licensing obligations are implemented.
-- [ ] Security findings have owners and deadlines.
+- [x] Security findings have owners and deadlines.
 
-Verification evidence: Pending.
+Verification evidence: [`SECURITY_PRIVACY_TRUST_REVIEW.md`](../SECURITY_PRIVACY_TRUST_REVIEW.md), [`DATA_LIFECYCLE_INCIDENT_POLICY.md`](../DATA_LIFECYCLE_INCIDENT_POLICY.md), [`SECURITY_FINDINGS.csv`](../SECURITY_FINDINGS.csv), and `python3 scripts/validate_ft401_review.py`. Structural validation passes; `--require-complete` intentionally fails while critical/high findings and the FT-301 provider gate remain open.
 
 ## FT-402 — Run resilience and failure drills
 
