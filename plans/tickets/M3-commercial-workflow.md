@@ -4,7 +4,7 @@ Default owner: Product and engineering for source eligibility; engineering and s
 
 ## FT-301 — Select an eligible free aircraft-position source
 
-Status: Not started
+Status: In progress
 
 Branch: `docs/ft-301-free-data-selection`
 Final commit: Pending
@@ -17,13 +17,19 @@ Dependencies: FT-003
 
 Acceptance checklist:
 
-- [ ] Official terms are linked and permit server-side access plus public, hosted, non-commercial display for this portfolio project.
-- [ ] Attribution, caching, retention, redistribution, rate-limit, and acceptable-use requirements are recorded.
-- [ ] A bounded sample documents coverage gaps, missing fields, freshness, and failure behavior without treating best-effort data as complete.
-- [ ] The selected source supplies positions only unless its documented schema proves additional facts; scenario routes, schedules, and statuses remain visibly simulated.
-- [ ] Replay remains the default fallback when the source is unavailable, rate-limited, ineligible, or too incomplete for a convincing demo.
-- [ ] No SLA, procurement process, paid trial, legal department, operator partner, or commercial-use approval is required for the portfolio release.
-- [ ] OD-002 is resolved in `../DECISIONS.md` with a selected source or an explicit replay-only decision.
+- [x] Official terms are linked and permit server-side access plus public, hosted, non-commercial display for this portfolio project.
+- [x] Attribution, caching, retention, redistribution, rate-limit, and acceptable-use requirements are recorded.
+- [x] A bounded sample documents coverage gaps, missing fields, freshness, and failure behavior without treating best-effort data as complete.
+- [x] The selected source supplies positions only unless its documented schema proves additional facts; scenario routes, schedules, and statuses remain visibly simulated.
+- [x] Replay remains the default fallback when the source is unavailable, rate-limited, ineligible, or too incomplete for a convincing demo.
+- [x] No SLA, procurement process, paid trial, legal department, operator partner, or commercial-use approval is required for the portfolio release.
+- [x] OD-002 is resolved in `../DECISIONS.md` with a selected source or an explicit replay-only decision.
+
+Working evidence: [`ADSBLOL_INTEGRATION.md`](../ADSBLOL_INTEGRATION.md) selects
+ADSB.lol for an optional ephemeral position layer, records ODbL attribution and
+`no-store` controls, captures a three-region bounded sample, and preserves
+deterministic replay as the only fallback. ADR-011 resolves OD-002. Delivery
+validation and PR evidence remain pending.
 
 Historical evidence: PR [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) and PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16) produced a complete commercial procurement framework. It is retained under [`provider-evaluation/`](../provider-evaluation/README.md) for a possible future production track but is not part of this ticket's acceptance gate.
 
@@ -47,7 +53,9 @@ Acceptance checklist:
 - [ ] Source, attribution, freshness, coverage quality, and best-effort status are visible per flight.
 - [ ] The UI persistently states `Portfolio demonstration — not for operational use` for both live and replay modes.
 - [ ] Feed failure automatically preserves a usable replay path and visibly reports the source as unavailable or degraded.
-- [ ] Stored samples and fixtures comply with the selected source's documented retention and redistribution terms.
+- [ ] The ADSB.lol adapter uses only a bounded regional endpoint, polls no faster than every 30 seconds, permits one request in flight, times out, backs off with jitter, and never performs global or per-aircraft polling.
+- [ ] ADSB.lol responses remain ephemeral and uncached across Rust and Next.js, preserve `Cache-Control: no-store`, are excluded from logs, analytics, exports, LLM inputs, fixtures, PostgreSQL, and backups, and receive linked ODbL attribution whenever visible.
+- [ ] Stored samples and fixtures contain replay-owned synthetic data only; no ADSB.lol response body is committed or retained.
 
 Verification evidence: Pending.
 

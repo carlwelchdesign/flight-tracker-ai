@@ -130,6 +130,15 @@ class Ft301EvidenceValidationTest(unittest.TestCase):
             })
             self._write(decision_path, decisions)
             shutil.copy(ROOT / "plans" / "DECISIONS.md", directory.parent / "DECISIONS.md")
+            copied_decisions = directory.parent / "DECISIONS.md"
+            copied_decisions.write_text(
+                copied_decisions.read_text(encoding="utf-8").replace(
+                    "OD-002 is resolved",
+                    "OD-002 remains pending",
+                )
+                + "\n| OD-002 | Test open decision | FT-301 | Test evidence |\n",
+                encoding="utf-8",
+            )
 
             errors = validate(directory, require_complete=True)
             self.assertTrue(any("weight does not match" in error for error in errors))

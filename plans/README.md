@@ -27,11 +27,12 @@ Build a portfolio demonstration inspired by Flight Science: fleet monitoring, av
 17. [DATA_LIFECYCLE_INCIDENT_POLICY.md](DATA_LIFECYCLE_INCIDENT_POLICY.md) — retention, deletion, backup, restoration, and incident baseline
 18. [SECURITY_PRIVACY_TRUST_REVIEW.md](SECURITY_PRIVACY_TRUST_REVIEW.md) — FT-401 threat model, trust controls, and approval gate
 19. [PROVIDER_FEASIBILITY.md](PROVIDER_FEASIBILITY.md) — provider rights, limits, evidence, and procurement gates
-20. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
-21. [tickets/README.md](tickets/README.md) — ticket index and update rules
-22. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
-23. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
-24. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
+20. [ADSBLOL_INTEGRATION.md](ADSBLOL_INTEGRATION.md) — selected free position source, ODbL controls, bounded sample, and FT-302 activation gate
+21. [ROADMAP.md](ROADMAP.md) — milestone sequence and gates
+22. [tickets/README.md](tickets/README.md) — ticket index and update rules
+23. [GIT_WORKFLOW.md](GIT_WORKFLOW.md) — mandatory branch, commit, and PR lifecycle
+24. [DECISIONS.md](DECISIONS.md) — decisions and unresolved questions
+25. [RISKS.md](RISKS.md) — delivery, safety, licensing, and operational risks
 
 ## Planning rules
 

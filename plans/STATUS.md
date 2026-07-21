@@ -5,12 +5,12 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M3 — Portfolio live data and operational workflow
-- Active ticket: None — FT-401 is complete; FT-301 is next
-- Branch: None
-- Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (verified delivery)
+- Active ticket: FT-301 — Select an eligible free aircraft-position source
+- Branch: `docs/ft-301-free-data-selection`
+- Pull request: Pending
 - Owner: Product and engineering
 - Overall status: M0, M1, and M2 are complete; M4 is 1/4 complete after the FT-401 repository trust review, and environment-specific risks remain explicit FT-302/FT-402/FT-404 gates rather than falsely completed hosted evidence
-- Next action: Start FT-301 on `docs/ft-301-free-data-selection` and select an officially eligible free best-effort source or record replay-only as the outcome.
+- Next action: Validate the ADSB.lol selection record, bounded sample, ODbL controls, and archived-commercial evidence compatibility; then deliver FT-301 through its PR.
 
 ## Milestone checklist
 
