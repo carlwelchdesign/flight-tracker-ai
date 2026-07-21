@@ -196,7 +196,10 @@ The 2026-07-21 Render specification audit found that managed preview
 environments require a Pro workspace and omit `sync: false` secrets. To retain
 the zero-base-cost and environment-isolation requirements, `render.yaml` now
 defines explicit free staging and production services. Staging follows passing
-`main` checks; production is promoted manually after staging and browser smoke.
+feature-branch checks during FT-404 verification; production is promoted
+manually after staging and browser smoke. The final promotion commit switches
+both services to `main`. Render Free rejects a configurable maximum shutdown
+delay, so the Blueprint uses the platform default.
 Each service requires a distinct Neon branch URL and internal assertion secret.
 The Blueprint passes Render's official JSON Schema, the Rust release build
 passes locally, and CI run

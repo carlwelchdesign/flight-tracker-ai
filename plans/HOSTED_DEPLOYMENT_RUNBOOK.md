@@ -117,8 +117,12 @@ secret uses a `NEXT_PUBLIC_` prefix.
 
 ## Controlled release and rollback
 
-The staging Render service deploys `main` only after GitHub checks pass. The
-production service requires manual promotion after staging and browser smoke.
+During PR verification both Render services deploy the FT-404 feature branch;
+the final promotion commit changes both service branches to `main`. Staging
+deploys only after GitHub checks pass. Production requires manual promotion
+after staging and browser smoke. Render Free does not support a configurable
+maximum shutdown delay, so the Blueprint intentionally uses the platform
+default.
 Both use `/health`, and the API runs SQLx migrations before accepting traffic.
 Vercel creates branch previews through Git integration. The release order is
 database backup/snapshot, staging Render deploy and health verification,
