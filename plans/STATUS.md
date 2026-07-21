@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-409 — Prioritize selected aircraft details
-- Branch: `feat/ft-409-prioritize-selected-aircraft`
-- Pull request: [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
+- Active ticket: FT-405 — Live navigable flight tracker release closeout
+- Branch: `feat/ft-405-live-navigable-tracker`
+- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
 - Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Move selected-aircraft evidence above the current traffic list,
-  verify responsive behavior, and deliver the stacked PR.
+- Next action: Close the remaining FT-405 direct motion/lifecycle coverage and
+  forced hosted fallback checks before merging the parent release PR.
 
 ## Milestone checklist
 
@@ -58,6 +58,10 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
+- FT-409 is complete and merged into FT-405 through PR [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
+  at `a99c47f`. The selected-aircraft evidence panel now precedes the current
+  aircraft list in visual and document order, while the list retains its own
+  scrolling region. All five checks and live-API browser verification pass.
 - FT-408 is merged into the FT-405 feature branch through PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28)
   at merge commit `d222094`; hosted-enablement commit `1ed490c` passes all five
   checks. Render staging and production return a sanitized no-store NOAA

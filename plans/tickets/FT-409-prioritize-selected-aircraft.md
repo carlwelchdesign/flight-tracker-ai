@@ -1,10 +1,10 @@
 # FT-409 — Prioritize selected aircraft details
 
-Status: In review
+Status: Complete
 
 Branch: `feat/ft-409-prioritize-selected-aircraft`
 Latest implementation commit: `4b37eef`
-Final commit: Pending
+Final commit: `a99c47f`
 Pull request: [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
 Owner: Frontend product engineering
 
@@ -25,7 +25,7 @@ Dependency: FT-405 live navigable tracker.
 - [x] A behavior test protects the intended panel order.
 - [x] Focused tests, typecheck, lint, production build, and browser verification
       pass.
-- [ ] The dedicated branch has an intentional commit, pull request, passing
+- [x] The dedicated branch has an intentional commit, pull request, passing
       checks, and updated ticket evidence.
 
 ## Verification evidence
@@ -37,6 +37,8 @@ Dependency: FT-405 live navigable tracker.
   panel starts at the top of the sidebar, the scrollable traffic list begins
   directly beneath it, map and NOAA layers remain visible, horizontal overflow
   is absent, and no application errors or framework overlay are present.
+- Delivery: stacked PR [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
+  passed all five required checks and merged into FT-405 at `a99c47f`.
 
 ## Non-goals
 
