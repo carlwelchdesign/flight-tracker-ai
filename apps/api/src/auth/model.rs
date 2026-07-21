@@ -19,6 +19,7 @@ pub enum Permission {
     ControlReplay,
     ReadMetrics,
     ManageMemberships,
+    ReviewAudit,
 }
 
 impl AuthRole {
@@ -32,7 +33,9 @@ impl AuthRole {
             Permission::ControlReplay | Permission::ReadMetrics => {
                 matches!(self, Self::Operator | Self::Administrator)
             }
-            Permission::ManageMemberships => matches!(self, Self::Administrator),
+            Permission::ManageMemberships | Permission::ReviewAudit => {
+                matches!(self, Self::Administrator)
+            }
         }
     }
 
@@ -91,5 +94,7 @@ mod tests {
         assert!(AuthRole::Operator.permits(Permission::ControlReplay));
         assert!(!AuthRole::Operator.permits(Permission::ManageMemberships));
         assert!(AuthRole::Administrator.permits(Permission::ManageMemberships));
+        assert!(AuthRole::Administrator.permits(Permission::ReviewAudit));
+        assert!(!AuthRole::Operator.permits(Permission::ReviewAudit));
     }
 }

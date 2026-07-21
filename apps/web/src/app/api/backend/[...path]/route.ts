@@ -14,7 +14,7 @@ const ALLOWED_PATHS = [
   /^api\/alerts(?:\/[^/]+(?:\/actions)?)?$/,
   /^api\/events\/stream$/,
   /^api\/auth\/context$/,
-  /^api\/admin\/(?:memberships(?:\/[^/]+)?|sessions\/revoke)$/,
+  /^api\/admin\/(?:memberships(?:\/[^/]+)?|sessions\/revoke|audit-events(?:\/export)?|audit-alerts)$/,
   /^api\/dev\/replay(?:\/(?:pause|resume|reset|speed|outage))?$/,
   /^metrics$/,
 ];
@@ -68,7 +68,7 @@ async function forward(
       signal: request.signal,
     });
     const responseHeaders = new Headers();
-    for (const name of ["content-type", "cache-control", "x-correlation-id"]) {
+    for (const name of ["content-type", "content-disposition", "cache-control", "x-correlation-id"]) {
       const value = response.headers.get(name);
       if (value) responseHeaders.set(name, value);
     }

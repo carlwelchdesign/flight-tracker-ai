@@ -25,6 +25,7 @@ import { OperationsBadges } from "./operations-badges";
 import type { ConnectionState, ServiceHealthState } from "./operations-health-model";
 import { OperationsStatusRegion } from "./operations-status";
 import { AlertQueue } from "./alert-queue";
+import { AuditReview } from "./audit-review";
 
 type ReplayPhase = "running" | "paused" | "completed" | "unavailable";
 
@@ -503,6 +504,8 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
           />
         </div>
       </div>
+
+      {authContext.role === "administrator" && <AuditReview refreshRevision={eventRevision} />}
 
       <footer className="operations-footer">
         <span>Advisory evidence workspace</span>

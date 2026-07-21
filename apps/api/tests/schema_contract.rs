@@ -2,7 +2,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use chrono::{Duration, TimeZone, Utc};
+use chrono::{Duration, SecondsFormat, TimeZone, Utc};
 use flight_tracker_api::{
     alerting::{
         AlertActionRequest, AlertQueueFilter, AlertStore, AlertStoreError, AssignmentFilter,
@@ -50,6 +50,14 @@ const REQUIRED_TABLES: &[&str] = &[
 ];
 
 async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthService, String) {
+    authenticated_service_with_role(pool, operator_id, AuthRole::Administrator).await
+}
+
+async fn authenticated_service_with_role(
+    pool: &PgPool,
+    operator_id: OperatorId,
+    role: AuthRole,
+) -> (AuthService, String) {
     const SECRET: &str = "schema-contract-internal-secret-at-least-32-bytes";
     let store = AuthStore::new(pool.clone());
     store
@@ -60,7 +68,7 @@ async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthS
             external_tenant_id: format!("test-{}", operator_id.as_uuid()),
             subject: "schema-contract-admin".into(),
             display_name: "Schema Contract Administrator".into(),
-            role: AuthRole::Administrator,
+            role,
         })
         .await
         .unwrap();
@@ -154,7 +162,168 @@ async fn canonical_schema_migrates_with_spatial_and_tenant_invariants() {
     assert_cross_operator_source_reference_is_rejected(&pool).await;
     assert_noaa_records_are_transactional_idempotent_and_revisioned(&pool).await;
     assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(&pool).await;
+    assert_audit_review_export_and_monitoring_are_tenant_safe(&pool).await;
     assert_identity_tenant_revocation_and_audit_are_fail_closed(&pool).await;
+}
+
+async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool) {
+    let operator_id = ReplayScenario::from_json(include_str!(
+        "../../../fixtures/replay/m2-route-hazard-v1.json"
+    ))
+    .unwrap()
+    .operator_id;
+    let other_operator_id = OperatorId::new();
+    let (auth, authorization) = authenticated_service(pool, operator_id).await;
+    let actor_identity_id = sqlx::query_scalar::<_, Uuid>(
+        "SELECT identity_id FROM operator_memberships WHERE operator_id = $1 AND role = 'administrator' LIMIT 1",
+    )
+    .bind(operator_id.as_uuid())
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    let raw_session_id = format!("sensitive-session-{}", Uuid::new_v4());
+    sqlx::query(
+        r#"
+        INSERT INTO authorization_audit_events (
+            id, operator_id, actor_identity_id, action, target_type,
+            target_id, occurred_at, metadata
+        ) VALUES ($1,$2,$3,'session.revoked','auth_session',$4,NOW(),$5)
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(operator_id.as_uuid())
+    .bind(actor_identity_id)
+    .bind(&raw_session_id)
+    .bind(serde_json::json!({
+        "provider": "development",
+        "identity_id": actor_identity_id,
+        "reason": "free-form reason must remain private"
+    }))
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let (other_auth, _) = authenticated_service(pool, other_operator_id).await;
+    let other_identity_id = other_auth
+        .store()
+        .list_memberships(other_operator_id)
+        .await
+        .unwrap()[0]
+        .identity_id;
+    let cross_tenant_marker = format!("cross-tenant-{}", Uuid::new_v4());
+    sqlx::query(
+        r#"
+        INSERT INTO authorization_audit_events (
+            id, operator_id, actor_identity_id, action, target_type,
+            target_id, occurred_at, metadata
+        ) VALUES ($1,$2,$3,'membership.updated','operator_membership',$4,NOW(),'{}')
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(other_operator_id.as_uuid())
+    .bind(other_identity_id)
+    .bind(&cross_tenant_marker)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let app = build_router(pool.clone(), auth);
+    let review = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/admin/audit-events?limit=250")
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(review.status(), StatusCode::OK);
+    let review_body = String::from_utf8(
+        review
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(review_body.contains("session.revoked"));
+    assert!(!review_body.contains(&raw_session_id));
+    assert!(!review_body.contains("free-form reason"));
+    assert!(!review_body.contains(&cross_tenant_marker));
+
+    let from = (Utc::now() - Duration::hours(1)).to_rfc3339_opts(SecondsFormat::Secs, true);
+    let to = (Utc::now() + Duration::minutes(1)).to_rfc3339_opts(SecondsFormat::Secs, true);
+    let export = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/api/admin/audit-events/export?from={from}&to={to}"
+                ))
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(export.status(), StatusCode::OK);
+    assert_eq!(export.headers()["content-type"], "text/csv; charset=utf-8");
+    let export_body = String::from_utf8(
+        export
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(export_body.contains("session.revoked"));
+    assert!(!export_body.contains(&raw_session_id));
+    assert!(!export_body.contains("free-form reason"));
+    assert!(!export_body.contains(&cross_tenant_marker));
+
+    let signals = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/admin/audit-alerts")
+                .header("authorization", &authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(signals.status(), StatusCode::OK);
+    let signals_body: Value =
+        serde_json::from_slice(&signals.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert!(
+        signals_body["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|signal| {
+                signal["code"] == "high_risk_action"
+                    && signal["message"] == "High-risk audit action recorded: session.revoked"
+            })
+    );
+
+    let (viewer_auth, viewer_authorization) =
+        authenticated_service_with_role(pool, OperatorId::new(), AuthRole::Viewer).await;
+    let forbidden = build_router(pool.clone(), viewer_auth)
+        .oneshot(
+            Request::builder()
+                .uri("/api/admin/audit-events")
+                .header("authorization", viewer_authorization)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(forbidden.status(), StatusCode::FORBIDDEN);
 }
 
 async fn assert_identity_tenant_revocation_and_audit_are_fail_closed(pool: &PgPool) {

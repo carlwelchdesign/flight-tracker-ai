@@ -24,7 +24,8 @@ pub mod weather;
 
 use alerting::{AlertStore, alert_router, spawn_alert_worker};
 use auth::{
-    AuthContext, AuthFailure, AuthService, Permission, auth_router, authenticate_request, require,
+    AuditStore, AuthContext, AuthFailure, AuthService, Permission, audit_router, auth_router,
+    authenticate_request, require,
 };
 use fleet::{FleetStore, fleet_router, spawn_projection_worker};
 use health::{CriticalWorkerRegistry, WorkerSnapshot};
@@ -191,6 +192,7 @@ fn build_router_with_services_and_health(
     workers: CriticalWorkerRegistry,
     auth: AuthService,
 ) -> Router {
+    let audit_store = AuditStore::new(database.clone());
     let metrics = ApiMetrics::default();
     let fleet_routes = fleet_router(fleet.clone(), metrics.clone());
     let weather_routes = weather_router(database.clone());
@@ -230,6 +232,7 @@ fn build_router_with_services_and_health(
         .merge(weather_routes)
         .merge(alert_routes)
         .merge(auth_router(auth.clone()))
+        .merge(audit_router(audit_store))
         .layer(middleware::from_fn_with_state(auth, authenticate_request))
         .merge(public)
         .layer(middleware::from_fn_with_state(metrics, observe_request))
