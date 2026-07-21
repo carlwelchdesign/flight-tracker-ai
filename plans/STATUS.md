@@ -4,17 +4,17 @@ Last updated: 2026-07-21
 
 ## Current state
 
-- Current milestone: Scope correction — portfolio demonstration
-- Active ticket: FT-005 — Rebaseline the roadmap for a portfolio demonstration
-- Branch: `docs/ft-005-portfolio-scope`
-- Pull request: [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19) (draft)
-- Owner: Product and engineering
-- Overall status: M0, M1, and M2 are complete; the commercial-provider gate is being removed from the active portfolio roadmap
-- Next action: Merge FT-005, then rebase draft PR #18 onto the portfolio scope and complete FT-301 on its own branch by selecting an officially eligible free best-effort source or recording replay-only as the decision.
+- Current milestone: M3 — Portfolio live data and operational workflow
+- Active ticket: FT-401 — Reconcile the trust review with the portfolio scope
+- Branch: `docs/ft-401-security-trust-review`
+- Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; rebase required)
+- Owner: Product, engineering, and security
+- Overall status: M0, M1, and M2 are complete; FT-301 and FT-302 are no longer blocked by commercial procurement, while the already-open FT-401 hardening work must be rebased and re-evaluated against the public portfolio goal
+- Next action: Rebase draft PR #18 after FT-005 merges, remove commercial-provider and real-operator completion gates, and finish only the security and deployment evidence appropriate for a public portfolio. Then run FT-301 on its own branch.
 
 ## Milestone checklist
 
-- [ ] M0 — Foundation, feasibility, and portfolio rebaseline
+- [x] M0 — Foundation, feasibility, and portfolio rebaseline
 - [x] M1 — Simulated operations console
 - [x] M2 — Live weather and hazard intelligence
 - [ ] M3 — Portfolio live data and operational workflow
@@ -25,7 +25,7 @@ Last updated: 2026-07-21
 
 | Milestone | Complete | Total |
 | --- | ---: | ---: |
-| M0 | 4 | 5 |
+| M0 | 5 | 5 |
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
 | M3 | 2 | 4 |
@@ -58,7 +58,7 @@ Last updated: 2026-07-21
 - FT-304 is delivered through PR #14 at implementation and CI contract commit `11bdc0d`. CI run `29816346733` verifies the additive migration, authenticated replay, workflow-version acknowledgement, tenant-safe assignment, all queue filters, structured dismissal, conflict rejection, bounded persistence volume, Rust and web quality gates, and production builds.
 - FT-301 commercial preparation package is merged through PR #15 at `c8d8a78`; PR #16 records the corrected procurement handoff. This research is retained for an optional future production track and is not an active portfolio-release gate.
 - FT-004 upgrades checkout and setup-node to their official Node 24 action-runtime releases through PR #17 at implementation commit `715d7d6`; CI run `29832129375` passed all three jobs with zero check annotations while preserving application Node.js `20.20.1`.
-- FT-005 scope implementation commit `7b052f9` is published in draft PR [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19); required CI is pending.
+- FT-005 is delivered through PR [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19) at scope commit `7b052f9` and delivery-record commit `d1b9f46`. CI run [29847937301](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29847937301) passes Rust, web, and API/PostGIS checks. The active roadmap now targets a non-commercial recruiter/hiring-manager portfolio, with free best-effort positions or replay instead of paid-provider procurement.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

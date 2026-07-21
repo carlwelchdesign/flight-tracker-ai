@@ -118,12 +118,12 @@ Verification evidence: official release and action-manifest checks confirmed che
 
 ## FT-005 — Rebaseline the roadmap for a portfolio demonstration
 
-Status: In progress
+Status: Complete
 
 Branch: `docs/ft-005-portfolio-scope`
 Latest implementation commit: `7b052f9`
-Final commit: Pending
-Pull request: [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19) (draft)
+Final commit: `d1b9f46`
+Pull request: [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19)
 Owner: Product and engineering
 
 Make the durable plans reflect the actual goal: a public, non-commercial demonstration for recruiters and hiring managers, with free best-effort data and deterministic replay instead of commercial procurement.
@@ -138,6 +138,6 @@ Acceptance checklist:
 - [x] M4 targets public portfolio security, reliability, usability, and deployment rather than a real-operator pilot.
 - [x] Commercial procurement research remains available only as an optional future production track.
 - [x] Status, ticket index, decisions, and risks reflect the same scope.
-- [ ] Dedicated branch, intentional commit, pull request, and required checks are recorded.
+- [x] Dedicated branch, intentional commit, pull request, and required checks are recorded.
 
-Verification evidence: `python3 scripts/validate_ft301_evidence.py` and its five-test regression suite pass after the commercial package is moved off the active gate; `git diff --check` and scope-language searches pass; native Rust formatting, strict Clippy, and 74 tests pass; web audit reports zero vulnerabilities, and lint, typecheck, 28 tests, and the production build pass. The local Docker daemon did not respond to the Compose-based wrapper, so Compose configuration and fresh PostGIS verification are delegated to required CI. Scope commit `7b052f9` is published in draft PR [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19); final CI and delivery evidence remain pending.
+Verification evidence: `python3 scripts/validate_ft301_evidence.py` and its five-test regression suite pass after the commercial package is moved off the active gate; `git diff --check` and scope-language searches pass; native Rust formatting, strict Clippy, and 74 tests pass; web audit reports zero vulnerabilities, and lint, typecheck, 28 tests, and the production build pass. The local Docker daemon did not respond to the Compose-based wrapper, so Compose configuration and fresh PostGIS verification ran in CI. Scope commit `7b052f9` and delivery-record commit `d1b9f46` are published in PR [#19](https://github.com/carlwelchdesign/flight-tracker-ai/pull/19); CI run [29847937301](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29847937301) passes Rust, web, and API/PostGIS checks.
