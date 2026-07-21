@@ -59,7 +59,7 @@ The agreed minimum dense desktop viewport is **1180 by 720 CSS pixels**. At that
 - The SVG map uses fixed western United States bounds and a small static airport-coordinate catalog for the deterministic M1 scenario.
 - The replay-backed projection is in memory; a service restart clears its current snapshot until the scenario runs again.
 - Weather shown in M1 is scenario evidence, not a live or certified aviation weather product.
-- Authentication, saved workspaces, operator messages, and commercial provider feeds remain later-ticket work.
+- Authentication and saved workflows remain later-ticket work. Paid commercial feeds are optional future production work and do not block the portfolio demonstration.
 
 ## Verification checklist
 

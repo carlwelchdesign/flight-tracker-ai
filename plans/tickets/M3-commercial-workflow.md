@@ -1,49 +1,33 @@
-# M3 — Commercial Data and Operational Workflow
+# M3 — Portfolio Live Data and Operational Workflow
 
-Default owner: Product for provider contracting; engineering and security for implementation.
+Default owner: Product and engineering for source eligibility; engineering and security for implementation.
 
-## FT-301 — Select and contract a commercial flight-data provider
+## FT-301 — Select an eligible free aircraft-position source
 
-Status: In progress
+Status: Not started
 
-Preparation branch: `docs/ft-301-commercial-provider-selection`
-Preparation commit: `fadb4ea`
-Preparation pull request: [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) (merged at `c8d8a78`)
-Procurement handoff branch: `docs/ft-301-procurement-handoff`
-Procurement handoff commit: `7013020`
-Procurement handoff pull request: [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
-Final evidence branch: Pending external evidence
+Branch: `docs/ft-301-free-data-selection`
 Final commit: Pending
-Final pull request: Pending
-Owner: Product, legal, and engineering
+Pull request: Pending
+Owner: Product and engineering
 
-Resolve the provider feasibility work with a documented selection appropriate for the intended use.
+Select a zero-data-fee, best-effort aircraft-position source whose official terms permit a publicly hosted, non-commercial portfolio demonstration. Selecting replay-only is an acceptable outcome if no candidate has sufficiently clear terms.
 
 Dependencies: FT-003
 
-Preparation checklist:
-
-- [x] Revalidate current public finalist product, protocol, trial, support, and standard-term claims.
-- [x] Define one clause-level rights and service questionnaire for both providers.
-- [x] Define a paired 14-day real-time trial protocol with frozen population, metric grains, null rules, bias controls, and exit criteria.
-- [x] Add comparable trial and 20/100/500-flight cost schemas with structural and completion validation.
-- [x] Add provider outreach drafts, RACI, evidence statuses, privacy controls, and pass/fail-before-weighting decision rules.
-- [ ] Legal approves the intended-use statement and questionnaire.
-- [ ] Product and the operator partner provide accountable contacts, target dates, approved budget range, and an authorized target population.
-- [ ] Both providers return controlling rights/SLA terms, comparable real-time trial access, and priced proposals.
-
 Acceptance checklist:
 
-- [ ] Commercial situational-display, tenant/customer, redistribution, source-combination, AI/ML processing, upstream-data SaaS, LADD/PIA, storage, and derived-data rights are confirmed in writing.
-- [ ] Cirium Sky Stream and FlightAware Firehose run the same target-tail trial for at least 14 days; coverage and p50/p95/p99 latency are recorded by region.
-- [ ] Rate and priced cost model covers 20, 100, and 500 monitored flights under normal, peak, replay, reconnect, and failure behavior.
-- [ ] Retention and deletion requirements are recorded.
-- [ ] Uptime definition, service credits, incident notification, support response, provider outage, and termination fallback are documented.
-- [ ] OD-002 is resolved in `../DECISIONS.md`.
+- [ ] Official terms are linked and permit server-side access plus public, hosted, non-commercial display for this portfolio project.
+- [ ] Attribution, caching, retention, redistribution, rate-limit, and acceptable-use requirements are recorded.
+- [ ] A bounded sample documents coverage gaps, missing fields, freshness, and failure behavior without treating best-effort data as complete.
+- [ ] The selected source supplies positions only unless its documented schema proves additional facts; scenario routes, schedules, and statuses remain visibly simulated.
+- [ ] Replay remains the default fallback when the source is unavailable, rate-limited, ineligible, or too incomplete for a convincing demo.
+- [ ] No SLA, procurement process, paid trial, legal department, operator partner, or commercial-use approval is required for the portfolio release.
+- [ ] OD-002 is resolved in `../DECISIONS.md` with a selected source or an explicit replay-only decision.
 
-In-progress verification evidence: preparation package merged through PR [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) at `c8d8a78`. [`provider-evaluation/`](../provider-evaluation/README.md) contains the procurement handoff, common questionnaire, 66-row two-provider response matrix, 14-row fixed-weight score matrix, structured final-decision record, outreach requests, evidence register, paired trial protocol, five-behavior cost model, RACI, decision gates, and privacy controls; `python3 scripts/validate_ft301_evidence.py` verifies exact question/score coverage, answer/review compatibility, evidence statuses, trial metrics, cost scenarios, approval references, selected-provider consistency, and OD-002 state. Its regression suite passes, while `--require-complete` intentionally fails until all evidence, responses, scores, trial/price records, approvals, and the decision are complete. Public provider claims were revalidated on 2026-07-21 in [`PROVIDER_FEASIBILITY.md`](../PROVIDER_FEASIBILITY.md). Acceptance evidence remains pending; no provider has been selected.
+Historical evidence: PR [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) and PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16) produced a complete commercial procurement framework. It is retained under [`provider-evaluation/`](../provider-evaluation/README.md) for a possible future production track but is not part of this ticket's acceptance gate.
 
-## FT-302 — Integrate licensed live flight data
+## FT-302 — Integrate best-effort live aircraft positions
 
 Status: Not started
 
@@ -51,17 +35,19 @@ Branch: `feat/ft-302-live-flight-integration`
 Final commit: Pending
 Pull request: Pending
 
-Implement the selected provider adapter behind the canonical event boundary.
+Implement the selected free source behind the canonical event boundary without weakening deterministic replay.
 
 Dependencies: FT-301, FT-002, FT-104
 
 Acceptance checklist:
 
 - [ ] Provider adapter does not leak provider-specific types into the domain or UI.
-- [ ] Schedule, identity, route, position, and status updates reconcile predictably.
-- [ ] Rate limits, backfill, reconnect, and out-of-order delivery are tested.
-- [ ] Data freshness and coverage quality are visible per flight.
-- [ ] Replay fixtures can be produced lawfully without retaining prohibited fields.
+- [ ] Position and available identity fields reconcile predictably; unsupported schedule, route, and status facts are not invented.
+- [ ] Rate limits, timeouts, reconnect, duplicate, stale, and out-of-order delivery are tested.
+- [ ] Source, attribution, freshness, coverage quality, and best-effort status are visible per flight.
+- [ ] The UI persistently states `Portfolio demonstration — not for operational use` for both live and replay modes.
+- [ ] Feed failure automatically preserves a usable replay path and visibly reports the source as unavailable or degraded.
+- [ ] Stored samples and fixtures comply with the selected source's documented retention and redistribution terms.
 
 Verification evidence: Pending.
 

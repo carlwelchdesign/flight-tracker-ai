@@ -1,6 +1,8 @@
 # Flight Tracker AI
 
-An advisory airline-operations intelligence console for fleet monitoring, aviation-weather correlation, and explainable dispatcher alerts.
+A non-commercial portfolio demonstration of an airline-operations intelligence console for fleet monitoring, aviation-weather correlation, and explainable dispatcher alerts. It is built for recruiters and hiring managers to explore and is not for operational use.
+
+The reliable demo path uses deterministic replay plus live NOAA weather. A free best-effort aircraft-position feed may be added later when its official terms permit public hosted display; no paid provider or SLA is required.
 
 ## Start locally
 
