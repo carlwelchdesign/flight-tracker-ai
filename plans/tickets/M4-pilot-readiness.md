@@ -125,7 +125,7 @@ neutral reviewer on the candidate preview produced by FT-404.
 Status: In progress
 
 Branch: `feat/ft-404-production-deployment`
-Latest implementation commit: `f897532`
+Latest implementation commit: `e33a21c`
 Final commit: Pending
 Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
 Owner: Platform, backend, security, and full-stack engineering
@@ -181,13 +181,16 @@ values are corrected and verified by an environment pull. The portfolio root
 now remains public long enough to present a safe sign-in state while operational
 and backend routes stay behind Clerk, and hosted 500-level configuration errors
 are replaced with bounded evaluation copy instead of disclosing variable names.
-Production Clerk keys, Render, and the full hosted smoke remain pending. Live
-Marketplace inspection reports `Production domain required` for
-`clerk-celeste-door`. Vercel's project-owner API exposes the resource read-only,
-while the provider resource-update endpoint rejects consumer credentials, so
-the domain must be set once in the authenticated Vercel resource dashboard.
-The exact value is `flight-tracker-ai-one.vercel.app`; after it is saved, the
-production Clerk keys should sync automatically before the next deployment.
+The Clerk production domain is now `flight-tracker-ai-one.vercel.app`.
+Production uses Clerk live keys while Preview retains test keys. Organizations
+with required membership are enabled and `Flight Tracker Portfolio` exists;
+reviewer enrollment remains a manual identity step. Exact commit `e33a21c` was
+built as protected preview deployment `dpl_5jVqrumWgwHJiUBc4i4fHZkdo6LL` and
+production deployment `dpl_2hfw56Se2W9oSDx7fCQ4F3hHd2cb`. The public alias
+returns HTTP 200 with `Sign in to continue`, `/sign-in` renders the production
+Clerk flow without browser console errors, the `DEV_AUTH_SUBJECT` failure is
+absent, and the expected security headers are present. Render and the full
+cross-service hosted smoke remain pending.
 
 The 2026-07-21 Render specification audit found that managed preview
 environments require a Pro workspace and omit `sync: false` secrets. To retain
@@ -195,3 +198,7 @@ the zero-base-cost and environment-isolation requirements, `render.yaml` now
 defines explicit free staging and production services. Staging follows passing
 `main` checks; production is promoted manually after staging and browser smoke.
 Each service requires a distinct Neon branch URL and internal assertion secret.
+The Blueprint passes Render's official JSON Schema, the Rust release build
+passes locally, and CI run
+[29862882559](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29862882559)
+passes all repository jobs at commit `e33a21c`.

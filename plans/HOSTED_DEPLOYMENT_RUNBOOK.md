@@ -88,6 +88,11 @@ unpooled Neon connection variables plus `CLERK_SECRET_KEY` and
 all three Vercel environments; `API_BASE_URL` and `INTERNAL_AUTH_SECRET` remain
 intentionally unset until the corresponding Render service and environment
 exist.
+Clerk Production now uses live keys while Preview uses test keys. The production
+domain is `flight-tracker-ai-one.vercel.app`, required organization membership
+is enabled, and organization `Flight Tracker Portfolio` exists. Production
+deployment `dpl_2hfw56Se2W9oSDx7fCQ4F3hHd2cb` serves the public signed-out state
+and production Clerk sign-in flow without exposing configuration details.
 The pooled and direct database URLs both require TLS, target AWS `us-east-1`,
 and differ as expected by pooler usage. The direct connection enabled and
 reported PostGIS `3.5.0`. No secret value is recorded here. Snapshot and
