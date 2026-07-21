@@ -65,10 +65,22 @@ def healthy_api():
     }
 
 
+def public_tracker_body():
+    return (
+        b'<main><h1>Flight Tracker AI</h1><p>Public recruiter demo</p>'
+        b'<section>Fleet + weather</section><section>Flight board</section>'
+        b'<a href="/sign-in">Sign in for protected controls</a></main>'
+    )
+
+
 class PublicSurfaceVerificationTest(unittest.TestCase):
     def test_publication_ready_surface_passes_exact_contracts(self):
         responses = healthy_api()
-        responses[(WEB, "/")] = response(307, headers={"location": "/sign-in", **SECURITY_HEADERS})
+        responses[(WEB, "/")] = response(
+            200,
+            public_tracker_body(),
+            {"content-type": "text/html; charset=utf-8", **SECURITY_HEADERS},
+        )
 
         evidence = verify_public_surface(
             SurfaceConfig("production-candidate-1", WEB, API),
@@ -78,8 +90,12 @@ class PublicSurfaceVerificationTest(unittest.TestCase):
         self.assertEqual(evidence["status"], "passed")
         self.assertTrue(evidence["publication_ready"])
         self.assertFalse(evidence["summary"]["deployment_protected"])
+        self.assertIn(
+            {"check": "web_public_flight_tracker", "status": "passed"},
+            evidence["checks"],
+        )
 
-    def test_public_signed_out_landing_is_an_approved_identity_boundary(self):
+    def test_public_sign_in_wall_is_rejected(self):
         responses = healthy_api()
         responses[(WEB, "/")] = response(
             200,
@@ -88,15 +104,12 @@ class PublicSurfaceVerificationTest(unittest.TestCase):
         )
 
         evidence = verify_public_surface(
-            SurfaceConfig("production-signed-out", WEB, API),
+            SurfaceConfig("production-sign-in-wall", WEB, API),
             FakeClient(responses),
         )
 
-        self.assertEqual(evidence["status"], "passed")
-        self.assertIn(
-            {"check": "web_signed_out_landing", "status": "passed"},
-            evidence["checks"],
-        )
+        self.assertEqual(evidence["status"], "failed")
+        self.assertFalse(evidence["publication_ready"])
 
     def test_public_root_rejects_unbounded_html(self):
         responses = healthy_api()
@@ -170,8 +183,12 @@ class PublicSurfaceVerificationTest(unittest.TestCase):
     def test_missing_security_headers_fail_without_naming_attacker_content(self):
         responses = healthy_api()
         responses[(WEB, "/")] = response(
-            307,
-            headers={"location": "/sign-in", "x-untrusted-secret": "do-not-echo"},
+            200,
+            public_tracker_body(),
+            {
+                "content-type": "text/html; charset=utf-8",
+                "x-untrusted-secret": "do-not-echo",
+            },
         )
 
         evidence = verify_public_surface(

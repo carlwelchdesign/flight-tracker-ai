@@ -92,8 +92,16 @@ three Vercel environments. Preview and Production now have distinct
 Clerk Production now uses live keys while Preview uses test keys. The production
 domain is `flight-tracker-ai-one.vercel.app`, required organization membership
 is enabled, and organization `Flight Tracker Portfolio` exists. Production
-deployment `dpl_9Mtv1MzkUR9swi8ycM7yDga1e3RM` serves the public signed-out state
-and production Clerk sign-in flow without exposing configuration details.
+commit `63e3bbd` keeps production Clerk sign-up on the application domain and
+passes CI run `29868085207`. Commit `bcf49cc` replaces the root sign-in wall
+with the read-only public flight tracker and passes CI run `29868610558`.
+Preview deployment `dpl_5fHf7r1oPq83s9m2Y1p9pRuZnEvD` was inspected before
+production deployment `dpl_5CvqF2Dbg6LnwZkDc8ccRZnutS4e` was promoted to the
+public alias. The root now renders the fleet map, three-flight board, NOAA
+weather context, and selectable flight details immediately; Clerk remains at
+app-owned `/sign-in` and `/sign-up` routes for protected controls. The live
+FT-404 verifier passes this web/API boundary and rejects the former sign-in-only
+landing as publication-ready.
 The pooled and direct database URLs both require TLS, target AWS `us-east-1`,
 and differ as expected by pooler usage. The direct connection enabled and
 reported PostGIS `3.5.0`. On 2026-07-21, Neon retained the manual production
@@ -129,9 +137,10 @@ Commit `790e022` corrects a later strict-CSP regression by enabling Clerk's
 dynamic provider mode so its browser script receives the request nonce. CI run
 [`29867545134`](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29867545134)
 passes all jobs. The protected preview and public deployment
-`dpl_9Mtv1MzkUR9swi8ycM7yDga1e3RM` both include the nonce on the Clerk script,
-and the public `/sign-in` route visibly renders the production email/password
-form.
+`dpl_9Mtv1MzkUR9swi8ycM7yDga1e3RM` both include the nonce on the Clerk script.
+The later public demo deployment `dpl_5CvqF2Dbg6LnwZkDc8ccRZnutS4e` preserves
+that app-owned production sign-in flow while exposing the flight tracker at
+the root.
 
 ## Vercel server-only configuration
 

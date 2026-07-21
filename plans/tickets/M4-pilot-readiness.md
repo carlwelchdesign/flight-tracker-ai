@@ -177,20 +177,20 @@ The first public-alias observation exposed two controlled setup defects rather
 than a usable candidate: the original deployment predated the Clerk variables,
 and the five non-secret production/preview runtime settings had been stored as
 the literal placeholder `[SENSITIVE]` by noninteractive CLI input. The Vercel
-values are corrected and verified by an environment pull. The portfolio root
-now remains public long enough to present a safe sign-in state while operational
-and backend routes stay behind Clerk, and hosted 500-level configuration errors
-are replaced with bounded evaluation copy instead of disclosing variable names.
+values are corrected and verified by an environment pull. Hosted 500-level
+configuration errors are replaced with bounded evaluation copy instead of
+disclosing variable names. The portfolio root now presents a read-only flight
+tracker while protected operational actions and backend routes stay behind
+Clerk.
 The Clerk production domain is now `flight-tracker-ai-one.vercel.app`.
 Production uses Clerk live keys while Preview retains test keys. Organizations
 with required membership are enabled and `Flight Tracker Portfolio` exists;
 reviewer enrollment remains a manual identity step. Exact commit `e33a21c` was
 built as protected preview deployment `dpl_5jVqrumWgwHJiUBc4i4fHZkdo6LL` and
-production deployment `dpl_2hfw56Se2W9oSDx7fCQ4F3hHd2cb`. The public alias
-returns HTTP 200 with `Sign in to continue`, `/sign-in` renders the production
-Clerk flow without browser console errors, the `DEV_AUTH_SUBJECT` failure is
-absent, and the expected security headers are present. Render and the full
-cross-service hosted smoke remain pending.
+production deployment `dpl_2hfw56Se2W9oSDx7fCQ4F3hHd2cb`. That temporary
+sign-in boundary proved the production Clerk flow, removal of the
+`DEV_AUTH_SUBJECT` failure, and expected security headers before it was
+superseded by the public flight-tracker deployment recorded below.
 
 The 2026-07-21 Render specification audit found that managed preview
 environments require a Pro workspace and omit `sync: false` secrets. To retain
@@ -216,7 +216,7 @@ when a sensitive Vercel pull yielded the literal placeholder `[SENSITIVE]`;
 the authenticated provider value was applied directly without exposing it.
 Production health and migrations then exposed an idle alert-worker heartbeat
 defect through the protected diagnostics route. Commit `a665494` adds the
-periodic heartbeat, API HSTS, and bounded signed-out verifier contract; commit
+periodic heartbeat and API HSTS; commit
 `6a4929e` passes CI run
 [29865574640](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29865574640).
 
@@ -233,10 +233,15 @@ verifier. Commit `790e022` then corrects a strict-CSP regression by opting
 Clerk's provider into dynamic rendering so the browser script receives the
 request nonce. CI run
 [`29867545134`](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29867545134)
-passes all jobs. Production deployment `dpl_9Mtv1MzkUR9swi8ycM7yDga1e3RM` is
-the current public alias; its Clerk script includes the nonce and `/sign-in`
-visibly renders the production email/password form. Reviewer enrollment and
-authenticated browser/FT-401 smoke remain open.
+passes all jobs. Commit `63e3bbd` keeps sign-up on the application domain and
+passes CI run `29868085207`. Commit `bcf49cc` makes the existing map, flight
+board, NOAA weather layer, and selectable replay details visible at the public
+root without an account; CI run `29868610558` passes all jobs. Preview
+deployment `dpl_5fHf7r1oPq83s9m2Y1p9pRuZnEvD` was inspected before production
+deployment `dpl_5CvqF2Dbg6LnwZkDc8ccRZnutS4e` was promoted to the public alias.
+The sanitized live verifier now requires this flight-tracker surface, rejects
+the former sign-in wall, and passes the production web/API boundary. Reviewer
+enrollment and authenticated browser/FT-401 smoke remain open.
 
 On 2026-07-21, Neon retained the manual production snapshot
 `main at 2026-07-21 20:46:51 UTC (manual)` with no expiry. A temporary isolated

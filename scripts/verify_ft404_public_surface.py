@@ -10,7 +10,7 @@ import re
 import sys
 from typing import Mapping, Protocol
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
@@ -130,13 +130,8 @@ def verify_public_surface(config: SurfaceConfig, client: SurfaceHttpClient) -> d
     try:
         root = client.get(config.web_origin, "/")
         location = root.headers.get("location", "")
-        if root.status == 200 and _is_bounded_sign_in_landing(root):
-            checks.append({"check": "web_signed_out_landing", "status": "passed"})
-            _verify_web_headers(root, checks, failures)
-        elif root.status in REDIRECT_STATUSES and _is_clerk_sign_in(
-            config.web_origin, location
-        ):
-            checks.append({"check": "web_identity_redirect", "status": "passed"})
+        if root.status == 200 and _is_public_flight_tracker(root):
+            checks.append({"check": "web_public_flight_tracker", "status": "passed"})
             _verify_web_headers(root, checks, failures)
         elif (
             _is_vercel_protection_response(root, location)
@@ -145,7 +140,7 @@ def verify_public_surface(config: SurfaceConfig, client: SurfaceHttpClient) -> d
             deployment_protected = True
             checks.append({"check": "preview_deployment_protection", "status": "passed"})
         else:
-            failures.append("web root did not enforce an approved signed-out boundary")
+            failures.append("web root did not expose the approved public flight-tracker boundary")
     except (RuntimeError, VerificationConfigurationError):
         failures.append("web root request failed")
 
@@ -193,18 +188,16 @@ def verify_public_surface(config: SurfaceConfig, client: SurfaceHttpClient) -> d
     return evidence
 
 
-def _is_clerk_sign_in(origin: str, location: str) -> bool:
-    destination = urlsplit(urljoin(f"{validate_https_origin(origin)}/", location))
-    source = urlsplit(origin)
-    return destination.netloc == source.netloc and destination.path.startswith("/sign-in")
-
-
-def _is_bounded_sign_in_landing(response: HttpResponse) -> bool:
+def _is_public_flight_tracker(response: HttpResponse) -> bool:
     content_type = response.headers.get("content-type", "").lower()
     return (
         "text/html" in content_type
-        and b"Sign in to continue" in response.body
+        and b"Flight Tracker AI" in response.body
+        and b"Fleet + weather" in response.body
+        and b"Flight board" in response.body
+        and b"Public recruiter demo" in response.body
         and b'href="/sign-in"' in response.body
+        and b"Sign in to continue" not in response.body
     )
 
 
