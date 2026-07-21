@@ -5,12 +5,12 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M2 — Live weather and hazard intelligence
-- Active ticket: FT-203 — Implement route–hazard intersection rules
-- Branch: `feat/ft-203-route-hazard-rules`
-- Pull request: [#11](https://github.com/carlwelchdesign/flight-tracker-ai/pull/11)
-- Owner: Backend/domain engineering with independent fixture review
-- Overall status: M0 and M1 are merged; FT-201 and FT-202 are merged; FT-203 is complete with merge pending
-- Next action: Merge green PR #11, update local `main`, then begin FT-204 alert ranking, lifecycle, and deduplication on its dedicated branch.
+- Active ticket: FT-204 — Add alert ranking, lifecycle, and deduplication
+- Branch: `feat/ft-204-alert-lifecycle`
+- Pull request: Pending
+- Owner: Full-stack engineering with dispatcher-workflow review
+- Overall status: M0 and M1 are merged; FT-201, FT-202, and FT-203 are merged; FT-204 is in progress
+- Next action: Implement explainable alert creation and ranking, stable deduplication, append-only lifecycle actions, and a recoverable dispatcher queue.
 
 ## Milestone checklist
 
@@ -50,6 +50,8 @@ Last updated: 2026-07-21
 - FT-202 is merged through PR #10 at `617b337`; local `main` was synchronized before FT-203 began.
 - FT-203 is active on `feat/ft-203-route-hazard-rules`; its pure Rust domain rule will remain independent of Axum, SQLx, provider payloads, and wall-clock time.
 - FT-203 implementation commit `28f227f` is green in PR #11; Rust, web, and API/PostGIS checks pass, and the PostGIS 3.5 oracle independently confirmed all eight golden cases in CI run `29809973027`.
+- FT-203 is merged through PR #11 at `848af8f`; local `main` was synchronized before FT-204 began.
+- FT-204 is active on `feat/ft-204-alert-lifecycle`; deterministic Rust policy will own ranking, dedupe, transitions, and audit evidence while the web app exposes human-controlled actions.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

@@ -74,11 +74,12 @@ Verification evidence: `plans/ROUTE_HAZARD_RULES.md`; high-latitude great-circle
 
 ## FT-204 — Add alert ranking, lifecycle, and deduplication
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-204-alert-lifecycle`
 Final commit: Pending
 Pull request: Pending
+Owner: Full-stack engineering with dispatcher-workflow review
 
 Turn rule results into a manageable dispatcher queue.
 
