@@ -19,6 +19,7 @@ use flight_tracker_api::{
         OperatorId,
     },
     replay::ReplayScenario,
+    retention::{CreateRetentionPolicy, PreviewRetentionRun, RetentionError, RetentionStore},
     weather::noaa::{
         NoaaFeed, NoaaPayload, NoaaStore, PersistedNoaaRecord, SourceHealthTracker, prepare_records,
     },
@@ -47,6 +48,9 @@ const REQUIRED_TABLES: &[&str] = &[
     "operator_memberships",
     "auth_session_revocations",
     "authorization_audit_events",
+    "retention_policies",
+    "retention_runs",
+    "data_deletion_tombstones",
 ];
 
 async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthService, String) {
@@ -163,7 +167,239 @@ async fn canonical_schema_migrates_with_spatial_and_tenant_invariants() {
     assert_noaa_records_are_transactional_idempotent_and_revisioned(&pool).await;
     assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(&pool).await;
     assert_audit_review_export_and_monitoring_are_tenant_safe(&pool).await;
+    assert_raw_retention_requires_approval_and_suppresses_restore(&pool).await;
     assert_identity_tenant_revocation_and_audit_are_fail_closed(&pool).await;
+}
+
+async fn test_auth_context(
+    pool: &PgPool,
+    operator_id: OperatorId,
+    subject: &str,
+    role: AuthRole,
+) -> flight_tracker_api::auth::AuthContext {
+    let store = AuthStore::new(pool.clone());
+    let tenant = format!("retention-{}", operator_id.as_uuid());
+    store
+        .bootstrap_development(&DevelopmentIdentity {
+            operator_id,
+            operator_code: format!("R{}", &operator_id.as_uuid().simple().to_string()[..6]),
+            operator_name: "Retention Test".into(),
+            external_tenant_id: tenant.clone(),
+            subject: subject.into(),
+            display_name: subject.into(),
+            role,
+        })
+        .await
+        .unwrap();
+    let now = Utc::now();
+    store
+        .resolve(&AssertionClaims {
+            iss: "test-web".into(),
+            aud: "test-api".into(),
+            sub: subject.into(),
+            provider: "development".into(),
+            tenant,
+            sid: format!("session-{subject}"),
+            jti: Uuid::new_v4().to_string(),
+            iat: now.timestamp() as u64,
+            nbf: now.timestamp() as u64,
+            exp: (now + Duration::minutes(5)).timestamp() as u64,
+        })
+        .await
+        .unwrap()
+}
+
+async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &PgPool) {
+    let operator_id = OperatorId::new();
+    let other_operator_id = OperatorId::new();
+    let requester = test_auth_context(
+        pool,
+        operator_id,
+        &format!("retention-requester-{}", Uuid::new_v4()),
+        AuthRole::Administrator,
+    )
+    .await;
+    let approver = test_auth_context(
+        pool,
+        operator_id,
+        &format!("retention-approver-{}", Uuid::new_v4()),
+        AuthRole::Administrator,
+    )
+    .await;
+    let other = test_auth_context(
+        pool,
+        other_operator_id,
+        &format!("retention-other-{}", Uuid::new_v4()),
+        AuthRole::Administrator,
+    )
+    .await;
+    let now = Utc::now();
+    let old_id = Uuid::new_v4();
+    let current_id = Uuid::new_v4();
+    let other_id = Uuid::new_v4();
+    let old_hash = "c".repeat(64);
+    for (id, tenant, received_at, hash, payload) in [
+        (
+            old_id,
+            operator_id,
+            now - Duration::hours(2),
+            old_hash.clone(),
+            serde_json::json!({"secretRaw": "expired"}),
+        ),
+        (
+            current_id,
+            operator_id,
+            now - Duration::minutes(30),
+            "d".repeat(64),
+            serde_json::json!({"currentRaw": true}),
+        ),
+        (
+            other_id,
+            other_operator_id,
+            now - Duration::hours(2),
+            "e".repeat(64),
+            serde_json::json!({"otherTenantRaw": true}),
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO provider_envelopes (
+                id, operator_id, schema_version, provider, feed, provider_record_id,
+                received_at, raw_payload_sha256, raw_payload
+            ) VALUES ($1,$2,1,'retention-test','positions',$3,$4,$5,$6)
+            "#,
+        )
+        .bind(id)
+        .bind(tenant.as_uuid())
+        .bind(id.to_string())
+        .bind(received_at)
+        .bind(hash)
+        .bind(payload)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    let store = RetentionStore::new(pool.clone());
+    let policy = store
+        .create_policy(
+            &requester,
+            &CreateRetentionPolicy {
+                provider: "retention-test".into(),
+                retention_seconds: 3_600,
+                approval_reference: "legal:FT-401/raw-v1".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    assert!(matches!(
+        store.approve_policy(&requester, policy.id, now).await,
+        Err(RetentionError::SeparationOfDuties)
+    ));
+    let policy = store
+        .approve_policy(&approver, policy.id, now)
+        .await
+        .unwrap();
+    assert_eq!(policy.status, "approved");
+    assert!(
+        store
+            .list_policies(other.operator_id)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
+    let run = store
+        .preview_run(
+            &requester,
+            &PreviewRetentionRun {
+                policy_id: policy.id,
+                evidence_reference: "incident:FT-401/raw-run-1".into(),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    assert_eq!(run.preview_counts["provider_envelopes"], 1);
+    assert!(matches!(
+        store.approve_run(&requester, run.id, now).await,
+        Err(RetentionError::SeparationOfDuties)
+    ));
+    store.approve_run(&approver, run.id, now).await.unwrap();
+    let completed = store.execute_run(&requester, run.id, now).await.unwrap();
+    assert_eq!(completed.status, "completed");
+    assert_eq!(completed.deletion_counts.unwrap()["provider_envelopes"], 1);
+
+    let payloads = sqlx::query_as::<_, (Uuid, Value, Option<chrono::DateTime<Utc>>)>(
+        r#"
+        SELECT id, raw_payload, raw_payload_deleted_at
+        FROM provider_envelopes
+        WHERE id = ANY($1)
+        ORDER BY id
+        "#,
+    )
+    .bind(vec![old_id, current_id, other_id])
+    .fetch_all(pool)
+    .await
+    .unwrap();
+    let expired = payloads.iter().find(|row| row.0 == old_id).unwrap();
+    assert_eq!(expired.1, serde_json::json!({}));
+    assert_eq!(expired.2, Some(now));
+    assert_eq!(
+        payloads.iter().find(|row| row.0 == current_id).unwrap().1,
+        serde_json::json!({"currentRaw": true})
+    );
+    assert_eq!(
+        payloads.iter().find(|row| row.0 == other_id).unwrap().1,
+        serde_json::json!({"otherTenantRaw": true})
+    );
+
+    sqlx::query("DELETE FROM provider_envelopes WHERE id = $1")
+        .bind(old_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    let restored_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO provider_envelopes (
+            id, operator_id, schema_version, provider, feed, provider_record_id,
+            received_at, raw_payload_sha256, raw_payload
+        ) VALUES ($1,$2,1,'retention-test','positions',$3,$4,$5,$6)
+        "#,
+    )
+    .bind(restored_id)
+    .bind(operator_id.as_uuid())
+    .bind(restored_id.to_string())
+    .bind(now - Duration::hours(2))
+    .bind(&old_hash)
+    .bind(serde_json::json!({"secretRaw": "restored"}))
+    .execute(pool)
+    .await
+    .unwrap();
+    let restored = sqlx::query_as::<_, (Value, Option<chrono::DateTime<Utc>>)>(
+        "SELECT raw_payload, raw_payload_deleted_at FROM provider_envelopes WHERE id = $1",
+    )
+    .bind(restored_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(restored, (serde_json::json!({}), Some(now)));
+
+    let completion_audit = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(*) FROM authorization_audit_events
+        WHERE operator_id = $1 AND action = 'retention.run.completed'
+          AND target_id = $2
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(run.id.to_string())
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(completion_audit, 1);
 }
 
 async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool) {

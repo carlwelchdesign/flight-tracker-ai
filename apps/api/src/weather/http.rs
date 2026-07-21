@@ -365,6 +365,7 @@ async fn source_record(
                processed_at, raw_payload_sha256, raw_payload
         FROM provider_envelopes
         WHERE id = $1 AND operator_id = $2 AND provider = 'noaa-awc'
+          AND raw_payload_deleted_at IS NULL
         "#,
     )
     .bind(envelope_id)

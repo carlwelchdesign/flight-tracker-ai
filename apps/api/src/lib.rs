@@ -20,6 +20,7 @@ pub mod ingestion;
 pub mod metrics;
 pub mod observability;
 pub mod replay;
+pub mod retention;
 pub mod weather;
 
 use alerting::{AlertStore, alert_router, spawn_alert_worker};
@@ -33,6 +34,7 @@ use ingestion::IngestionSubscription;
 use metrics::{ApiMetrics, observe_request};
 use observability::correlate_request;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
+use retention::{RetentionStore, retention_router};
 use weather::weather_router;
 
 pub const SERVICE_NAME: &str = "flight-tracker-api";
@@ -193,6 +195,7 @@ fn build_router_with_services_and_health(
     auth: AuthService,
 ) -> Router {
     let audit_store = AuditStore::new(database.clone());
+    let retention_store = RetentionStore::new(database.clone());
     let metrics = ApiMetrics::default();
     let fleet_routes = fleet_router(fleet.clone(), metrics.clone());
     let weather_routes = weather_router(database.clone());
@@ -233,6 +236,7 @@ fn build_router_with_services_and_health(
         .merge(alert_routes)
         .merge(auth_router(auth.clone()))
         .merge(audit_router(audit_store))
+        .merge(retention_router(retention_store))
         .layer(middleware::from_fn_with_state(auth, authenticate_request))
         .merge(public)
         .layer(middleware::from_fn_with_state(metrics, observe_request))

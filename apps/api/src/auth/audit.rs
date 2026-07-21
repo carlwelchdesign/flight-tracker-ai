@@ -149,6 +149,13 @@ impl AuditStore {
                          WHEN 'session.revoked' THEN jsonb_strip_nulls(jsonb_build_object(
                            'provider', event.metadata->>'provider',
                            'identity_id', event.metadata->>'identity_id'))
+                         WHEN 'retention.run.completed' THEN jsonb_strip_nulls(jsonb_build_object(
+                           'policy_id', event.metadata->>'policy_id',
+                           'policy_version', event.metadata->>'policy_version',
+                           'data_class', event.metadata->>'data_class',
+                           'provider', event.metadata->>'provider',
+                           'cutoff_at', event.metadata->>'cutoff_at',
+                           'evidence_reference', event.metadata->>'evidence_reference'))
                          ELSE '{}'::jsonb
                        END AS details
                 FROM authorization_audit_events event
@@ -292,7 +299,7 @@ fn validate_range(
 
 fn classify_risk(event: &AuditEventView) -> AuditRisk {
     match event.action.as_str() {
-        "session.revoked" | "dismiss" | "resolve" => AuditRisk::High,
+        "session.revoked" | "retention.run.completed" | "dismiss" | "resolve" => AuditRisk::High,
         "membership.updated"
             if event.details.get("status").and_then(Value::as_str) == Some("revoked")
                 || event.details.get("role").and_then(Value::as_str) == Some("administrator") =>
