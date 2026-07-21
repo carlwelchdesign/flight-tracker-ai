@@ -1,23 +1,23 @@
 # Data Lifecycle, Backup, and Incident Policy
 
-FT-401 proposed pilot control baseline, last reviewed 2026-07-21. These controls are mandatory gates, not claims about currently implemented jobs or infrastructure. The stricter controlling provider term always wins.
+FT-401 portfolio control baseline, last reviewed 2026-07-21. Repository controls are implemented and verified as cited; environment-specific scheduling, backups, and drills remain FT-402/FT-404 deployment gates. Any future external source's stricter official term wins.
 
 ## Data lifecycle policy
 
 | Data | Proposed maximum active retention | Deletion/exit behavior | Status |
 | --- | --- | --- | --- |
-| Commercial raw provider messages | 24 hours unless the controlling Order expressly permits longer | Delete primary objects and derived raw caches; preserve only contract-approved normalized/audit fields; record deletion evidence. | Generic raw-payload enforcement exists; provider policy approval remains blocked on FT-301. |
+| External raw aircraft-position messages | Source terms or 24 hours, whichever is shorter | Delete primary objects and derived raw caches; preserve only permitted normalized/audit fields; record deletion evidence. | No aircraft-position feed is enabled. Generic enforcement exists; FT-301/FT-302 must set any source-specific value before activation. |
 | NOAA raw public observations | 30 days for debugging/replay | Delete expired raw payloads; normalized current/revision records may follow operational history policy. | Raw-payload and normalized-fact policy/preview/approval/deletion/tombstone enforcement plus separately approved scheduling are implemented. |
-| Flight positions/routes/status facts | 30 days for a limited pilot unless contract/operator requires shorter | Tenant deletion plus provider-entitlement deletion; exclude expired facts from restore. | Two-person provider-scoped deletion of whole unreferenced terminal flight aggregates and separately approved scheduling are implemented; commercial contract values remain blocked on FT-301. |
-| Alerts, dispatcher actions, and rule evidence | 12 months for pilot evaluation, subject to provider derivative rights | Preserve append-only decision evidence; redact/delete prohibited source fields; Legal approves any litigation/security hold. | Dispatcher notes and action identifiers are write-bounded; two-person whole-terminal-series deletion, logical replay suppression, and separately approved scheduling are implemented; hosted execution remains pending. |
+| Flight positions/routes/status facts | 30 days for the portfolio unless source terms require shorter | Tenant deletion plus source-specific deletion; exclude expired facts from restore. | Two-person source-scoped deletion of whole unreferenced terminal flight aggregates and separately approved scheduling are implemented; FT-404 configures the hosted schedule. |
+| Alerts, user actions, and rule evidence | 12 months for portfolio evaluation, subject to source terms | Preserve append-only decision evidence; redact/delete prohibited source fields; record any security hold. | Notes and action identifiers are write-bounded; two-person whole-terminal-series deletion, logical replay suppression, and separately approved scheduling are implemented; FT-404 configures hosted execution. |
 | Authorization audit events | 12 months | Preserve actor/action/target evidence; restrict exports; delete on approved schedule, not user UI action. | Two-person preview/approval/deletion, restore-suppression tombstones, and separately approved scheduling implemented; hosted execution remains pending. |
 | Membership and identity mapping | Active relationship plus 30 days | Revoke access immediately; later delete/minimize external identifiers while preserving lawful audit references. | Revocation and two-person minimization of exclusively tenant-owned inactive identities implemented; shared-identity disposition and scheduling remain pending. |
 | Session revocation records | Expiry plus 30 days | Scheduled deletion after investigation window unless security hold applies. | Expiry enforcement, two-person cleanup, restore suppression, and separately approved scheduling implemented. |
-| Application/security logs | 30 days hot; no request bodies, assertions, credentials, raw provider payloads, or real tail lists | Restrict access; redact at ingestion; shorten if provider/operator terms require. | Logging minimization partially implemented; hosted retention pending. |
+| Application/security logs | 30 days hot; no request bodies, assertions, credentials, raw source payloads, or sensitive identifiers | Restrict access; redact at ingestion; shorten if source terms require. | Logging minimization is implemented in application boundaries; FT-404 configures hosted retention. |
 | Metrics | 13 months only when aggregate/non-identifying and contract-approved | Delete tenant/source labels that exceed approved aggregation. | Current metrics are in-memory; hosted policy pending. |
-| Controlled contracts, quotes, approvals | Per legal/procurement record schedule outside Git | Contract repository disposition; Git retains only opaque references/redacted summaries. | Process defined in FT-301. |
+| Optional future commercial records | Per applicable record schedule outside Git | External record-system disposition; Git retains only opaque references/redacted summaries. | Archived production-track process; not created for the portfolio release. |
 
-The Product, Legal/privacy, Security, and operator owners must approve or shorten this baseline before a pilot. No code may silently extend a period. Retention configuration must be field/source aware, versioned, auditable, and testable with a dry run. The implemented raw-payload and application-lifecycle workflow and remaining limits are in `RETENTION_DELETION_RUNBOOK.md`.
+No code may silently extend a period. Retention configuration must be field/source aware, versioned, auditable, and testable with a dry run. FT-404 records the actual hosted configuration before publication. The implemented raw-payload and application-lifecycle workflow and remaining limits are in `RETENTION_DELETION_RUNBOOK.md`.
 
 ## Deletion requirements
 
@@ -33,7 +33,7 @@ The Product, Legal/privacy, Security, and operator owners must approve or shorte
 - Encrypt database backups and snapshots in transit and at rest with access separated from application runtime credentials.
 - Keep production and preview backups isolated by environment and tenant exposure.
 - Proposed backup retention is 35 days, shortened when a provider contract requires it.
-- Test restore at least quarterly and before a pilot; record RPO, RTO, migration version, PostGIS availability, row/tenant counts, and tombstone replay.
+- Test restore before persistent public deployment and after material backup changes; record RPO, RTO, migration version, PostGIS availability, row/tenant counts, and tombstone replay.
 - A restore is incomplete until current membership/session revocations and deletion tombstones are reapplied before serving traffic.
 - Follow `BACKUP_RESTORE_RUNBOOK.md` and require a healthy administrator-only retention-integrity result for every tenant before serving traffic. The controlled procedure and integrity gate are implemented; managed backup configuration and a recorded drill remain pending.
 - Provider credentials and hosted identity secrets are restored from the managed secret system, never from database backups.
@@ -46,7 +46,7 @@ The Product, Legal/privacy, Security, and operator owners must approve or shorte
 | SEV-2 | Confirmed unauthorized attempt, material feed poisoning, prolonged loss of audit/freshness controls, deletion failure without known disclosure | Contain affected tenant/source; disable risky action; preserve evidence; begin scoped investigation and contractual notification assessment. |
 | SEV-3 | Low-impact policy violation, blocked suspicious activity, non-sensitive availability issue | Correct, document, trend, and promote severity if scope changes. |
 
-Contractual/regulatory notification clocks are pending FT-301 and legal review. Absence of a known deadline must never delay immediate internal escalation.
+Any source-specific or legal notification requirement is established when that source or hosted service is selected. Absence of a known deadline must never delay immediate containment.
 
 ## Incident response sequence
 
@@ -68,4 +68,4 @@ Contractual/regulatory notification clocks are pending FT-301 and legal review. 
 | Approve external operational messaging | C | C | I | A/R | C |
 | Close incident and accept residual risk | A | required approval | R | required approval | C |
 
-Only named incident responders may access restricted incident evidence. Access, exports, and deletion must be audited. F401-002, F401-007, and F401-008 remain open until these policies are implemented and exercised by FT-402.
+Only named incident responders may access restricted incident evidence. Access, exports, and deletion must be audited. Repository controls are accepted by FT-401; FT-402 exercises recovery and incident behavior, and FT-404 verifies the selected hosted environment before publication.

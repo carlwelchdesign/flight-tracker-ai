@@ -16,8 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Operations Console · Flight Tracker AI",
-  description: "Source-attributed airline operations monitoring and advisory intelligence.",
+  title: "Flight Tracker AI · Portfolio Demonstration",
+  description:
+    "A non-commercial portfolio demonstration of source-attributed airline operations monitoring.",
 };
 
 export default async function RootLayout({

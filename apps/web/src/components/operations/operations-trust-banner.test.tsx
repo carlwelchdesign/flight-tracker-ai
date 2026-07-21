@@ -9,11 +9,14 @@ describe("operational trust banner", () => {
   ] as const)("keeps %s limitations and source scope visible", (mode, label, sourceScope) => {
     render(<OperationsTrustBanner context={{ mode, label, sourceScope }} />);
 
-    const banner = screen.getByLabelText("Operational use limitation");
+    const banner = screen.getByLabelText("Portfolio use limitation");
     expect(banner).toHaveAttribute("data-operations-mode", mode);
     expect(banner).toHaveTextContent(label);
     expect(banner).toHaveTextContent(
-      "Advisory only — not for flight planning, dispatch release, or aircraft control.",
+      "Portfolio demonstration — not for operational use.",
+    );
+    expect(banner).toHaveTextContent(
+      "Not for flight planning, dispatch release, or aircraft control.",
     );
     expect(banner).toHaveTextContent(sourceScope);
     expect(banner).toHaveTextContent(/verify source authority and freshness before action/i);

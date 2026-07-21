@@ -14,13 +14,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Ft401ReviewValidationTest(unittest.TestCase):
-    def test_checked_in_review_is_structurally_valid_but_incomplete(self) -> None:
+    def test_checked_in_portfolio_review_is_complete(self) -> None:
         directory = ROOT / "plans"
         self.assertEqual(validate(directory), [])
-        completion_errors = validate(directory, require_complete=True)
-        self.assertTrue(any("remains blocked" in error for error in completion_errors))
-        self.assertTrue(any("is not closed" in error for error in completion_errors))
-        self.assertTrue(any("risk acceptance" in error for error in completion_errors))
+        self.assertEqual(validate(directory, require_complete=True), [])
 
     def test_rejects_duplicate_missing_and_unsupported_findings(self) -> None:
         with self._copy_review() as directory:
