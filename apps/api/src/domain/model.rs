@@ -350,6 +350,7 @@ pub struct Alert {
 #[serde(rename_all = "snake_case")]
 pub enum AlertActionKind {
     Acknowledge,
+    Assign,
     Dismiss,
     Comment,
     Resolve,

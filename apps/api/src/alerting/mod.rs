@@ -17,7 +17,8 @@ pub use ranking::{
     ALERT_SCORE_VERSION, AlertCandidate, AttentionBreakdown, candidate_from_route_hazard,
 };
 pub use store::{
-    AlertActionRequest, AlertDetail, AlertQueueItem, AlertStore, AlertStoreError, CreateAlertResult,
+    AlertActionRequest, AlertAssignee, AlertDetail, AlertQueueFilter, AlertQueueItem, AlertStore,
+    AlertStoreError, AssignmentFilter, CreateAlertResult, DismissalReason,
 };
 pub use worker::spawn_alert_worker;
 

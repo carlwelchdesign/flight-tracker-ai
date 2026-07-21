@@ -22,7 +22,73 @@ pub struct AlertActionRequest {
     pub action: AlertActionKind,
     pub actor_id: String,
     pub idempotency_key: String,
+    pub expected_workflow_version: i32,
     pub comment: Option<String>,
+    pub assigned_identity_id: Option<Uuid>,
+    pub dismissal_reason: Option<DismissalReason>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DismissalReason {
+    DuplicateAlert,
+    StaleSourceData,
+    IncorrectCorrelation,
+    NotOperationallyRelevant,
+    Other,
+}
+
+impl DismissalReason {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::DuplicateAlert => "duplicate_alert",
+            Self::StaleSourceData => "stale_source_data",
+            Self::IncorrectCorrelation => "incorrect_correlation",
+            Self::NotOperationallyRelevant => "not_operationally_relevant",
+            Self::Other => "other",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlertQueueFilter {
+    pub include_terminal: bool,
+    pub severity: Option<String>,
+    pub lifecycle: Option<String>,
+    pub flight: Option<String>,
+    pub event_from: Option<DateTime<Utc>>,
+    pub event_to: Option<DateTime<Utc>>,
+    pub assignment: Option<AssignmentFilter>,
+    pub limit: i64,
+}
+
+impl Default for AlertQueueFilter {
+    fn default() -> Self {
+        Self {
+            include_terminal: false,
+            severity: None,
+            lifecycle: None,
+            flight: None,
+            event_from: None,
+            event_to: None,
+            assignment: None,
+            limit: 200,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AssignmentFilter {
+    Unassigned,
+    Identity(Uuid),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, sqlx::FromRow)]
+pub struct AlertAssignee {
+    pub identity_id: Uuid,
+    pub subject: String,
+    pub display_name: Option<String>,
+    pub role: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, sqlx::FromRow)]
@@ -31,6 +97,7 @@ pub struct AlertQueueItem {
     pub operator_id: Uuid,
     pub event_time: DateTime<Utc>,
     pub flight_id: Option<Uuid>,
+    pub flight_callsign: Option<String>,
     pub hazard_id: Option<Uuid>,
     pub alert_type: String,
     pub severity: String,
@@ -42,6 +109,10 @@ pub struct AlertQueueItem {
     pub supersedes_alert_id: Option<Uuid>,
     pub attention_score: i16,
     pub score_version: i32,
+    pub workflow_version: i32,
+    pub assigned_identity_id: Option<Uuid>,
+    pub assigned_subject: Option<String>,
+    pub assigned_display_name: Option<String>,
     pub evidence: Value,
 }
 
@@ -52,6 +123,8 @@ pub struct AlertActionView {
     pub actor_id: String,
     pub occurred_at: DateTime<Utc>,
     pub comment: Option<String>,
+    pub assigned_identity_id: Option<Uuid>,
+    pub dismissal_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -71,6 +144,14 @@ pub enum AlertStoreError {
     InvalidActionIdentity,
     #[error("idempotency_key was already used for a different alert")]
     IdempotencyConflict,
+    #[error("alert changed since it was loaded; refresh and review the latest workflow state")]
+    ConcurrentModification,
+    #[error("the selected assignee is not an active alert manager for this tenant")]
+    InvalidAssignee,
+    #[error("dismiss requires a structured reason; other also requires an explanation")]
+    InvalidDismissalReason,
+    #[error("comment requires a non-empty dispatcher note")]
+    InvalidComment,
     #[error(transparent)]
     Lifecycle(#[from] LifecycleError),
     #[error("stored alert lifecycle is invalid")]
@@ -182,7 +263,7 @@ impl AlertStore {
             && matches!(lifecycle.as_str(), "open" | "acknowledged")
         {
             sqlx::query(
-                "UPDATE alerts SET lifecycle = 'resolved' WHERE operator_id = $1 AND id = $2",
+                "UPDATE alerts SET lifecycle = 'resolved', workflow_version = workflow_version + 1 WHERE operator_id = $1 AND id = $2",
             )
             .bind(candidate.operator_id.as_uuid())
             .bind(previous_id)
@@ -196,6 +277,8 @@ impl AlertStore {
                 "system:alert-supersession",
                 &format!("superseded-by:{id}"),
                 Some("Superseded by newer material evidence"),
+                None,
+                None,
                 now,
             )
             .await?;
@@ -208,34 +291,96 @@ impl AlertStore {
     pub async fn list_queue(
         &self,
         operator_id: OperatorId,
-        include_terminal: bool,
+        filter: &AlertQueueFilter,
     ) -> Result<Vec<AlertQueueItem>, AlertStoreError> {
+        let (filter_assignment, unassigned, assigned_identity_id) = match filter.assignment {
+            None => (false, false, None),
+            Some(AssignmentFilter::Unassigned) => (true, true, None),
+            Some(AssignmentFilter::Identity(identity_id)) => (true, false, Some(identity_id)),
+        };
         let rows = sqlx::query_as::<_, AlertQueueItem>(
             r#"
-            SELECT id, operator_id, event_time, flight_id, hazard_id, alert_type,
-                   severity, lifecycle, rule_id, rule_version, series_key,
-                   alert_revision, supersedes_alert_id, attention_score,
-                   score_version, evidence
+            SELECT current_alert.id, current_alert.operator_id, current_alert.event_time,
+                   current_alert.flight_id, current_alert.hazard_id, current_alert.alert_type,
+                   flight.callsign AS flight_callsign,
+                   current_alert.severity, current_alert.lifecycle, current_alert.rule_id,
+                   current_alert.rule_version, current_alert.series_key,
+                   current_alert.alert_revision, current_alert.supersedes_alert_id,
+                   current_alert.attention_score, current_alert.score_version,
+                   current_alert.workflow_version, current_alert.assigned_identity_id,
+                   assigned.subject AS assigned_subject,
+                   assigned.display_name AS assigned_display_name,
+                   current_alert.evidence
             FROM alerts current_alert
-            WHERE operator_id = $1
-              AND ($2 OR lifecycle IN ('open', 'acknowledged'))
+            LEFT JOIN auth_identities assigned ON assigned.id = current_alert.assigned_identity_id
+            LEFT JOIN flights flight
+              ON flight.operator_id = current_alert.operator_id
+             AND flight.id = current_alert.flight_id
+            WHERE current_alert.operator_id = $1
+              AND ($2 OR $4::text IS NOT NULL OR current_alert.lifecycle IN ('open', 'acknowledged'))
+              AND ($3::text IS NULL OR current_alert.severity = $3)
+              AND ($4::text IS NULL OR current_alert.lifecycle = $4)
+              AND (
+                  $5::text IS NULL
+                  OR current_alert.flight_id::text = $5
+                  OR lower(flight.callsign) = lower($5)
+              )
+              AND ($6::timestamptz IS NULL OR current_alert.event_time >= $6)
+              AND ($7::timestamptz IS NULL OR current_alert.event_time <= $7)
+              AND (
+                  NOT $8
+                  OR ($9 AND current_alert.assigned_identity_id IS NULL)
+                  OR (NOT $9 AND current_alert.assigned_identity_id = $10)
+              )
               AND NOT EXISTS (
                   SELECT 1 FROM alerts newer
                   WHERE newer.operator_id = current_alert.operator_id
                     AND newer.supersedes_alert_id = current_alert.id
               )
             ORDER BY
-                CASE lifecycle WHEN 'open' THEN 0 WHEN 'acknowledged' THEN 1 ELSE 2 END,
-                attention_score DESC,
-                event_time ASC,
-                id ASC
+                CASE current_alert.lifecycle WHEN 'open' THEN 0 WHEN 'acknowledged' THEN 1 ELSE 2 END,
+                current_alert.attention_score DESC,
+                current_alert.event_time ASC,
+                current_alert.id ASC
+            LIMIT $11
             "#,
         )
         .bind(operator_id.as_uuid())
-        .bind(include_terminal)
+        .bind(filter.include_terminal)
+        .bind(filter.severity.as_deref())
+        .bind(filter.lifecycle.as_deref())
+        .bind(filter.flight.as_deref())
+        .bind(filter.event_from)
+        .bind(filter.event_to)
+        .bind(filter_assignment)
+        .bind(unassigned)
+        .bind(assigned_identity_id)
+        .bind(filter.limit.clamp(1, 500))
         .fetch_all(&self.database)
         .await?;
         Ok(rows)
+    }
+
+    pub async fn list_assignees(
+        &self,
+        operator_id: OperatorId,
+    ) -> Result<Vec<AlertAssignee>, AlertStoreError> {
+        Ok(sqlx::query_as::<_, AlertAssignee>(
+            r#"
+            SELECT identity.id AS identity_id, identity.subject, identity.display_name,
+                   membership.role
+            FROM operator_memberships membership
+            JOIN auth_identities identity ON identity.id = membership.identity_id
+            WHERE membership.operator_id = $1
+              AND membership.status = 'active'
+              AND identity.disabled_at IS NULL
+              AND membership.role IN ('dispatcher', 'operator', 'administrator')
+            ORDER BY identity.display_name NULLS LAST, identity.subject, identity.id
+            "#,
+        )
+        .bind(operator_id.as_uuid())
+        .fetch_all(&self.database)
+        .await?)
     }
 
     pub async fn detail(
@@ -248,7 +393,8 @@ impl AlertStore {
             .ok_or(AlertStoreError::NotFound)?;
         let actions = sqlx::query_as::<_, AlertActionView>(
             r#"
-            SELECT id, action, actor_id, occurred_at, comment
+            SELECT id, action, actor_id, occurred_at, comment,
+                   assigned_identity_id, dismissal_reason
             FROM alert_actions
             WHERE operator_id = $1 AND alert_id = $2
             ORDER BY occurred_at, id
@@ -294,16 +440,24 @@ impl AlertStore {
             }
             return self.detail(request.operator_id, alert_id).await;
         }
-        let lifecycle = sqlx::query_scalar::<_, String>(
-            "SELECT lifecycle FROM alerts WHERE operator_id = $1 AND id = $2 FOR UPDATE",
+        let (lifecycle, workflow_version) = sqlx::query_as::<_, (String, i32)>(
+            "SELECT lifecycle, workflow_version FROM alerts WHERE operator_id = $1 AND id = $2 FOR UPDATE",
         )
         .bind(request.operator_id.as_uuid())
         .bind(alert_id)
         .fetch_optional(&mut *transaction)
         .await?
         .ok_or(AlertStoreError::NotFound)?;
+        if workflow_version != request.expected_workflow_version {
+            return Err(AlertStoreError::ConcurrentModification);
+        }
+        validate_action_request(&mut transaction, request).await?;
         let current = parse_lifecycle(&lifecycle)?;
-        let next = transition_lifecycle(current, request.action, request.comment.as_deref())?;
+        let lifecycle_reason = request
+            .dismissal_reason
+            .map(DismissalReason::as_str)
+            .or(request.comment.as_deref());
+        let next = transition_lifecycle(current, request.action, lifecycle_reason)?;
 
         insert_action(
             &mut transaction,
@@ -313,20 +467,94 @@ impl AlertStore {
             request.actor_id.trim(),
             request.idempotency_key.trim(),
             request.comment.as_deref().map(str::trim),
+            request.assigned_identity_id,
+            request.dismissal_reason,
             now,
         )
         .await?;
-        if next != current {
-            sqlx::query("UPDATE alerts SET lifecycle = $3 WHERE operator_id = $1 AND id = $2")
-                .bind(request.operator_id.as_uuid())
-                .bind(alert_id)
-                .bind(lifecycle_name(next))
-                .execute(&mut *transaction)
-                .await?;
-        }
+        sqlx::query(
+            r#"
+            UPDATE alerts
+            SET lifecycle = $3,
+                workflow_version = workflow_version + 1,
+                assigned_identity_id = CASE WHEN $4 = 'assign' THEN $5 ELSE assigned_identity_id END,
+                assigned_at = CASE WHEN $4 = 'assign' THEN $6 ELSE assigned_at END,
+                assigned_by_actor_id = CASE WHEN $4 = 'assign' THEN $7 ELSE assigned_by_actor_id END
+            WHERE operator_id = $1 AND id = $2
+            "#,
+        )
+        .bind(request.operator_id.as_uuid())
+        .bind(alert_id)
+        .bind(lifecycle_name(next))
+        .bind(action_name(request.action))
+        .bind(request.assigned_identity_id)
+        .bind(now)
+        .bind(request.actor_id.trim())
+        .execute(&mut *transaction)
+        .await?;
         transaction.commit().await?;
         self.detail(request.operator_id, alert_id).await
     }
+}
+
+async fn validate_action_request(
+    transaction: &mut Transaction<'_, Postgres>,
+    request: &AlertActionRequest,
+) -> Result<(), AlertStoreError> {
+    match request.action {
+        AlertActionKind::Assign => {
+            let Some(identity_id) = request.assigned_identity_id else {
+                return Err(AlertStoreError::InvalidAssignee);
+            };
+            let valid = sqlx::query_scalar::<_, bool>(
+                r#"
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM operator_memberships membership
+                    JOIN auth_identities identity ON identity.id = membership.identity_id
+                    WHERE membership.operator_id = $1
+                      AND membership.identity_id = $2
+                      AND membership.status = 'active'
+                      AND identity.disabled_at IS NULL
+                      AND membership.role IN ('dispatcher', 'operator', 'administrator')
+                )
+                "#,
+            )
+            .bind(request.operator_id.as_uuid())
+            .bind(identity_id)
+            .fetch_one(&mut **transaction)
+            .await?;
+            if !valid {
+                return Err(AlertStoreError::InvalidAssignee);
+            }
+        }
+        AlertActionKind::Dismiss => {
+            let Some(reason) = request.dismissal_reason else {
+                return Err(AlertStoreError::InvalidDismissalReason);
+            };
+            if reason == DismissalReason::Other
+                && request
+                    .comment
+                    .as_deref()
+                    .is_none_or(|value| value.trim().is_empty())
+            {
+                return Err(AlertStoreError::InvalidDismissalReason);
+            }
+        }
+        AlertActionKind::Comment
+            if request
+                .comment
+                .as_deref()
+                .is_none_or(|value| value.trim().is_empty()) =>
+        {
+            return Err(AlertStoreError::InvalidComment);
+        }
+        _ if request.assigned_identity_id.is_some() || request.dismissal_reason.is_some() => {
+            return Err(AlertStoreError::InvalidActionIdentity);
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 async fn fetch_alert(
@@ -336,11 +564,19 @@ async fn fetch_alert(
 ) -> Result<Option<AlertQueueItem>, sqlx::Error> {
     sqlx::query_as::<_, AlertQueueItem>(
         r#"
-        SELECT id, operator_id, event_time, flight_id, hazard_id, alert_type,
-               severity, lifecycle, rule_id, rule_version, series_key,
-               alert_revision, supersedes_alert_id, attention_score,
-               score_version, evidence
-        FROM alerts WHERE operator_id = $1 AND id = $2
+        SELECT alert.id, alert.operator_id, alert.event_time, alert.flight_id,
+               flight.callsign AS flight_callsign,
+               alert.hazard_id, alert.alert_type, alert.severity, alert.lifecycle,
+               alert.rule_id, alert.rule_version, alert.series_key,
+               alert.alert_revision, alert.supersedes_alert_id, alert.attention_score,
+               alert.score_version, alert.workflow_version, alert.assigned_identity_id,
+               assigned.subject AS assigned_subject,
+               assigned.display_name AS assigned_display_name, alert.evidence
+        FROM alerts alert
+        LEFT JOIN auth_identities assigned ON assigned.id = alert.assigned_identity_id
+        LEFT JOIN flights flight
+          ON flight.operator_id = alert.operator_id AND flight.id = alert.flight_id
+        WHERE alert.operator_id = $1 AND alert.id = $2
         "#,
     )
     .bind(operator_id)
@@ -358,6 +594,8 @@ async fn insert_action(
     actor_id: &str,
     idempotency_key: &str,
     comment: Option<&str>,
+    assigned_identity_id: Option<Uuid>,
+    dismissal_reason: Option<DismissalReason>,
     occurred_at: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     let id = Uuid::new_v5(&operator_id, idempotency_key.as_bytes());
@@ -365,8 +603,9 @@ async fn insert_action(
         r#"
         INSERT INTO alert_actions (
             id, operator_id, alert_id, schema_version, action, actor_id,
-            occurred_at, comment, idempotency_key
-        ) VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8)
+            occurred_at, comment, idempotency_key, assigned_identity_id,
+            dismissal_reason
+        ) VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, $10)
         "#,
     )
     .bind(id)
@@ -377,6 +616,8 @@ async fn insert_action(
     .bind(occurred_at)
     .bind(comment)
     .bind(idempotency_key)
+    .bind(assigned_identity_id)
+    .bind(dismissal_reason.map(DismissalReason::as_str))
     .execute(&mut **transaction)
     .await?;
     Ok(())
@@ -404,6 +645,7 @@ fn lifecycle_name(value: AlertLifecycle) -> &'static str {
 fn action_name(value: AlertActionKind) -> &'static str {
     match value {
         AlertActionKind::Acknowledge => "acknowledge",
+        AlertActionKind::Assign => "assign",
         AlertActionKind::Dismiss => "dismiss",
         AlertActionKind::Comment => "comment",
         AlertActionKind::Resolve => "resolve",
