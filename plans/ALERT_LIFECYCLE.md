@@ -35,26 +35,29 @@ Valid transitions are:
 - comment → no lifecycle change and is allowed in any state;
 - dismissed and resolved are terminal.
 
-Dismissal requires a non-empty reason. Every accepted command inserts an `alert_actions` row in the same transaction as the lifecycle update. Client-provided idempotency keys make retries safe and cannot be reused against another alert.
+Assignment is a workflow action rather than a lifecycle transition. Open and acknowledged alerts may be assigned to an active dispatcher, operator, or administrator in the authenticated tenant. Each accepted human action increments `workflow_version`; clients must submit the version they reviewed, and stale writes receive `409 alert_conflict` before any audit or alert row is changed.
+
+Dismissal uses one structured reason: duplicate alert, stale source data, incorrect correlation, not operationally relevant, or other. `other` also requires a note. Every accepted command inserts an `alert_actions` row in the same transaction as the lifecycle, assignment, and workflow-version update. Client-provided idempotency keys make retries safe and cannot be reused against another alert.
 
 ## HTTP contract
 
-- `GET /api/alerts?operator_id={uuid}` returns only current open/acknowledged series revisions, ordered by lifecycle, attention descending, oldest event, then ID.
-- `GET /api/alerts?operator_id={uuid}&include_terminal=true` also returns current terminal revisions.
-- `GET /api/alerts/{id}?operator_id={uuid}` returns stored evidence and ordered audit actions.
-- `POST /api/alerts/{id}/actions` accepts `operator_id`, `action`, `actor_id`, `idempotency_key`, and optional `comment`.
+- `GET /api/alerts` returns the authenticated tenant's current open/acknowledged series revisions, ordered by lifecycle, attention descending, oldest event, then ID. The bounded result defaults to 200 and caps at 500.
+- `GET /api/alerts` accepts exact severity and status filters, a callsign or flight UUID, inclusive event-time bounds, and an assignee identity UUID or `unassigned`. An explicit terminal status includes that status without requiring `include_terminal`.
+- `GET /api/alerts/assignees` returns only active tenant members who can manage alerts.
+- `GET /api/alerts/{id}` returns stored evidence, assignment, workflow version, and ordered audit actions.
+- `POST /api/alerts/{id}/actions` accepts `action`, `idempotency_key`, `expected_workflow_version`, and action-specific comment, assignee, or dismissal-reason fields. Operator and actor authority come only from the authenticated Rust context.
 
-Operator ID is mandatory on every read and mutation until authenticated tenant context replaces the explicit development boundary.
+Every read and mutation is tenant-scoped from the authenticated context. Browser-provided operator or actor identifiers are not part of the contract.
 
 ## Replay and dispatcher interface
 
 The replay alert worker persists simulation envelopes, flights, positions, routes, and hazards through the canonical PostGIS schema before alert creation. The M1 scenario includes a versioned route for the hazard-adjacent flight, allowing a normal local run to produce a real persisted alert.
 
-The dispatcher queue exposes explicit loading, empty, unavailable, selected, and action-pending states. It displays the score breakdown, rule/evidence versions, distance and margin, lifecycle, and append-only audit history. Acknowledge, comment, resolve, and dismiss remain explicit human actions; nothing sends an operational instruction.
+The dispatcher queue exposes explicit loading, filtered-empty, unavailable, partial assignment-directory failure, selected, action-pending, success, validation, and concurrent-update recovery states. It displays the score breakdown, rule/evidence versions, distance and margin, lifecycle, assignment, and append-only audit history before controls. Acknowledge, assign, comment, resolve, and dismiss remain explicit human actions; nothing sends an operational instruction.
 
 ## Verification
 
 - Pure lifecycle and ranking threshold tests.
-- PostGIS integration coverage for ranking order, exact dedupe, evidence supersession, automatic resolution, idempotent acknowledgement, comments, dismissal reasons, terminal suppression, and history.
-- Typed frontend parser tests and dispatcher interaction tests.
+- PostGIS integration coverage for ranking order, exact dedupe, evidence supersession, automatic resolution, idempotent acknowledgement, tenant-safe assignment, optimistic conflicts, structured dismissal, terminal suppression, filtering, and a 100-of-120 bounded volume page.
+- Typed frontend parser tests and dispatcher interaction tests, including all five filter dimensions, assignment, conflict recovery, structured dismissal, and a 150-alert queue.
 - Strict Clippy, Rust format/test/release build, web lint/typecheck/test/production build, schema migration, and live replay/API checks.

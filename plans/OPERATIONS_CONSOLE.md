@@ -11,7 +11,7 @@ The M1 console helps a dispatcher or operations analyst scan a simulated fleet, 
 3. Select a flight from either the board or the map.
 4. Review route, position, timing, nearby hazards, and source-attributed timeline evidence in the detail panel.
 5. Use replay controls to pause, reset, or change simulation speed during development.
-6. Scan the ranked dispatcher queue, inspect its score and evidence, then acknowledge, comment, dismiss with a reason, or resolve the alert.
+6. Filter and scan the ranked dispatcher queue, inspect its score and evidence, then acknowledge, assign, comment, dismiss with a structured reason, or resolve the alert.
 
 Selection is a single shared state. A selection made on the map or board updates the map emphasis, board row, and detail panel together.
 
@@ -20,7 +20,7 @@ Selection is a single shared state. A selection made on the map or board updates
 - The header carries product identity, distinct service and stream states, last event and receipt times, and development-only replay/outage controls.
 - The map and board are equal primary surfaces for spatial and comparative scanning.
 - The detail panel is the evidence surface for the selected flight.
-- The dispatcher queue is a separate evidence and action surface. It shows score components, rule/score/route/hazard versions, proximity, lifecycle, and audit history.
+- The dispatcher queue is a separate evidence and action surface. It shows score components, rule/score/route/hazard versions, proximity, lifecycle, assignment, and audit history. Severity, status, flight, event time, and assigned-user filters sit above the bounded review workspace.
 - Attention language remains descriptive (`watch`, `normal`) and never claims to be a safety determination.
 - Timeline entries retain their source and event time so operators can distinguish observation from receipt.
 
@@ -38,6 +38,8 @@ Selection is a single shared state. A selection made on the map or board updates
 - **Alert empty:** the queue explains that clear and indeterminate route–hazard cases are intentionally suppressed.
 - **Alert unavailable:** the queue preserves the rest of the operational picture and offers a retry.
 - **Action pending/error:** controls are disabled while a command is in flight; validation and server errors remain visible without discarding the selected evidence.
+- **Concurrent action:** the stale command is rejected, current detail is reloaded, and the dispatcher is told to review the winner's state before retrying.
+- **Assignment directory unavailable:** the queue, evidence, and other actions remain available while assignment controls explain the partial outage.
 
 ## Accessibility and interaction
 
