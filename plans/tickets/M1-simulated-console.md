@@ -8,7 +8,7 @@ Status: Complete
 
 Branch: `feat/ft-101-replay-infrastructure`
 Final implementation commit: `47a8029`
-Pull request: [#5](https://github.com/carlwelchdesign/flight-tracker-ai/pull/5) (ready for review; required checks passed)
+Pull request: [#5](https://github.com/carlwelchdesign/flight-tracker-ai/pull/5) (merged at `efc2cf6`)
 Owner: Full-stack engineering
 
 Create a versioned scenario format and virtual clock that emits positions and operational events through the same path used by live providers.
@@ -27,11 +27,12 @@ Verification evidence: `fixtures/replay/m1-operations-v1.json`; `plans/REPLAY_SC
 
 ## FT-102 — Implement fleet API and live event stream
 
-Status: Not started
+Status: Complete
 
 Branch: `feat/ft-102-fleet-api-event-stream`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `7e99083`
+Pull request: [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6) (ready for review; required checks passed)
+Owner: Backend engineering
 
 Project current flight state from replay events and expose list, detail, timeline, and SSE endpoints.
 
@@ -39,13 +40,13 @@ Dependencies: FT-101
 
 Acceptance checklist:
 
-- [ ] Flight list and detail endpoints return typed, paginated responses.
-- [ ] Timeline returns source-attributed operational events in stable order.
-- [ ] SSE reconnect behavior and event IDs are tested.
-- [ ] Invalid or out-of-order events do not corrupt current state.
-- [ ] API latency and stream connection metrics are emitted.
+- [x] Flight list and detail endpoints return typed, paginated responses.
+- [x] Timeline returns source-attributed operational events in stable order.
+- [x] SSE reconnect behavior and event IDs are tested.
+- [x] Invalid or out-of-order events do not corrupt current state.
+- [x] API latency and stream connection metrics are emitted.
 
-Verification evidence: Pending.
+Verification evidence: `plans/FLEET_API.md`; focused projection, HTTP, SSE, metrics, replay-reset, and replay-to-public-API tests; 31 passing Rust tests; strict workspace Clippy; Rust release build; web dependency audit, lint, typecheck, and production build; Compose configuration and diff hygiene; implementation commit `7e99083`; PR [#6](https://github.com/carlwelchdesign/flight-tracker-ai/pull/6), with Rust, web, and API/PostGIS smoke checks passing.
 
 ## FT-103 — Build map, flight board, and flight detail experience
 
