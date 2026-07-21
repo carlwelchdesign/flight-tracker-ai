@@ -5,12 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M3 — Commercial flight data and operational workflow
-- Active ticket: FT-301 — Select and contract a commercial flight-data provider
-- Branch: None — external procurement evidence pending after handoff PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
-- Pull request: None active after maintenance PR [#17](https://github.com/carlwelchdesign/flight-tracker-ai/pull/17) merges
-- Owner: Product, legal, and engineering
-- Overall status: M0, M1, and M2 are complete; FT-303 and FT-304 are complete while FT-301 remains externally gated
-- Next action: Assign the named Product/Legal/Engineering/operator owners in the controlled tracker, approve the intended-use questionnaire, and submit both provider requests using `provider-evaluation/PROCUREMENT_HANDOFF.md`.
+- External gate: FT-301 — provider procurement evidence pending after handoff PR [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16)
+- Active engineering ticket: FT-401 — Complete security, privacy, and trust review
+- Branch: `docs/ft-401-security-trust-review`
+- Pull request: Pending
+- Owner: Security, legal/privacy, product, and engineering
+- Overall status: M0, M1, and M2 are complete; M3 remains externally gated while dependency-safe FT-401 review preparation is in progress
+- Next action: Audit implemented credential, tenant, ingestion, audit, data-lifecycle, privileged-action, and advisory-language boundaries; leave provider-specific controls open until FT-301 resolves.
 
 ## Milestone checklist
 

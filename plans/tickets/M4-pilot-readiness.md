@@ -4,15 +4,18 @@ Default owner: Product/operations lead, supported by engineering and security.
 
 ## FT-401 — Complete security, privacy, and trust review
 
-Status: Not started
+Status: In progress
 
 Branch: `docs/ft-401-security-trust-review`
 Final commit: Pending
 Pull request: Pending
+Owner: Security, legal/privacy, product, and engineering
 
 Review data handling, permissions, auditability, advisory language, and external-provider obligations before a real-operations evaluation.
 
 Dependencies: FT-301, FT-303, FT-304
+
+Preparation scope: review the implemented FT-303/FT-304 boundaries now; keep provider-specific attribution, retention, deletion, and licensing controls open until FT-301 supplies the controlling contract.
 
 Acceptance checklist:
 
