@@ -4,11 +4,12 @@ Default owner: Product for provider contracting; engineering and security for im
 
 ## FT-301 — Select and contract a commercial flight-data provider
 
-Status: Not started
+Status: In progress
 
 Branch: `docs/ft-301-commercial-provider-selection`
 Final commit: Pending
 Pull request: Pending
+Owner: Product, legal, and engineering
 
 Resolve the provider feasibility work with a documented selection appropriate for the intended use.
 
