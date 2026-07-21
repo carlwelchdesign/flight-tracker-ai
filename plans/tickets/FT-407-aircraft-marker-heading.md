@@ -5,7 +5,8 @@ Status: Complete
 Branch: `fix/ft-407-aircraft-marker-heading`
 Latest implementation commit: `c36f763`
 Final implementation commit: `c36f763`
-Pull request: [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27)
+Merge commit: `965a779`
+Pull request: [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27) (merged)
 Owner: Frontend product engineering
 
 ## Outcome
@@ -58,3 +59,14 @@ ticket is intentionally stacked on the active FT-405 feature branch.
 - CI run [29875663012](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875663012)
   passes Rust, web, API/PostGIS, Vercel, and Vercel Preview Comments for commit
   `c36f763`.
+- Final CI run [29875782640](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875782640)
+  passes all five checks for ticket commit `53ce755`. PR #27 merged into the
+  FT-405 feature branch at `965a779`.
+- Production deployment `dpl_9CXK2vvtPbdcNiaBnX9ZK52FgPfN` is ready and served
+  at `https://flight-tracker-ai-one.vercel.app`. The integration gate retains
+  the previously known Clerk DNS configuration warning; the application build
+  and deployment completed successfully.
+- Public-production verification rendered 145 live markers. The selected
+  aircraft supplied a true heading of approximately 50 degrees and rendered
+  its marker at `-40.01` degrees, confirming the negative 90-degree correction
+  on the public site.
