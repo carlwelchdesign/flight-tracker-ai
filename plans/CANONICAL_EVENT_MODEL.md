@@ -38,6 +38,7 @@ provider payload -> ProviderEnvelope -> provider adapter -> CanonicalEvent -> pr
 | Raw deletion tombstone | `data_deletion_tombstones` | Tenant/provider/feed/raw hash and deletion-run evidence |
 | Lifecycle deletion tombstone | `lifecycle_deletion_tombstones` | Tenant/data-class/source-record identity plus deletion/minimization evidence |
 | Alert-history tombstone | `alert_history_tombstones` | Tenant/alert ID/material dedupe key/series revision plus retention-run evidence |
+| Operational-fact tombstone | `operational_fact_tombstones` | Tenant/provider/fact table/record ID plus retention-run evidence |
 
 Every operational table includes a non-null `operator_id`. Composite foreign
 keys include `operator_id`, so a record cannot reference an envelope, flight,
@@ -56,6 +57,10 @@ force restored identity mappings back to their minimized state.
 Approved terminal-alert runs delete only whole dismissed/resolved series after
 their latest alert/action activity expires. Alert-history tombstones suppress an
 exact logical replay while allowing new material evidence at the next revision.
+
+Approved normalized-fact runs delete old observations, whole unreferenced
+terminal flight aggregates, and whole unreferenced expired hazard series in
+dependency order. Provider-scoped fact tombstones suppress exact restoration.
 
 ## Versioning
 
