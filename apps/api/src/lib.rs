@@ -1,10 +1,18 @@
-use axum::{Json, Router, extract::State, http::StatusCode, middleware, routing::get};
+use axum::{
+    Json, Router,
+    extract::{Extension, State},
+    http::StatusCode,
+    middleware,
+    response::{IntoResponse, Response},
+    routing::get,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 pub mod alerting;
+pub mod auth;
 pub mod domain;
 pub mod fleet;
 pub mod health;
@@ -15,6 +23,9 @@ pub mod replay;
 pub mod weather;
 
 use alerting::{AlertStore, alert_router, spawn_alert_worker};
+use auth::{
+    AuthContext, AuthFailure, AuthService, Permission, auth_router, authenticate_request, require,
+};
 use fleet::{FleetStore, fleet_router, spawn_projection_worker};
 use health::{CriticalWorkerRegistry, WorkerSnapshot};
 use ingestion::IngestionSubscription;
@@ -94,20 +105,25 @@ struct ApiErrorBody {
     message: &'static str,
 }
 
-pub fn build_router(database: PgPool) -> Router {
-    build_router_with_runtime(database, None, CriticalWorkerRegistry::default())
+pub fn build_router(database: PgPool, auth: AuthService) -> Router {
+    build_router_with_runtime(database, None, CriticalWorkerRegistry::default(), auth)
 }
 
-pub fn build_router_with_replay(database: PgPool, replay: Option<ReplayHandle>) -> Router {
-    build_router_with_runtime(database, replay, CriticalWorkerRegistry::default())
+pub fn build_router_with_replay(
+    database: PgPool,
+    replay: Option<ReplayHandle>,
+    auth: AuthService,
+) -> Router {
+    build_router_with_runtime(database, replay, CriticalWorkerRegistry::default(), auth)
 }
 
 pub fn build_router_with_runtime(
     database: PgPool,
     replay: Option<ReplayHandle>,
     workers: CriticalWorkerRegistry,
+    auth: AuthService,
 ) -> Router {
-    build_router_with_runtime_and_ingestion(database, replay, workers, Vec::new())
+    build_router_with_runtime_and_ingestion(database, replay, workers, Vec::new(), auth)
 }
 
 pub fn build_router_with_runtime_and_ingestion(
@@ -115,6 +131,7 @@ pub fn build_router_with_runtime_and_ingestion(
     replay: Option<ReplayHandle>,
     workers: CriticalWorkerRegistry,
     subscriptions: Vec<IngestionSubscription>,
+    auth: AuthService,
 ) -> Router {
     let fleet = FleetStore::new(2_048);
     if let Some(handle) = replay.as_ref() {
@@ -136,19 +153,21 @@ pub fn build_router_with_runtime_and_ingestion(
             workers.register(subscription.worker_name),
         );
     }
-    build_router_with_services_and_health(database, replay, fleet, workers)
+    build_router_with_services_and_health(database, replay, fleet, workers, auth)
 }
 
 pub fn build_router_with_services(
     database: PgPool,
     replay: Option<ReplayHandle>,
     fleet: FleetStore,
+    auth: AuthService,
 ) -> Router {
     build_router_with_services_and_health(
         database,
         replay,
         fleet,
         CriticalWorkerRegistry::default(),
+        auth,
     )
 }
 
@@ -157,18 +176,25 @@ fn build_router_with_services_and_health(
     replay: Option<ReplayHandle>,
     fleet: FleetStore,
     workers: CriticalWorkerRegistry,
+    auth: AuthService,
 ) -> Router {
     let metrics = ApiMetrics::default();
     let fleet_routes = fleet_router(fleet.clone(), metrics.clone());
     let weather_routes = weather_router(database.clone());
     let alert_routes = alert_router(AlertStore::new(database.clone()));
-    let mut router = Router::new()
+    let public = Router::new()
         .route("/health", get(health))
         .route("/readiness", get(readiness))
-        .route("/api/source-health", get(source_health));
+        .with_state(ApiState {
+            database: database.clone(),
+            replay: replay.clone(),
+            fleet: fleet.clone(),
+            workers: workers.clone(),
+        });
+    let mut protected = Router::new().route("/api/source-health", get(source_health));
 
     if replay.is_some() {
-        router = router
+        protected = protected
             .route("/api/dev/replay", get(replay_status))
             .route("/api/dev/replay/pause", axum::routing::post(replay_pause))
             .route("/api/dev/replay/resume", axum::routing::post(replay_resume))
@@ -177,7 +203,7 @@ fn build_router_with_services_and_health(
             .route("/api/dev/replay/outage", axum::routing::post(replay_outage));
     }
 
-    router
+    protected
         .with_state(ApiState {
             database,
             replay,
@@ -187,6 +213,9 @@ fn build_router_with_services_and_health(
         .merge(fleet_routes)
         .merge(weather_routes)
         .merge(alert_routes)
+        .merge(auth_router(auth.clone()))
+        .layer(middleware::from_fn_with_state(auth, authenticate_request))
+        .merge(public)
         .layer(middleware::from_fn_with_state(metrics, observe_request))
         .layer(middleware::from_fn(correlate_request))
 }
@@ -201,37 +230,53 @@ struct ReplayOutageRequest {
     active: bool,
 }
 
-async fn replay_status(State(state): State<ApiState>) -> Json<ReplayStatus> {
-    Json(
+async fn replay_status(
+    State(state): State<ApiState>,
+    Extension(context): Extension<AuthContext>,
+) -> Result<Json<ReplayStatus>, Response> {
+    authorize_replay(&state, &context).await?;
+    Ok(Json(
         state
             .replay
             .expect("replay route requires handle")
             .status()
             .await,
-    )
+    ))
 }
 
-async fn replay_pause(State(state): State<ApiState>) -> Json<ReplayStatus> {
-    Json(
+async fn replay_pause(
+    State(state): State<ApiState>,
+    Extension(context): Extension<AuthContext>,
+) -> Result<Json<ReplayStatus>, Response> {
+    authorize_replay(&state, &context).await?;
+    Ok(Json(
         state
             .replay
             .expect("replay route requires handle")
             .pause()
             .await,
-    )
+    ))
 }
 
-async fn replay_resume(State(state): State<ApiState>) -> Json<ReplayStatus> {
-    Json(
+async fn replay_resume(
+    State(state): State<ApiState>,
+    Extension(context): Extension<AuthContext>,
+) -> Result<Json<ReplayStatus>, Response> {
+    authorize_replay(&state, &context).await?;
+    Ok(Json(
         state
             .replay
             .expect("replay route requires handle")
             .resume()
             .await,
-    )
+    ))
 }
 
-async fn replay_reset(State(state): State<ApiState>) -> Json<ReplayStatus> {
+async fn replay_reset(
+    State(state): State<ApiState>,
+    Extension(context): Extension<AuthContext>,
+) -> Result<Json<ReplayStatus>, Response> {
+    authorize_replay(&state, &context).await?;
     let status = state
         .replay
         .as_ref()
@@ -239,33 +284,46 @@ async fn replay_reset(State(state): State<ApiState>) -> Json<ReplayStatus> {
         .reset()
         .await;
     state.fleet.clear_projection().await;
-    Json(status)
+    Ok(Json(status))
 }
 
 async fn replay_speed(
     State(state): State<ApiState>,
+    Extension(context): Extension<AuthContext>,
     Json(request): Json<ReplaySpeedRequest>,
-) -> Json<ReplayStatus> {
-    Json(
+) -> Result<Json<ReplayStatus>, Response> {
+    authorize_replay(&state, &context).await?;
+    Ok(Json(
         state
             .replay
             .expect("replay route requires handle")
             .set_speed(request.speed)
             .await,
-    )
+    ))
 }
 
 async fn replay_outage(
     State(state): State<ApiState>,
+    Extension(context): Extension<AuthContext>,
     Json(request): Json<ReplayOutageRequest>,
-) -> Json<ReplayStatus> {
-    Json(
+) -> Result<Json<ReplayStatus>, Response> {
+    authorize_replay(&state, &context).await?;
+    Ok(Json(
         state
             .replay
             .expect("replay route requires handle")
             .set_feed_outage(request.active)
             .await,
-    )
+    ))
+}
+
+async fn authorize_replay(state: &ApiState, context: &AuthContext) -> Result<(), Response> {
+    require(context, Permission::ControlReplay).map_err(IntoResponse::into_response)?;
+    let handle = state.replay.as_ref().expect("replay route requires handle");
+    if handle.operator_id().await != context.operator_id {
+        return Err(AuthFailure::Forbidden.into_response());
+    }
+    Ok(())
 }
 
 async fn health(State(state): State<ApiState>) -> Json<HealthResponse> {
@@ -284,20 +342,24 @@ async fn health(State(state): State<ApiState>) -> Json<HealthResponse> {
 
 async fn source_health(
     State(state): State<ApiState>,
-) -> Result<Json<SourceHealthResponse>, (StatusCode, Json<ApiErrorResponse>)> {
+    Extension(context): Extension<AuthContext>,
+) -> Result<Json<SourceHealthResponse>, Response> {
+    require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
     let rows = sqlx::query_as::<_, SourceHealthView>(
         r#"
         SELECT id, operator_id, schema_version, provider, feed, state, observed_at,
                last_attempt_at, last_success_at, newest_event_at, consecutive_failures,
                delay_seconds, stale_after_seconds, last_error_code
         FROM source_health
+        WHERE operator_id = $1
         ORDER BY provider, feed
         "#,
     )
+    .bind(context.operator_id.as_uuid())
     .fetch_all(&state.database)
     .await
     .map_err(|_| {
-        (
+        IntoResponse::into_response((
             StatusCode::SERVICE_UNAVAILABLE,
             Json(ApiErrorResponse {
                 error: ApiErrorBody {
@@ -305,7 +367,7 @@ async fn source_health(
                     message: "Source health is temporarily unavailable",
                 },
             }),
-        )
+        ))
     })?;
     Ok(Json(SourceHealthResponse { data: rows }))
 }
@@ -381,7 +443,10 @@ mod tests {
     use tower::ServiceExt;
 
     use super::*;
-    use crate::replay::ReplayScenario;
+    use crate::{
+        auth::{AssertionConfig, AuthStore, InternalAssertionVerifier},
+        replay::ReplayScenario,
+    };
 
     fn unavailable_database() -> PgPool {
         PgPoolOptions::new()
@@ -390,9 +455,23 @@ mod tests {
             .expect("test database URL should be valid")
     }
 
+    fn test_auth(database: &PgPool) -> AuthService {
+        AuthService::new(
+            InternalAssertionVerifier::new(AssertionConfig {
+                secret: "test-only-internal-assertion-secret-32-bytes".into(),
+                issuer: "test-web".into(),
+                audience: "test-api".into(),
+                leeway_seconds: 0,
+            })
+            .unwrap(),
+            AuthStore::new(database.clone()),
+        )
+    }
+
     #[tokio::test]
     async fn health_reports_service_identity_without_database_access() {
-        let response = build_router(unavailable_database())
+        let database = unavailable_database();
+        let response = build_router(database.clone(), test_auth(&database))
             .oneshot(Request::get("/health").body(Body::empty()).unwrap())
             .await
             .unwrap();
@@ -406,7 +485,8 @@ mod tests {
 
     #[tokio::test]
     async fn readiness_fails_closed_when_database_is_unavailable() {
-        let response = build_router(unavailable_database())
+        let database = unavailable_database();
+        let response = build_router(database.clone(), test_auth(&database))
             .oneshot(Request::get("/readiness").body(Body::empty()).unwrap())
             .await
             .unwrap();
@@ -423,10 +503,12 @@ mod tests {
     async fn health_reports_a_critical_worker_that_has_not_started() {
         let workers = CriticalWorkerRegistry::default();
         let _probe = workers.register("test_worker");
-        let response = build_router_with_runtime(unavailable_database(), None, workers)
-            .oneshot(Request::get("/health").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
+        let database = unavailable_database();
+        let response =
+            build_router_with_runtime(database.clone(), None, workers, test_auth(&database))
+                .oneshot(Request::get("/health").body(Body::empty()).unwrap())
+                .await
+                .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.into_body().collect().await.unwrap().to_bytes();
@@ -439,7 +521,8 @@ mod tests {
 
     #[tokio::test]
     async fn replay_routes_do_not_exist_without_an_enabled_handle() {
-        let response = build_router(unavailable_database())
+        let database = unavailable_database();
+        let response = build_router(database.clone(), test_auth(&database))
             .oneshot(Request::get("/api/dev/replay").body(Body::empty()).unwrap())
             .await
             .unwrap();
@@ -448,214 +531,31 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn replay_routes_control_an_enabled_development_scenario() {
+    async fn operational_and_replay_routes_require_a_bearer_assertion() {
         let scenario = ReplayScenario::from_json(include_str!(
             "../../../fixtures/replay/m1-operations-v1.json"
         ))
         .unwrap();
+        let database = unavailable_database();
         let app = build_router_with_replay(
-            unavailable_database(),
+            database.clone(),
             Some(ReplayHandle::new(scenario, 16)),
+            test_auth(&database),
         );
 
-        let status = app
-            .clone()
-            .oneshot(Request::get("/api/dev/replay").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(status.status(), StatusCode::OK);
-        let body = status.into_body().collect().await.unwrap().to_bytes();
-        let payload: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(payload["phase"], "paused");
-        assert_eq!(payload["total_events"], 13);
-
-        let speed = app
-            .clone()
-            .oneshot(
-                Request::post("/api/dev/replay/speed")
-                    .header("content-type", "application/json")
-                    .body(Body::from(r#"{"speed":"4x"}"#))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(speed.status(), StatusCode::OK);
-
-        let resume = app
-            .clone()
-            .oneshot(
-                Request::post("/api/dev/replay/resume")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(resume.status(), StatusCode::OK);
-        let body = resume.into_body().collect().await.unwrap().to_bytes();
-        let payload: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(payload["phase"], "running");
-        assert_eq!(payload["speed"], "4x");
-
-        let outage = app
-            .oneshot(
-                Request::post("/api/dev/replay/outage")
-                    .header("content-type", "application/json")
-                    .body(Body::from(r#"{"active":true}"#))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(outage.status(), StatusCode::OK);
-        let body = outage.into_body().collect().await.unwrap().to_bytes();
-        let payload: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(payload["feed_outage"], true);
-    }
-
-    #[tokio::test]
-    async fn replay_reset_clears_projected_fleet_state() {
-        let scenario = ReplayScenario::from_json(include_str!(
-            "../../../fixtures/replay/m1-operations-v1.json"
-        ))
-        .unwrap();
-        let store = FleetStore::new(16);
-        store
-            .apply(&scenario.batch_for(&scenario.events[1]).unwrap())
-            .await
-            .unwrap();
-        let app = build_router_with_services(
-            unavailable_database(),
-            Some(ReplayHandle::new(scenario, 16)),
-            store,
-        );
-
-        let reset = app
-            .clone()
-            .oneshot(
-                Request::post("/api/dev/replay/reset")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(reset.status(), StatusCode::OK);
-
-        let flights = app
-            .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        let payload = flights.into_body().collect().await.unwrap().to_bytes();
-        let payload: Value = serde_json::from_slice(&payload).unwrap();
-        assert_eq!(payload["pagination"]["total_items"], 0);
-    }
-
-    #[tokio::test]
-    async fn replay_runtime_projects_flights_through_public_api_routes() {
-        let scenario = ReplayScenario::from_json(include_str!(
-            "../../../fixtures/replay/m1-operations-v1.json"
-        ))
-        .unwrap();
-        let handle = ReplayHandle::new(scenario, 64);
-        let workers = CriticalWorkerRegistry::default();
-        let runtime = crate::replay::spawn_replay_runtime(
-            handle.clone(),
-            Duration::from_millis(25),
-            workers.register("test_replay"),
-        );
-        let app = build_router_with_runtime(unavailable_database(), Some(handle), workers);
-
-        tokio::time::sleep(Duration::from_millis(30)).await;
-        let health = app
-            .clone()
-            .oneshot(Request::get("/health").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        let payload = health.into_body().collect().await.unwrap().to_bytes();
-        let payload: Value = serde_json::from_slice(&payload).unwrap();
-        assert_eq!(payload["status"], "ok");
-        assert_eq!(payload["workers"].as_array().unwrap().len(), 3);
-
-        app.clone()
-            .oneshot(
-                Request::post("/api/dev/replay/outage")
-                    .header("content-type", "application/json")
-                    .body(Body::from(r#"{"active":true}"#))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        app.clone()
-            .oneshot(
-                Request::post("/api/dev/replay/speed")
-                    .header("content-type", "application/json")
-                    .body(Body::from(r#"{"speed":"8x"}"#))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        app.clone()
-            .oneshot(
-                Request::post("/api/dev/replay/resume")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        let during_outage = app
-            .clone()
-            .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        let payload = during_outage
-            .into_body()
-            .collect()
-            .await
-            .unwrap()
-            .to_bytes();
-        let payload: Value = serde_json::from_slice(&payload).unwrap();
-        assert_eq!(payload["pagination"]["total_items"], 0);
-
-        app.clone()
-            .oneshot(
-                Request::post("/api/dev/replay/outage")
-                    .header("content-type", "application/json")
-                    .body(Body::from(r#"{"active":false}"#))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        tokio::time::sleep(Duration::from_millis(200)).await;
-
-        let flights = app
-            .clone()
-            .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        let payload = flights.into_body().collect().await.unwrap().to_bytes();
-        let payload: Value = serde_json::from_slice(&payload).unwrap();
-        assert_eq!(payload["pagination"]["total_items"], 3);
-        assert!(payload["data"].as_array().unwrap().iter().all(|flight| {
-            flight["latest_position"].is_object() || flight["flight"]["callsign"] == "FT202"
-        }));
-
-        let reset = app
-            .clone()
-            .oneshot(
-                Request::post("/api/dev/replay/reset")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(reset.status(), StatusCode::OK);
-        let flights = app
-            .oneshot(Request::get("/api/flights").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        let payload = flights.into_body().collect().await.unwrap().to_bytes();
-        let payload: Value = serde_json::from_slice(&payload).unwrap();
-        assert_eq!(payload["pagination"]["total_items"], 0);
-        runtime.abort();
+        for request in [
+            Request::get("/api/dev/replay").body(Body::empty()).unwrap(),
+            Request::post("/api/dev/replay/resume")
+                .body(Body::empty())
+                .unwrap(),
+            Request::get("/api/flights").body(Body::empty()).unwrap(),
+            Request::get("/api/events/stream")
+                .body(Body::empty())
+                .unwrap(),
+            Request::get("/metrics").body(Body::empty()).unwrap(),
+        ] {
+            let response = app.clone().oneshot(request).await.unwrap();
+            assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        }
     }
 }

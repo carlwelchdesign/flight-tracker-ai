@@ -2,7 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::domain::{
-    AircraftPosition, CanonicalEvent, Flight, FlightId, ProviderEnvelopeId, SourceAttribution,
+    AircraftPosition, CanonicalEvent, Flight, FlightId, OperatorId, ProviderEnvelopeId,
+    SourceAttribution,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -34,6 +35,7 @@ pub struct TimelinePage {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct FleetEvent {
     pub id: u64,
+    pub operator_id: OperatorId,
     pub flight_id: Option<FlightId>,
     pub envelope_id: ProviderEnvelopeId,
     pub event_time: DateTime<Utc>,

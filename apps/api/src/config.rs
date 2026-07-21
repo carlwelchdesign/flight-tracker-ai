@@ -1,6 +1,9 @@
 use std::{env, net::SocketAddr, path::PathBuf, time::Duration};
 
-use flight_tracker_api::domain::OperatorId;
+use flight_tracker_api::{
+    auth::{AssertionConfig, AuthRole, DevelopmentIdentity},
+    domain::OperatorId,
+};
 use reqwest::Url;
 use thiserror::Error;
 use uuid::Uuid;
@@ -32,12 +35,26 @@ pub struct NoaaConfig {
     pub air_sigmet_stale_after: Duration,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthMode {
+    Development,
+    Clerk,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthConfig {
+    pub mode: AuthMode,
+    pub assertion: AssertionConfig,
+    pub development_identity: Option<DevelopmentIdentity>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub bind_address: SocketAddr,
     pub database_url: String,
     pub replay: Option<ReplayConfig>,
     pub noaa: Option<NoaaConfig>,
+    pub auth: AuthConfig,
 }
 
 #[derive(Debug, Error)]
@@ -66,6 +83,20 @@ pub enum ConfigError {
     MissingNoaaUserAgent,
     #[error("NOAA_POLL_INTERVAL_SECONDS must be an integer of at least 60")]
     InvalidNoaaPollInterval,
+    #[error("AUTH_MODE must be development or clerk")]
+    InvalidAuthMode,
+    #[error("AUTH_MODE=development is forbidden unless APP_ENV=development")]
+    DevelopmentAuthForbidden,
+    #[error("INTERNAL_AUTH_SECRET must contain at least 32 bytes")]
+    InvalidInternalAuthSecret,
+    #[error("AUTH_ASSERTION_ISSUER and AUTH_ASSERTION_AUDIENCE must not be empty")]
+    InvalidAuthBoundary,
+    #[error("development auth requires DEV_AUTH_OPERATOR_ID to be a UUID")]
+    InvalidDevelopmentOperator,
+    #[error("development auth requires non-empty DEV_AUTH_TENANT_ID and DEV_AUTH_SUBJECT")]
+    InvalidDevelopmentIdentity,
+    #[error("DEV_AUTH_ROLE must be viewer, dispatcher, operator, or administrator")]
+    InvalidDevelopmentRole,
 }
 
 impl Config {
@@ -154,11 +185,71 @@ impl Config {
             None
         };
 
+        let auth_mode = match lookup("AUTH_MODE").as_deref() {
+            Some("development") => AuthMode::Development,
+            Some("clerk") => AuthMode::Clerk,
+            _ => return Err(ConfigError::InvalidAuthMode),
+        };
+        if auth_mode == AuthMode::Development && environment != AppEnvironment::Development {
+            return Err(ConfigError::DevelopmentAuthForbidden);
+        }
+        let secret = lookup("INTERNAL_AUTH_SECRET").unwrap_or_default();
+        if secret.len() < 32 {
+            return Err(ConfigError::InvalidInternalAuthSecret);
+        }
+        let issuer = lookup("AUTH_ASSERTION_ISSUER").unwrap_or_else(|| "flight-tracker-web".into());
+        let audience =
+            lookup("AUTH_ASSERTION_AUDIENCE").unwrap_or_else(|| "flight-tracker-api".into());
+        if issuer.trim().is_empty() || audience.trim().is_empty() {
+            return Err(ConfigError::InvalidAuthBoundary);
+        }
+        let development_identity = if auth_mode == AuthMode::Development {
+            let operator_id = lookup("DEV_AUTH_OPERATOR_ID")
+                .and_then(|value| Uuid::parse_str(&value).ok())
+                .map(OperatorId::from_uuid)
+                .ok_or(ConfigError::InvalidDevelopmentOperator)?;
+            let external_tenant_id = lookup("DEV_AUTH_TENANT_ID").unwrap_or_default();
+            let subject = lookup("DEV_AUTH_SUBJECT").unwrap_or_default();
+            if external_tenant_id.trim().is_empty() || subject.trim().is_empty() {
+                return Err(ConfigError::InvalidDevelopmentIdentity);
+            }
+            let role = match lookup("DEV_AUTH_ROLE").as_deref() {
+                Some("viewer") => AuthRole::Viewer,
+                Some("dispatcher") => AuthRole::Dispatcher,
+                Some("operator") => AuthRole::Operator,
+                Some("administrator") => AuthRole::Administrator,
+                _ => return Err(ConfigError::InvalidDevelopmentRole),
+            };
+            Some(DevelopmentIdentity {
+                operator_id,
+                operator_code: lookup("DEV_AUTH_OPERATOR_CODE").unwrap_or_else(|| "SIM".into()),
+                operator_name: lookup("DEV_AUTH_OPERATOR_NAME")
+                    .unwrap_or_else(|| "Simulation Operator".into()),
+                external_tenant_id,
+                subject,
+                display_name: lookup("DEV_AUTH_DISPLAY_NAME")
+                    .unwrap_or_else(|| "Local Administrator".into()),
+                role,
+            })
+        } else {
+            None
+        };
+
         Ok(Self {
             bind_address,
             database_url,
             replay,
             noaa,
+            auth: AuthConfig {
+                mode: auth_mode,
+                assertion: AssertionConfig {
+                    secret,
+                    issuer,
+                    audience,
+                    leeway_seconds: 5,
+                },
+                development_identity,
+            },
         })
     }
 }
@@ -178,10 +269,28 @@ mod tests {
     use super::*;
 
     fn config(values: &[(&str, &str)]) -> Result<Config, ConfigError> {
-        let mut environment = HashMap::from([(
-            "DATABASE_URL".to_owned(),
-            "postgres://example.invalid/database".to_owned(),
-        )]);
+        let mut environment = HashMap::from([
+            (
+                "DATABASE_URL".to_owned(),
+                "postgres://example.invalid/database".to_owned(),
+            ),
+            ("APP_ENV".to_owned(), "development".to_owned()),
+            ("AUTH_MODE".to_owned(), "development".to_owned()),
+            (
+                "INTERNAL_AUTH_SECRET".to_owned(),
+                "development-only-secret-at-least-32-bytes".to_owned(),
+            ),
+            (
+                "DEV_AUTH_OPERATOR_ID".to_owned(),
+                "9c704a09-a62c-43d5-bac6-94ea2fd53b32".to_owned(),
+            ),
+            (
+                "DEV_AUTH_TENANT_ID".to_owned(),
+                "local-flight-tracker".to_owned(),
+            ),
+            ("DEV_AUTH_SUBJECT".to_owned(), "local-admin".to_owned()),
+            ("DEV_AUTH_ROLE".to_owned(), "administrator".to_owned()),
+        ]);
         environment.extend(
             values
                 .iter()
@@ -256,5 +365,28 @@ mod tests {
         ])
         .unwrap_err();
         assert!(matches!(error, ConfigError::InvalidNoaaPollInterval));
+    }
+
+    #[test]
+    fn development_identity_cannot_be_enabled_in_production() {
+        assert!(matches!(
+            config(&[("APP_ENV", "production")]),
+            Err(ConfigError::DevelopmentAuthForbidden)
+        ));
+    }
+
+    #[test]
+    fn production_accepts_clerk_mode_without_a_development_identity() {
+        let configured = config(&[("APP_ENV", "production"), ("AUTH_MODE", "clerk")]).unwrap();
+        assert_eq!(configured.auth.mode, AuthMode::Clerk);
+        assert!(configured.auth.development_identity.is_none());
+    }
+
+    #[test]
+    fn internal_assertion_secret_is_never_optional_or_weak() {
+        assert!(matches!(
+            config(&[("INTERNAL_AUTH_SECRET", "short")]),
+            Err(ConfigError::InvalidInternalAuthSecret)
+        ));
     }
 }

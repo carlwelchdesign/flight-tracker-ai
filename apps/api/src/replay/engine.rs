@@ -3,7 +3,7 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::ingestion::NormalizedEventBatch;
+use crate::{domain::OperatorId, ingestion::NormalizedEventBatch};
 
 use super::{ReplayScenario, ScenarioError};
 
@@ -95,6 +95,10 @@ impl ReplayEngine {
             virtual_time: self.scenario.start_time + elapsed,
             feed_outage: self.feed_outage,
         }
+    }
+
+    pub const fn operator_id(&self) -> OperatorId {
+        self.scenario.operator_id
     }
 
     pub fn pause(&mut self) -> ReplayStatus {

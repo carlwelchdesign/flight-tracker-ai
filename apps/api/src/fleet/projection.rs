@@ -26,8 +26,8 @@ struct ProjectedFlight {
 
 #[derive(Default)]
 struct ProjectionState {
-    flights: HashMap<FlightId, ProjectedFlight>,
-    timelines: HashMap<FlightId, Vec<FleetEvent>>,
+    flights: HashMap<(OperatorId, FlightId), ProjectedFlight>,
+    timelines: HashMap<(OperatorId, FlightId), Vec<FleetEvent>>,
     retained_events: VecDeque<Arc<FleetEvent>>,
     seen_envelopes: HashSet<ProviderEnvelopeId>,
     next_event_id: u64,
@@ -103,7 +103,7 @@ impl FleetStore {
             if let Some(flight_id) = event.flight_id {
                 state
                     .timelines
-                    .entry(flight_id)
+                    .entry((event.operator_id, flight_id))
                     .or_default()
                     .push((*event).clone());
             }
@@ -123,11 +123,12 @@ impl FleetStore {
         Ok(report)
     }
 
-    pub async fn list(&self, page: usize, page_size: usize) -> FlightPage {
+    pub async fn list(&self, operator_id: OperatorId, page: usize, page_size: usize) -> FlightPage {
         let state = self.state.read().await;
         let mut flights: Vec<_> = state
             .flights
             .values()
+            .filter(|projected| projected.flight.operator_id == operator_id)
             .map(|projected| FlightView {
                 flight: projected.flight.clone(),
                 latest_position: projected.latest_position.clone(),
@@ -146,12 +147,12 @@ impl FleetStore {
         }
     }
 
-    pub async fn detail(&self, flight_id: FlightId) -> Option<FlightView> {
+    pub async fn detail(&self, operator_id: OperatorId, flight_id: FlightId) -> Option<FlightView> {
         self.state
             .read()
             .await
             .flights
-            .get(&flight_id)
+            .get(&(operator_id, flight_id))
             .map(|projected| FlightView {
                 flight: projected.flight.clone(),
                 latest_position: projected.latest_position.clone(),
@@ -160,15 +161,20 @@ impl FleetStore {
 
     pub async fn timeline(
         &self,
+        operator_id: OperatorId,
         flight_id: FlightId,
         page: usize,
         page_size: usize,
     ) -> Option<TimelinePage> {
         let state = self.state.read().await;
-        if !state.flights.contains_key(&flight_id) {
+        if !state.flights.contains_key(&(operator_id, flight_id)) {
             return None;
         }
-        let mut events = state.timelines.get(&flight_id).cloned().unwrap_or_default();
+        let mut events = state
+            .timelines
+            .get(&(operator_id, flight_id))
+            .cloned()
+            .unwrap_or_default();
         events.sort_by_key(|event| (event.event_time, event.id));
         let pagination = page_metadata(page, page_size, events.len());
         Some(TimelinePage {
@@ -177,13 +183,17 @@ impl FleetStore {
         })
     }
 
-    pub async fn events_after(&self, event_id: u64) -> Vec<Arc<FleetEvent>> {
+    pub async fn events_after(
+        &self,
+        operator_id: OperatorId,
+        event_id: u64,
+    ) -> Vec<Arc<FleetEvent>> {
         self.state
             .read()
             .await
             .retained_events
             .iter()
-            .filter(|event| event.id > event_id)
+            .filter(|event| event.operator_id == operator_id && event.id > event_id)
             .cloned()
             .collect()
     }
@@ -282,7 +292,8 @@ fn source_matches_envelope(source: &SourceAttribution, envelope: &ProviderEnvelo
 }
 
 fn apply_flight(state: &mut ProjectionState, flight: &Flight) -> bool {
-    match state.flights.get_mut(&flight.id) {
+    let key = (flight.operator_id, flight.id);
+    match state.flights.get_mut(&key) {
         Some(current) if flight.times.event_time <= current.flight.times.event_time => false,
         Some(current) => {
             current.flight = flight.clone();
@@ -290,7 +301,7 @@ fn apply_flight(state: &mut ProjectionState, flight: &Flight) -> bool {
         }
         None => {
             state.flights.insert(
-                flight.id,
+                key,
                 ProjectedFlight {
                     flight: flight.clone(),
                     latest_position: None,
@@ -302,7 +313,10 @@ fn apply_flight(state: &mut ProjectionState, flight: &Flight) -> bool {
 }
 
 fn apply_position(state: &mut ProjectionState, position: &AircraftPosition) -> bool {
-    let Some(current) = state.flights.get_mut(&position.flight_id) else {
+    let Some(current) = state
+        .flights
+        .get_mut(&(position.operator_id, position.flight_id))
+    else {
         return false;
     };
     if current.flight.operator_id != position.operator_id
@@ -318,6 +332,7 @@ fn apply_position(state: &mut ProjectionState, position: &AircraftPosition) -> b
 }
 
 fn to_fleet_event(id: u64, envelope_id: ProviderEnvelopeId, event: CanonicalEvent) -> FleetEvent {
+    let operator_id = event_identity(&event).0;
     let (flight_id, event_time, source) = match &event {
         CanonicalEvent::Flight(value) => (
             Some(value.id),
@@ -346,6 +361,7 @@ fn to_fleet_event(id: u64, envelope_id: ProviderEnvelopeId, event: CanonicalEven
     };
     FleetEvent {
         id,
+        operator_id,
         flight_id,
         envelope_id,
         event_time,
@@ -395,13 +411,18 @@ mod tests {
         assert_eq!(report.ignored_events, 1);
 
         let flight_id = scenario.flights[0].id;
-        let detail = store.detail(flight_id).await.unwrap();
+        let detail = store.detail(scenario.operator_id, flight_id).await.unwrap();
         assert_eq!(
             detail.latest_position.unwrap().times.event_time,
             scenario.start_time + chrono::Duration::seconds(60)
         );
         assert_eq!(
-            store.timeline(flight_id, 1, 10).await.unwrap().data.len(),
+            store
+                .timeline(scenario.operator_id, flight_id, 1, 10)
+                .await
+                .unwrap()
+                .data
+                .len(),
             2
         );
     }
@@ -419,7 +440,14 @@ mod tests {
             store.apply(&batch).await,
             Err(ApplyError::InvalidEvent { .. })
         ));
-        assert_eq!(store.list(1, 10).await.pagination.total_items, 0);
+        assert_eq!(
+            store
+                .list(scenario.operator_id, 1, 10)
+                .await
+                .pagination
+                .total_items,
+            0
+        );
     }
 
     #[tokio::test]
@@ -433,15 +461,18 @@ mod tests {
                 .unwrap();
         }
 
-        let first = store.list(1, 2).await;
-        let second = store.list(2, 2).await;
+        let first = store.list(scenario.operator_id, 1, 2).await;
+        let second = store.list(scenario.operator_id, 2, 2).await;
         assert_eq!(first.pagination.total_items, 3);
         assert_eq!(first.pagination.total_pages, 2);
         assert_eq!(first.data.len(), 2);
         assert_eq!(second.data.len(), 1);
         assert!(first.data[0].flight.callsign <= first.data[1].flight.callsign);
 
-        let timeline = store.timeline(scenario.flights[0].id, 1, 10).await.unwrap();
+        let timeline = store
+            .timeline(scenario.operator_id, scenario.flights[0].id, 1, 10)
+            .await
+            .unwrap();
         assert!(timeline.data.windows(2).all(|events| {
             (events[0].event_time, events[0].id) < (events[1].event_time, events[1].id)
         }));
@@ -454,13 +485,57 @@ mod tests {
         let store = FleetStore::new(32);
         let batch = scenario.batch_for(&scenario.events[1]).unwrap();
         store.apply(&batch).await.unwrap();
-        assert_eq!(store.events_after(0).await[0].id, 1);
+        assert_eq!(store.events_after(scenario.operator_id, 0).await[0].id, 1);
 
         store.clear_projection().await;
-        assert_eq!(store.list(1, 10).await.pagination.total_items, 0);
-        assert!(store.events_after(0).await.is_empty());
+        assert_eq!(
+            store
+                .list(scenario.operator_id, 1, 10)
+                .await
+                .pagination
+                .total_items,
+            0
+        );
+        assert!(store.events_after(scenario.operator_id, 0).await.is_empty());
 
         assert_eq!(store.apply(&batch).await.unwrap().accepted_events, 1);
-        assert_eq!(store.events_after(0).await[0].id, 2);
+        assert_eq!(store.events_after(scenario.operator_id, 0).await[0].id, 2);
+    }
+
+    #[tokio::test]
+    async fn identical_flight_ids_are_isolated_between_operators() {
+        let scenario = fixture();
+        let store = FleetStore::new(32);
+        let original = scenario.batch_for(&scenario.events[1]).unwrap();
+        store.apply(&original).await.unwrap();
+
+        let other_operator = OperatorId::from_uuid(
+            uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000777").unwrap(),
+        );
+        let mut other = original.clone();
+        other.envelope.operator_id = other_operator;
+        other.envelope.id = ProviderEnvelopeId::from_uuid(uuid::Uuid::new_v4());
+        let CanonicalEvent::Flight(other_flight) = &mut other.events[0] else {
+            panic!("fixture event must be a flight")
+        };
+        other_flight.operator_id = other_operator;
+        other_flight.source.envelope_id = other.envelope.id;
+        other_flight.callsign = Some("OTHER1".into());
+        store.apply(&other).await.unwrap();
+
+        let original_page = store.list(scenario.operator_id, 1, 10).await;
+        let other_page = store.list(other_operator, 1, 10).await;
+        assert_eq!(original_page.pagination.total_items, 1);
+        assert_eq!(other_page.pagination.total_items, 1);
+        assert_ne!(
+            original_page.data[0].flight.callsign,
+            other_page.data[0].flight.callsign
+        );
+        assert!(
+            store
+                .detail(other_operator, scenario.flights[0].id)
+                .await
+                .is_some()
+        );
     }
 }

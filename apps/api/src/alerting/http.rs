@@ -1,6 +1,6 @@
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
     routing::{get, post},
 };
@@ -8,20 +8,24 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::domain::OperatorId;
+use crate::{
+    auth::{AuthContext, Permission, require},
+    domain::AlertActionKind,
+};
 
 use super::{AlertActionRequest, AlertDetail, AlertQueueItem, AlertStore, AlertStoreError};
 
 #[derive(Debug, Deserialize)]
 struct QueueQuery {
-    operator_id: OperatorId,
     #[serde(default)]
     include_terminal: bool,
 }
 
 #[derive(Debug, Deserialize)]
-struct DetailQuery {
-    operator_id: OperatorId,
+struct ApplyActionBody {
+    action: AlertActionKind,
+    idempotency_key: String,
+    comment: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -52,37 +56,52 @@ pub fn alert_router(store: AlertStore) -> Router {
 
 async fn list_alerts(
     State(store): State<AlertStore>,
+    Extension(context): Extension<AuthContext>,
     Query(query): Query<QueueQuery>,
-) -> Result<Json<QueueResponse>, ApiError> {
+) -> Result<Json<QueueResponse>, axum::response::Response> {
+    require(&context, Permission::ReadOperations)
+        .map_err(axum::response::IntoResponse::into_response)?;
     let data = store
-        .list_queue(query.operator_id, query.include_terminal)
+        .list_queue(context.operator_id, query.include_terminal)
         .await
-        .map_err(map_error)?;
+        .map_err(|error| axum::response::IntoResponse::into_response(map_error(error)))?;
     Ok(Json(QueueResponse { data }))
 }
 
 async fn alert_detail(
     State(store): State<AlertStore>,
+    Extension(context): Extension<AuthContext>,
     Path(alert_id): Path<Uuid>,
-    Query(query): Query<DetailQuery>,
-) -> Result<Json<AlertDetail>, ApiError> {
+) -> Result<Json<AlertDetail>, axum::response::Response> {
+    require(&context, Permission::ReadOperations)
+        .map_err(axum::response::IntoResponse::into_response)?;
     store
-        .detail(query.operator_id, alert_id)
+        .detail(context.operator_id, alert_id)
         .await
         .map(Json)
-        .map_err(map_error)
+        .map_err(|error| axum::response::IntoResponse::into_response(map_error(error)))
 }
 
 async fn apply_action(
     State(store): State<AlertStore>,
+    Extension(context): Extension<AuthContext>,
     Path(alert_id): Path<Uuid>,
-    Json(request): Json<AlertActionRequest>,
-) -> Result<Json<AlertDetail>, ApiError> {
+    Json(body): Json<ApplyActionBody>,
+) -> Result<Json<AlertDetail>, axum::response::Response> {
+    require(&context, Permission::ManageAlerts)
+        .map_err(axum::response::IntoResponse::into_response)?;
+    let request = AlertActionRequest {
+        operator_id: context.operator_id,
+        action: body.action,
+        actor_id: context.subject,
+        idempotency_key: body.idempotency_key,
+        comment: body.comment,
+    };
     store
         .apply_action(alert_id, &request, Utc::now())
         .await
         .map(Json)
-        .map_err(map_error)
+        .map_err(|error| axum::response::IntoResponse::into_response(map_error(error)))
 }
 
 fn map_error(error: AlertStoreError) -> ApiError {
