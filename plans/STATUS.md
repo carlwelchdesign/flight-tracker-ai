@@ -10,11 +10,11 @@ Last updated: 2026-07-21
 - Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
 - Owner: Platform, backend, security, and full-stack engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Sign in to the Vercel Marketplace resource dashboard and set
-  Clerk's production domain to `flight-tracker-ai-one.vercel.app`, then wait
-  for production keys to sync and provision the Virginia Render service against
-  the verified `us-east-1` Neon database, configure cross-service secrets and
-  organization membership, and run the private hosted smoke before promotion.
+- Next action: Sign in to the Vercel and Render dashboard tabs. Set Clerk's
+  production domain to `flight-tracker-ai-one.vercel.app`, then provision the
+  Virginia staging and production Render services with separate Neon branch
+  URLs and assertion secrets, configure organization membership, and run the
+  private hosted smoke before promotion.
 
 ## Milestone checklist
 
@@ -72,6 +72,7 @@ Last updated: 2026-07-21
 - Vercel also has `AUTH_MODE`, `OPERATIONS_MODE`, `INTERNAL_AUTH_KEY_ID`, `AUTH_ASSERTION_ISSUER`, and `AUTH_ASSERTION_AUDIENCE` configured for Development, Preview, and Production. `API_BASE_URL` and `INTERNAL_AUTH_SECRET` remain intentionally unset until the matching Render environment exists.
 - The first public-alias observation showed the original deployment still defaulting to development auth and revealed that noninteractive Vercel input had stored the five non-secret runtime settings as `[SENSITIVE]` in Production and Preview. The settings are now corrected and verified by pulling the production environment. The FT-404 branch keeps `/` and `/sign-in` public for a safe signed-out experience, protects operational/backend routes, and masks hosted 500-level configuration details. The Vercel-provisioned Clerk keys are still development keys, so production-instance activation remains a publication gate.
 - Live Marketplace inspection reports `Production domain required` for `clerk-celeste-door`. Vercel's consumer API exposes the resource read-only, and its provider update endpoint rejects project-owner credentials; setting the domain is therefore a one-time authenticated dashboard action. The in-app browser is currently paused at Vercel sign-in for that handoff.
+- Render's current official specification confirms managed preview environments require Pro and omit `sync: false` secrets. The zero-base-cost Blueprint now defines separate free staging and production services: staging follows passing `main` checks, production requires manual promotion, and each receives an independent Neon branch URL and internal assertion secret. The Blueprint passes Render's official JSON Schema and the Rust production build passes locally; Render provisioning is paused at dashboard sign-in.
 - F401-004 is closed at implementation commit `e9e5f76`: operator-scoped membership foreign keys now protect both current alert assignments and assignment audit rows. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) proves direct-database and authenticated-API cross-tenant rejection plus valid same-tenant assignment.
 - Browser policy implementation commit `dc08690` adds strict nonce-aware Clerk CSP and production response hardening. CI run [29833848250](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833848250), the standalone header smoke, and all 30 web tests pass; F401-005 is controlled by FT-404's pre-publication hosted-Clerk smoke.
 - F401-010 is closed at implementation commit `38cf7b7`: public health/readiness probes now expose one status field, while detailed worker/database/PostGIS diagnostics require authorization. CI run [29834083229](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834083229) verifies the public, unauthorized, authenticated, PostGIS, BFF, and console contracts.

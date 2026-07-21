@@ -4,10 +4,10 @@
 
 - **Web:** Vercel project `flight-tracker-ai`, Git-connected to this repository
   with `apps/web` as its root and Node.js 20.x.
-- **API and supervised workers:** Render Docker web service from
-  [`render.yaml`](../render.yaml). The free service is acceptable for this
-  hobby portfolio, not an availability claim: it sleeps after 15 idle minutes
-  and can take about one minute to wake.
+- **API and supervised workers:** Explicit staging and production Render Docker
+  web services from [`render.yaml`](../render.yaml). Free services are
+  acceptable for this hobby portfolio, not an availability claim: they sleep
+  after 15 idle minutes and can take about one minute to wake.
 - **Database:** Neon Free Postgres in AWS `us-east-1`, aligned with the Render
   Virginia service before that service is provisioned, with PostGIS enabled, a
   direct or pooled TLS URL, instant restore, and one protected snapshot. Neon
@@ -24,7 +24,11 @@ idle; deterministic replay restarts cleanly when the API wakes.
 ## Cost and reliability boundary
 
 This configuration targets a recruiter portfolio at zero base cost. Render
-Free has no SLA, sleeps on idle, and can restart. Neon Free currently provides
+Free has no SLA, sleeps on idle, can restart, and shares 750 running instance
+hours per workspace per calendar month. The staging service should remain idle
+outside release verification. Render's managed preview environments require a
+Pro workspace, so this Blueprint uses an explicit free staging service instead.
+Neon Free currently provides
 0.5 GB storage, 100 CU-hours per month, connection pooling, PostGIS, instant
 restore, and one snapshot. Revalidate these provider terms immediately before
 provisioning because free-plan limits can change.
@@ -34,22 +38,27 @@ production airline infrastructure, high availability, or a commercial SLA.
 
 ## Provisioning order
 
-1. Provision Neon through the Vercel Marketplace in AWS `us-east-1`. Enable
-   PostGIS and verify:
+1. Provision Neon through the Vercel Marketplace in AWS `us-east-1`. Keep the
+   production branch separate from a staging branch, enable PostGIS on both,
+   and verify:
 
    ```sql
    CREATE EXTENSION IF NOT EXISTS postgis;
    SELECT extversion FROM pg_extension WHERE extname = 'postgis';
    ```
 
-2. Create the Render Blueprint from this repository. Supply the Neon TLS
-   `DATABASE_URL` and a new random `INTERNAL_AUTH_SECRET` when Render prompts.
-   Keep the generated value outside Git, PRs, screenshots, and chat.
+2. Create the Render Blueprint from this repository. Supply distinct Neon TLS
+   `DATABASE_URL` and random `INTERNAL_AUTH_SECRET` values for
+   `flight-tracker-api-staging` and `flight-tracker-api` when Render prompts.
+   Keep all values outside Git, PRs, screenshots, and chat. Render's automatic
+   preview environments are intentionally disabled because they require Pro
+   and omit `sync: false` values.
 3. Install Clerk on the Vercel project, create one organization and reviewer
    user, then configure Vercel preview and production variables listed below.
-4. Use the same internal secret and key ID on Vercel and Render. Deploy Render
-   first, verify `/health` and `/readiness`, then set Vercel `API_BASE_URL` to
-   the HTTPS Render origin.
+4. Match each Vercel environment to its Render counterpart: Preview uses the
+   staging API URL and secret; Production uses the production API URL and
+   secret. Both use the same named key ID. Verify `/health` and `/readiness`
+   before setting each Vercel `API_BASE_URL`.
 5. After migrations finish, bootstrap the exact Clerk organization/user pair:
 
    ```sh
@@ -103,11 +112,13 @@ secret uses a `NEXT_PUBLIC_` prefix.
 
 ## Controlled release and rollback
 
-Render deploys `main` only after GitHub checks pass. Its health check is
-`/health`; the API also runs SQLx migrations before accepting traffic. Vercel
-creates branch previews through Git integration. The release order is database
-backup/snapshot, Render deploy and health verification, Vercel preview, browser
-smoke, then promotion of the tested Vercel artifact.
+The staging Render service deploys `main` only after GitHub checks pass. The
+production service requires manual promotion after staging and browser smoke.
+Both use `/health`, and the API runs SQLx migrations before accepting traffic.
+Vercel creates branch previews through Git integration. The release order is
+database backup/snapshot, staging Render deploy and health verification,
+Vercel preview, browser smoke, production Render promotion, then promotion of
+the tested Vercel artifact.
 
 Rollback the web by repointing the prior Vercel deployment. Roll back Render to
 its prior successful image only when the database migration is backward
@@ -118,7 +129,8 @@ into an isolated branch, verify PostGIS and migration state, and follow
 ## Required hosted evidence
 
 - [ ] Vercel Git connection creates a distinct pull-request preview.
-- [ ] Render deployment ID, commit, health, readiness, and worker status pass.
+- [ ] Staging and production Render deployment IDs, commits, health, readiness,
+      and worker status pass.
 - [ ] Neon region, PostGIS version, pooling path, snapshot, and isolated restore
       are recorded without exposing its connection string.
 - [ ] Vercel and Render use matching active key IDs and distinct preview versus

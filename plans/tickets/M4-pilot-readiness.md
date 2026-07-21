@@ -188,3 +188,10 @@ while the provider resource-update endpoint rejects consumer credentials, so
 the domain must be set once in the authenticated Vercel resource dashboard.
 The exact value is `flight-tracker-ai-one.vercel.app`; after it is saved, the
 production Clerk keys should sync automatically before the next deployment.
+
+The 2026-07-21 Render specification audit found that managed preview
+environments require a Pro workspace and omit `sync: false` secrets. To retain
+the zero-base-cost and environment-isolation requirements, `render.yaml` now
+defines explicit free staging and production services. Staging follows passing
+`main` checks; production is promoted manually after staging and browser smoke.
+Each service requires a distinct Neon branch URL and internal assertion secret.
