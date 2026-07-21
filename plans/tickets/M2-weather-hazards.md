@@ -4,11 +4,12 @@ Default owner: Backend/data engineering, with independent domain review of alert
 
 ## FT-201 — Ingest and normalize NOAA aviation weather
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-201-noaa-weather-ingestion`
 Final commit: Pending
 Pull request: Pending
+Owner: Backend/data engineering
 
 Integrate NOAA Aviation Weather data beginning with SIGMETs and METARs while retaining raw evidence.
 

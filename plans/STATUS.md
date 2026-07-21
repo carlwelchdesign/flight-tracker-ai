@@ -5,12 +5,12 @@ Last updated: 2026-07-20
 ## Current state
 
 - Current milestone: M2 — Live weather and hazard intelligence
-- Active ticket: None
-- Branch: `feat/ft-104-source-health-observability`
-- Pull request: [#8](https://github.com/carlwelchdesign/flight-tracker-ai/pull/8) (ready for human review)
-- Owner: Unassigned
-- Overall status: M0 and M1 implementation are complete; FT-104 is awaiting human review and merge
-- Next action: Review and merge PR #8, sync `main`, then start FT-201 on `feat/ft-201-noaa-weather-ingestion`.
+- Active ticket: FT-201 — Ingest and normalize NOAA aviation weather
+- Branch: `feat/ft-201-noaa-weather-ingestion`
+- Pull request: Pending (branch depends on [#8](https://github.com/carlwelchdesign/flight-tracker-ai/pull/8))
+- Owner: Backend/data engineering
+- Overall status: M0 and M1 implementation are complete; FT-201 is in progress while FT-104 awaits merge
+- Next action: Implement the rate-disciplined NOAA client, METAR/SIGMET normalization, transactional persistence, and source-health policy; open the FT-201 PR after #8 merges.
 
 ## Milestone checklist
 
