@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "rule_id": "route_hazard_proximity",
+  "rule_version": 1,
+  "source_scenario": "fixtures/replay/m2-route-hazard-v1.json",
+  "config": {
+    "proximity_margin_nm": 25.0,
+    "geometry_resolution_nm": 1.0
+  },
+  "review": {
+    "status": "verified_by_postgis_oracle",
+    "reviewer": "postgis-3.5-cross-engine-review",
+    "reviewed_at": "2026-07-20T23:59:00-07:00"
+  },
+  "cases": [
+    {
+      "id": "direct_intersection",
+      "rationale": "The ordered west-to-east route crosses the active hazard footprint while their altitude bands overlap.",
+      "route_latitude_offset_degrees": 0.0,
+      "evaluated_at_offset_ms": 60000,
+      "route_altitude_band": {
+        "lower": { "value": 22000, "unit": "feet", "reference": "mean_sea_level" },
+        "upper": { "value": 30000, "unit": "feet", "reference": "mean_sea_level" }
+      },
+      "progress": null,
+      "expected": {
+        "outcome": "match",
+        "horizontal_relation": "intersects",
+        "altitude_relation": "overlap",
+        "route_temporal_state": "active",
+        "hazard_temporal_state": "active",
+        "closest_approach_nm_min": 0.0,
+        "closest_approach_nm_max": 0.0
+      }
+    },
+    {
+      "id": "near_miss_within_margin",
+      "rationale": "The route misses the polygon to the north but remains inside the configured 25 NM advisory margin.",
+      "route_latitude_offset_degrees": 0.5,
+      "evaluated_at_offset_ms": 60000,
+      "route_altitude_band": {
+        "lower": { "value": 22000, "unit": "feet", "reference": "mean_sea_level" },
+        "upper": { "value": 30000, "unit": "feet", "reference": "mean_sea_level" }
+      },
+      "progress": null,
+      "expected": {
+        "outcome": "match",
+        "horizontal_relation": "within_margin",
+        "altitude_relation": "overlap",
+        "route_temporal_state": "active",
+        "hazard_temporal_state": "active",
+        "closest_approach_nm_min": 17.0,
+        "closest_approach_nm_max": 19.0
+      }
+    },
+    {
+      "id": "expired_hazard",
+      "rationale": "Spatial and altitude overlap cannot match after the hazard validity window has ended.",
+      "route_latitude_offset_degrees": 0.0,
+      "evaluated_at_offset_ms": 7200000,
+      "route_altitude_band": {
+        "lower": { "value": 22000, "unit": "feet", "reference": "mean_sea_level" },
+        "upper": { "value": 30000, "unit": "feet", "reference": "mean_sea_level" }
+      },
+      "progress": null,
+      "expected": {
+        "outcome": "no_match",
+        "horizontal_relation": "intersects",
+        "altitude_relation": "overlap",
+        "route_temporal_state": "expired",
+        "hazard_temporal_state": "expired",
+        "closest_approach_nm_min": 0.0,
+        "closest_approach_nm_max": 0.0
+      }
+    },
+    {
+      "id": "non_overlapping_altitude",
+      "rationale": "A geometric crossing is not eligible when the route remains below the hazard floor.",
+      "route_latitude_offset_degrees": 0.0,
+      "evaluated_at_offset_ms": 60000,
+      "route_altitude_band": {
+        "lower": { "value": 5000, "unit": "feet", "reference": "mean_sea_level" },
+        "upper": { "value": 8000, "unit": "feet", "reference": "mean_sea_level" }
+      },
+      "progress": null,
+      "expected": {
+        "outcome": "no_match",
+        "horizontal_relation": "intersects",
+        "altitude_relation": "disjoint",
+        "route_temporal_state": "active",
+        "hazard_temporal_state": "active",
+        "closest_approach_nm_min": 0.0,
+        "closest_approach_nm_max": 0.0
+      }
+    },
+    {
+      "id": "cancelled_hazard",
+      "rationale": "A cancellation supersedes spatial, temporal, and altitude overlap and cannot create a match.",
+      "route_latitude_offset_degrees": 0.0,
+      "evaluated_at_offset_ms": 60000,
+      "route_altitude_band": {
+        "lower": { "value": 22000, "unit": "feet", "reference": "mean_sea_level" },
+        "upper": { "value": 30000, "unit": "feet", "reference": "mean_sea_level" }
+      },
+      "hazard_status": "cancelled",
+      "progress": null,
+      "expected": {
+        "outcome": "no_match",
+        "horizontal_relation": "intersects",
+        "altitude_relation": "overlap",
+        "route_temporal_state": "active",
+        "hazard_temporal_state": "cancelled",
+        "closest_approach_nm_min": 0.0,
+        "closest_approach_nm_max": 0.0
+      }
+    },
+    {
+      "id": "hazard_behind_progress",
+      "rationale": "The full ordered route crosses the hazard, but progress places the remaining eastbound route beyond the 25 NM margin.",
+      "route_latitude_offset_degrees": 0.0,
+      "evaluated_at_offset_ms": 60000,
+      "route_altitude_band": {
+        "lower": { "value": 22000, "unit": "feet", "reference": "mean_sea_level" },
+        "upper": { "value": 30000, "unit": "feet", "reference": "mean_sea_level" }
+      },
+      "progress": { "segment_index": 0, "segment_fraction": 0.9 },
+      "expected": {
+        "outcome": "no_match",
+        "horizontal_relation": "behind_route_progress",
+        "altitude_relation": "overlap",
+        "route_temporal_state": "active",
+        "hazard_temporal_state": "active",
+        "closest_approach_nm_min": 28.0,
+        "closest_approach_nm_max": 30.0
+      }
+    },
+    {
+      "id": "missing_route_altitude",
+      "rationale": "A bounded hazard cannot be declared vertically overlapping when the route altitude is unknown.",
+      "route_latitude_offset_degrees": 0.0,
+      "evaluated_at_offset_ms": 60000,
+      "route_altitude_band": null,
+      "progress": null,
+      "expected": {
+        "outcome": "indeterminate",
+        "horizontal_relation": "intersects",
+        "altitude_relation": "indeterminate",
+        "route_temporal_state": "active",
+        "hazard_temporal_state": "active",
+        "closest_approach_nm_min": 0.0,
+        "closest_approach_nm_max": 0.0
+      }
+    },
+    {
+      "id": "horizontal_clear_with_missing_altitude",
+      "rationale": "Unknown route altitude does not make a geographically clear route indeterminate.",
+      "route_latitude_offset_degrees": 2.0,
+      "evaluated_at_offset_ms": 60000,
+      "route_altitude_band": null,
+      "progress": null,
+      "expected": {
+        "outcome": "no_match",
+        "horizontal_relation": "clear",
+        "altitude_relation": "indeterminate",
+        "route_temporal_state": "active",
+        "hazard_temporal_state": "active",
+        "closest_approach_nm_min": 107.0,
+        "closest_approach_nm_max": 109.0
+      }
+    }
+  ]
+}

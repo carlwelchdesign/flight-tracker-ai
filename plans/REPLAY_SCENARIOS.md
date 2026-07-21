@@ -14,9 +14,11 @@ Scenario files are JSON and must contain:
 - `flights`: flight metadata and a scenario-only `role` of `normal`, `delayed`, or `hazard_adjacent`.
 - `events`: strictly ordered records with a unique `sequence`, a nondecreasing `offset_ms`, a stable `provider_record_id`, and a tagged payload.
 
-Supported payload tags are `flight_snapshot`, `position`, and `weather_hazard`. Payload measurements use the canonical model's explicit units, references, WGS84 coordinate names, and snake-case enum values. Hazard polygons require at least four points and must repeat the first point as the last point.
+Supported payload tags are `flight_snapshot`, `position`, `planned_route`, and `weather_hazard`. Planned routes reference a known flight, carry a positive route version and effective window, and contain at least two ordered WGS84 points. Payload measurements use the canonical model's explicit units, references, WGS84 coordinate names, and snake-case enum values. Hazard polygons require at least four points and must repeat the first point as the last point.
 
 The milestone fixture is [m1-operations-v1.json](../fixtures/replay/m1-operations-v1.json). Copy it when authoring a scenario, replace every stable identity, keep events sorted by `(offset_ms, sequence)`, and run `cargo test --workspace` to validate the file and normalization.
+
+FT-203 adds [m2-route-hazard-v1.json](../fixtures/replay/m2-route-hazard-v1.json), which emits a versioned planned route and hazard through the same canonical replay boundary for deterministic correlation-rule testing.
 
 ## Deterministic behavior
 

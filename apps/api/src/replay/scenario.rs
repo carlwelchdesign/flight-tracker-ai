@@ -9,9 +9,10 @@ use uuid::Uuid;
 use crate::{
     domain::{
         AircraftPosition, AircraftPositionId, Altitude, AltitudeBand, CanonicalEvent, EventTimes,
-        Flight, FlightId, FlightStatus, GeoPoint, GeoPolygon, HazardSeverity, HeadingDegrees,
-        OperatorId, ProviderEnvelope, ProviderEnvelopeId, SchemaVersion, SourceAttribution,
-        SourceQuality, Speed, WeatherHazard, WeatherHazardId, WeatherHazardStatus,
+        Flight, FlightId, FlightStatus, GeoLineString, GeoPoint, GeoPolygon, HazardSeverity,
+        HeadingDegrees, OperatorId, PlannedRoute, PlannedRouteId, ProviderEnvelope,
+        ProviderEnvelopeId, SchemaVersion, SourceAttribution, SourceQuality, Speed, WeatherHazard,
+        WeatherHazardId, WeatherHazardStatus,
     },
     ingestion::NormalizedEventBatch,
 };
@@ -61,6 +62,14 @@ pub enum ScenarioPayload {
         heading_true_degrees: Option<HeadingDegrees>,
         ground_speed: Option<Speed>,
         quality: SourceQuality,
+    },
+    PlannedRoute {
+        route_id: PlannedRouteId,
+        flight_id: FlightId,
+        route_version: u32,
+        effective_from_offset_ms: u64,
+        effective_to_offset_ms: Option<u64>,
+        path: GeoLineString,
     },
     WeatherHazard {
         hazard_id: WeatherHazardId,
@@ -147,6 +156,33 @@ impl ReplayScenario {
                     if !flight_ids.contains(flight_id) {
                         return Err(ScenarioError::Validation(format!(
                             "event {} references an unknown flight",
+                            event.sequence
+                        )));
+                    }
+                }
+                ScenarioPayload::PlannedRoute {
+                    flight_id,
+                    route_version,
+                    effective_from_offset_ms,
+                    effective_to_offset_ms,
+                    path,
+                    ..
+                } => {
+                    if !flight_ids.contains(flight_id) {
+                        return Err(ScenarioError::Validation(format!(
+                            "event {} references an unknown flight",
+                            event.sequence
+                        )));
+                    }
+                    if *route_version == 0 || path.coordinates.len() < 2 {
+                        return Err(ScenarioError::Validation(format!(
+                            "route event {} requires a positive version and at least two points",
+                            event.sequence
+                        )));
+                    }
+                    if effective_to_offset_ms.is_some_and(|end| end < *effective_from_offset_ms) {
+                        return Err(ScenarioError::Validation(format!(
+                            "route event {} has an invalid effective window",
                             event.sequence
                         )));
                     }
@@ -252,6 +288,27 @@ impl ReplayScenario {
                 ground_speed: *ground_speed,
                 quality: *quality,
             }),
+            ScenarioPayload::PlannedRoute {
+                route_id,
+                flight_id,
+                route_version,
+                effective_from_offset_ms,
+                effective_to_offset_ms,
+                path,
+            } => CanonicalEvent::PlannedRoute(PlannedRoute {
+                id: *route_id,
+                operator_id: self.operator_id,
+                flight_id: *flight_id,
+                schema_version: SchemaVersion::V1,
+                source,
+                times,
+                route_version: *route_version,
+                effective_from: offset_time(self.start_time, *effective_from_offset_ms)?,
+                effective_to: effective_to_offset_ms
+                    .map(|offset| offset_time(self.start_time, offset))
+                    .transpose()?,
+                path: path.clone(),
+            }),
             ScenarioPayload::WeatherHazard {
                 hazard_id,
                 hazard_type,
@@ -307,6 +364,13 @@ mod tests {
         .unwrap()
     }
 
+    fn route_fixture() -> ReplayScenario {
+        ReplayScenario::from_json(include_str!(
+            "../../../../fixtures/replay/m2-route-hazard-v1.json"
+        ))
+        .unwrap()
+    }
+
     #[test]
     fn milestone_fixture_covers_required_flight_roles() {
         let scenario = fixture();
@@ -325,5 +389,37 @@ mod tests {
             scenario.batch_for(&scenario.events[0]).unwrap(),
             scenario.batch_for(&scenario.events[0]).unwrap()
         );
+    }
+
+    #[test]
+    fn planned_route_payload_normalizes_to_the_canonical_versioned_route() {
+        let scenario = route_fixture();
+        let batch = scenario.batch_for(&scenario.events[1]).unwrap();
+
+        let CanonicalEvent::PlannedRoute(route) = &batch.events[0] else {
+            panic!("expected planned route event");
+        };
+        assert_eq!(route.route_version, 7);
+        assert_eq!(route.flight_id, scenario.flights[0].id);
+        assert_eq!(route.path.coordinates.len(), 2);
+        assert_eq!(route.effective_from, scenario.start_time);
+        assert_eq!(
+            route.effective_to,
+            Some(scenario.start_time + Duration::hours(1))
+        );
+    }
+
+    #[test]
+    fn planned_route_payload_rejects_zero_versions() {
+        let mut value: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../fixtures/replay/m2-route-hazard-v1.json"
+        ))
+        .unwrap();
+        value["events"][1]["route_version"] = 0.into();
+
+        assert!(matches!(
+            ReplayScenario::from_json(&serde_json::to_string(&value).unwrap()),
+            Err(ScenarioError::Validation(message)) if message.contains("positive version")
+        ));
     }
 }
