@@ -94,8 +94,9 @@ recovery gate.
 Status: In progress
 
 Branch: `docs/ft-403-portfolio-demo-validation`
+Latest implementation commit: `15227e4`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#23](https://github.com/carlwelchdesign/flight-tracker-ai/pull/23)
 Owner: Product design, user research, and engineering
 
 Run a focused usability evaluation with representative recruiters, hiring managers, or neutral reviewers and explicit success/failure criteria.
