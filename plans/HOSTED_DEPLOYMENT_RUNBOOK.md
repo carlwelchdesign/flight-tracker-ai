@@ -114,3 +114,20 @@ into an isolated branch, verify PostGIS and migration state, and follow
 - [ ] FT-403 independent neutral reviewer passes the unfacilitated protocol.
 - [ ] The candidate contains no certification, operational-authority,
       commercial-SLA, or real-operator claim.
+
+Before authenticated browser checks, run the sanitized public-boundary verifier:
+
+```sh
+python3 scripts/verify_ft404_public_surface.py \
+  --environment-reference preview-candidate \
+  --web-origin "$WEB_ORIGIN" \
+  --api-origin "$API_ORIGIN" \
+  --allow-deployment-protection
+```
+
+A protected preview may pass with `publication_ready: false`. Before promotion,
+run it again against the candidate without `--allow-deployment-protection`; the
+root must use the Clerk sign-in boundary, all browser security headers must
+match, public health/readiness must be exact, and the detailed API must return
+the exact unauthenticated denial. The emitted evidence does not include origins,
+redirect URLs, headers, bodies, credentials, cookies, or tokens.
