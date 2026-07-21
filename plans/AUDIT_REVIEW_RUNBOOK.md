@@ -47,6 +47,29 @@ The same endpoint scans bounded dispatcher comments and session-revocation reaso
 6. Export the smallest necessary time range. Record the recipient, purpose, storage location, and deletion deadline outside the CSV.
 7. Escalate unexplained privileged changes under the severity table in `DATA_LIFECYCLE_INCIDENT_POLICY.md`.
 
+## Hosted verification command
+
+After the controlled test records exist, run `scripts/verify_ft401_hosted_drill.py` against the representative environment. Use three dedicated users in the same test tenant with administrator, viewer, and operator roles. Load each full `Cookie` header from the approved test-session mechanism into `FT401_ADMIN_AUTH`, `FT401_VIEWER_AUTH`, and `FT401_OPERATOR_AUTH`; do not pass authentication values as command arguments or save them in Git. Load a JSON array containing the exact controlled fake credential and reserved-domain email substrings into `FT401_FORBIDDEN_MARKERS_JSON`.
+
+For the Next.js deployment, the command shape is:
+
+```sh
+python3 scripts/verify_ft401_hosted_drill.py \
+  --base-url https://preview.example.test \
+  --api-prefix /api/backend/api \
+  --authentication-header Cookie \
+  --environment-reference preview-audit-drill-001 \
+  --expected-signal-event-id <fake-credential-record-uuid> \
+  --expected-signal-event-id <reserved-email-record-uuid> \
+  --forbidden-event-id <other-tenant-record-uuid>
+```
+
+The direct Rust API uses `--api-prefix /api`, `--authentication-header Authorization`, and short-lived full bearer header values in the same role-specific environment variables. Prefer the Next.js route for the hosted browser boundary. HTTP is rejected except when `--allow-loopback-http` is explicitly used with a loopback development address.
+
+The verifier performs administrator review, export, monitoring, and integrity requests and requires viewer/operator `403` responses for all four paths. It rejects redirects, responses over 2 MiB, unsafe export headers, controlled marker leakage, missing high-risk/burst signals, missing critical and warning sensitive-write records, cross-tenant record IDs, tombstone violations, and undispositioned retention failures. It prints only sanitized versioned JSON and never prints authentication values, response bodies, controlled markers, or event IDs.
+
+Paused schedules and recent failures default to an expected count of zero. If responders have already recorded a controlled disposition, supply the exact observed counts with `--allowed-paused-schedules` and `--allowed-failed-attempts-24h`; the verifier records those counts and fails if the live values differ. A zero exit status and `"status": "passed"` are required. Store the JSON in the approved evidence system with the environment, participant, test-data, and disposition references; do not commit hosted evidence or authentication material.
+
 ## Pre-pilot incident drill
 
 F401-007 cannot close until Security and the operator owner complete this drill in a representative hosted environment:
@@ -61,5 +84,6 @@ F401-007 cannot close until Security and the operator owner complete this drill 
 - [ ] Follow the incident escalation path and record the disposition.
 - [ ] Verify the approved retention job and integrity procedure from F401-002 have run against the same evidence class.
 - [ ] Confirm `GET /api/admin/retention/integrity` reports zero tombstone violations and disposition any paused schedule or recent failure.
+- [ ] Run `scripts/verify_ft401_hosted_drill.py`; store its passed sanitized JSON and exit status in the controlled evidence record.
 
 Record environment, participants, timestamps, test actor/tenant references, screenshots or controlled evidence links, results, deviations, and remediation tickets. Do not place real session IDs, secrets, or unrestricted exports in Git.

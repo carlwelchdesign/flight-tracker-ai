@@ -7,7 +7,7 @@ Default owner: Product/operations lead, supported by engineering and security.
 Status: In progress
 
 Branch: `docs/ft-401-security-trust-review`
-Latest implementation commit: `d975ac3`
+Latest implementation commit: `f3d3e08`
 Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; do not merge while completion gate fails)
 Owner: Security, legal/privacy, product, and engineering
 
@@ -23,6 +23,7 @@ Preparation checklist:
 - [x] Create the threat model and proposed data lifecycle, backup, and incident-response baseline.
 - [x] Record severity, owner, deadline gate, treatment, and verification for every finding.
 - [x] Bound and scan sensitive user-written operational fields without returning their content.
+- [x] Provide a fail-closed hosted audit/retention drill verifier with sanitized evidence output.
 - [ ] Resolve FT-301 and implement the selected provider's controlling obligations.
 
 Acceptance checklist:
@@ -40,6 +41,8 @@ Exact-inventory evidence: commit `a521e91` binds every new retention run to a SH
 Bounded-write evidence: commit `cd08649` applies matching Rust and PostgreSQL limits to dispatcher notes, action identifiers, and session-revocation reasons, normalizes idempotency before locking and lookup, returns typed 422 errors, and exposes the 2,000-character note limit in the console. CI run [29844162906](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29844162906) proves API rejection, direct-database enforcement, 71 Rust library tests, 43 web tests, lint, typecheck, production build, and the PostGIS contract.
 
 Sensitive-write monitoring evidence: commit `d975ac3` adds a deterministic Rust policy that scans bounded dispatcher comments and session-revocation reasons for credential material or personal email addresses inside the administrator-only tenant boundary. Signals disclose only severity, actor, time, record ID, and field class. CI run [29845085036](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29845085036) proves controlled credential/email detection, ordinary aviation-text rejection, response non-leakage, cross-tenant isolation, 75 Rust library tests, 43 web tests, strict lint/type checks, production build, and the fresh PostGIS contract. F401-007 now remains open only for representative hosted execution of the audit/retention incident drill.
+
+Hosted-drill verifier evidence: commits `943bb65` and `f3d3e08` add a bounded HTTPS verifier for administrator audit/export/monitoring/integrity access, viewer/operator denial, expected critical/warning sensitive-write records, cross-tenant exclusion, controlled-marker redaction, and exact retention disposition counts. Its sanitized evidence allowlists output fields and never includes tokens, response bodies, markers, or event IDs. CI run [29846123252](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29846123252) passes the ten-case regression suite plus all Rust, web, and PostGIS jobs; the suite covers successful evidence, leakage, unknown signal content, role/tenant boundary failures, signal severity, unhealthy and dispositioned retention states, unsafe configuration, redirect refusal, and response-size refusal. Representative hosted execution remains required before F401-007 can close.
 
 ## FT-402 — Run resilience and failure drills
 
