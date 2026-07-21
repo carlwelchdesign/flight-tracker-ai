@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { parseBackendHealth } from "@/lib/backend-health";
 import { parseAuthContext, type AuthContext } from "@/lib/auth-model";
@@ -39,6 +39,7 @@ import { LivePositionSource } from "./live-position-source";
 type ReplayPhase = "running" | "paused" | "completed" | "unavailable";
 
 type OperationsConsoleProps = {
+  orientation: ReactNode;
   authContext: AuthContext;
   initialFleet: FleetLoadResult;
   initialWeather: WeatherLoadResult;
@@ -46,6 +47,7 @@ type OperationsConsoleProps = {
 };
 
 export function OperationsConsole({
+  orientation,
   authContext,
   initialFleet,
   initialWeather,
@@ -456,6 +458,7 @@ export function OperationsConsole({
   return (
     <main className="operations-shell">
       <a className="skip-link" href="#flight-board">Skip to flight board</a>
+      {orientation}
       <header className="operations-header">
         <div className="product-lockup">
           <span className="product-mark" aria-hidden="true"><i /><i /><i /></span>
@@ -504,7 +507,7 @@ export function OperationsConsole({
                 onClick={() => void setSimulationOutage(!feedOutage)}
                 aria-label={feedOutage ? "Restore simulation feed" : "Simulate feed outage"}
               >
-                {feedOutage ? "Restore" : "Outage"}
+                {feedOutage ? "Restore feed" : "Test outage"}
               </button>
               <button type="button" className="icon-control" onClick={() => void resetSimulation()} aria-label="Reset simulation">↺</button>
             </div>

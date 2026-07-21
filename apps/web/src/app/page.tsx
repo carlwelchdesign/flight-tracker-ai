@@ -1,4 +1,5 @@
 import { OperationsConsole } from "@/components/operations/operations-console";
+import { PortfolioOrientation } from "@/components/operations/portfolio-orientation";
 import Link from "next/link";
 import { getAuthContext } from "@/lib/auth-api";
 import { AuthSessionError, authMode, createInternalAssertion } from "@/lib/auth-server";
@@ -13,6 +14,7 @@ export default async function Home() {
   if (result.state === "ready") {
     return (
       <OperationsConsole
+        orientation={<PortfolioOrientation />}
         authContext={result.authContext}
         initialFleet={result.initialFleet}
         initialWeather={result.initialWeather}

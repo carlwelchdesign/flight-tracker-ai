@@ -26,6 +26,7 @@ describe("operations session safety", () => {
 
     render(
       <OperationsConsole
+        orientation={<div>Portfolio walkthrough</div>}
         authContext={{
           identity_id: "identity-1",
           operator_id: "operator-1",
