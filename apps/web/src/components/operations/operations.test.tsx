@@ -14,7 +14,12 @@ import {
   fleetReferenceTime,
   fleetTiming,
   freshness,
+  callsign,
+  phaseLabel,
+  routeLabel,
   scheduleVariance,
+  sourceLabel,
+  sourceQualityLabel,
 } from "./operations-model";
 import { OperationsBadges } from "./operations-badges";
 import { OperationsStatusRegion } from "./operations-status";
@@ -130,6 +135,7 @@ describe("operations console interaction", () => {
         selectedId={null}
         refreshing={false}
         controlsAvailable={false}
+        liveReferenceTime={null}
         onSelect={() => undefined}
         onStart={() => undefined}
       />,
@@ -175,6 +181,7 @@ describe("operations console interaction", () => {
         onSelect={() => undefined}
         onSelectHazard={() => undefined}
         onRetryWeather={() => undefined}
+        liveReferenceTime={null}
       />,
     );
     expect(screen.getByText(/retaining the last accepted layer/i)).toBeInTheDocument();
@@ -226,6 +233,36 @@ describe("operational presentation rules", () => {
       lastEventTime: Date.parse("2026-07-20T16:03:00Z"),
       lastReceivedTime: Date.parse("2026-07-20T16:04:30Z"),
     });
+  });
+
+  it("keeps live position identity and quality explicit without inventing operational facts", () => {
+    const live = liveFlight();
+    const observedAt = Date.parse("2026-07-21T17:16:02Z");
+    expect(callsign(live)).toBe("ICAO A1B2C3");
+    expect(routeLabel(live)).toBe("Position only · route unavailable");
+    expect(phaseLabel(live)).toBe("Position only");
+    expect(scheduleVariance(live)).toEqual({ label: "Not supplied", minutes: null });
+    expect(sourceLabel(live)).toBe("ADSB.lol · best effort");
+    expect(sourceQualityLabel(live)).toBe("Fused / MLAT");
+    expect(freshness(live, fleetReferenceTime(flights), observedAt)).toEqual({
+      level: "current",
+      label: "2s old",
+    });
+
+    render(
+      <FlightDetail
+        selected={live}
+        flights={[live]}
+        hazards={[]}
+        timeline={[]}
+        timelineState="ready"
+        liveReferenceTime={observedAt}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "ICAO A1B2C3" })).toBeInTheDocument();
+    expect(screen.getByText(/nothing is inferred here/i)).toBeInTheDocument();
+    expect(screen.getByText("ADSB.lol · best effort")).toBeInTheDocument();
+    expect(screen.getByText("Fused / MLAT")).toBeInTheDocument();
   });
 
   it("distinguishes expired and cancelled hazards and excludes them from attention", () => {
@@ -323,6 +360,7 @@ function Harness() {
         onSelect={setSelectedId}
         onSelectHazard={setSelectedHazardId}
         onRetryWeather={() => undefined}
+        liveReferenceTime={null}
       />
       <FlightBoard
         flights={flights}
@@ -330,6 +368,7 @@ function Harness() {
         selectedId={selectedId}
         refreshing={false}
         controlsAvailable
+        liveReferenceTime={null}
         onSelect={setSelectedId}
         onStart={() => undefined}
       />
@@ -339,6 +378,7 @@ function Harness() {
         hazards={hazards}
         timeline={[]}
         timelineState="ready"
+        liveReferenceTime={null}
       />
     </>
   );
@@ -389,6 +429,49 @@ function flight(
       heading_true_degrees: 310,
       ground_speed: { value: 430, unit: "knots" },
       quality: "observed",
+    },
+  };
+}
+
+function liveFlight(): FlightView {
+  const source = {
+    envelope_id: "20000000-0000-0000-0000-000000000001",
+    provider: "adsb.lol",
+    feed: "point",
+    provider_record_id: "a1b2c3",
+  };
+  const times = {
+    event_time: "2026-07-21T17:16:00Z",
+    received_at: "2026-07-21T17:16:01Z",
+    processed_at: "2026-07-21T17:16:02Z",
+  };
+  return {
+    flight: {
+      id: "20000000-0000-0000-0000-000000000002",
+      operator_id: "00000000-0000-0000-0000-000000000999",
+      schema_version: 1,
+      source,
+      times,
+      callsign: null,
+      aircraft_registration: null,
+      origin_airport_code: null,
+      destination_airport_code: null,
+      scheduled_departure_at: null,
+      scheduled_arrival_at: null,
+      status: "unknown",
+    },
+    latest_position: {
+      id: "20000000-0000-0000-0000-000000000003",
+      operator_id: "00000000-0000-0000-0000-000000000999",
+      flight_id: "20000000-0000-0000-0000-000000000002",
+      schema_version: 1,
+      source,
+      times,
+      point: { longitude_degrees: -122.38, latitude_degrees: 37.62 },
+      altitude: null,
+      heading_true_degrees: 275,
+      ground_speed: { value: 410, unit: "knots" },
+      quality: "fused",
     },
   };
 }

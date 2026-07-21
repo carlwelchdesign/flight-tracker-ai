@@ -6,6 +6,8 @@ import { parseBackendHealth } from "@/lib/backend-health";
 import { parseAuthContext, type AuthContext } from "@/lib/auth-model";
 import type { FleetEvent, FleetLoadResult, FlightPage, FlightView, TimelinePage } from "@/lib/fleet-api";
 import { parseFleetEvent, parseFlightPage, parseTimelinePage } from "@/lib/fleet-api";
+import type { LivePositionLoadResult, LivePositionStatus } from "@/lib/live-positions-api";
+import { parseLivePositionStatus } from "@/lib/live-positions-api";
 import type {
   AirportObservation,
   Hazard,
@@ -20,12 +22,19 @@ import {
 import { FlightBoard } from "./flight-board";
 import { FlightDetail } from "./flight-detail";
 import { OperationsMap } from "./operations-map";
-import { attentionLevel, fleetReferenceTime, fleetTiming, formatZulu } from "./operations-model";
+import {
+  attentionLevel,
+  fleetReferenceTime,
+  fleetTiming,
+  formatZulu,
+  isLivePosition,
+} from "./operations-model";
 import { OperationsBadges } from "./operations-badges";
 import type { ConnectionState, ServiceHealthState } from "./operations-health-model";
 import { OperationsStatusRegion } from "./operations-status";
 import { AlertQueue } from "./alert-queue";
 import { AuditReview } from "./audit-review";
+import { LivePositionSource } from "./live-position-source";
 
 type ReplayPhase = "running" | "paused" | "completed" | "unavailable";
 
@@ -33,9 +42,15 @@ type OperationsConsoleProps = {
   authContext: AuthContext;
   initialFleet: FleetLoadResult;
   initialWeather: WeatherLoadResult;
+  initialLivePositions: LivePositionLoadResult;
 };
 
-export function OperationsConsole({ authContext, initialFleet, initialWeather }: OperationsConsoleProps) {
+export function OperationsConsole({
+  authContext,
+  initialFleet,
+  initialWeather,
+  initialLivePositions,
+}: OperationsConsoleProps) {
   const [sessionActive, setSessionActive] = useState(true);
   const [flights, setFlights] = useState<FlightView[]>(
     initialFleet.state === "ready" ? initialFleet.page.data : [],
@@ -64,6 +79,12 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
   );
   const [weatherAsOf, setWeatherAsOf] = useState<string | null>(
     initialWeather.state === "ready" ? initialWeather.snapshot.generatedAt : null,
+  );
+  const [livePositionStatus, setLivePositionStatus] = useState<LivePositionStatus | null>(
+    initialLivePositions.state === "ready" ? initialLivePositions.status : null,
+  );
+  const [livePositionMessage, setLivePositionMessage] = useState<string | null>(
+    initialLivePositions.state === "unavailable" ? initialLivePositions.message : null,
   );
   const [selectedHazardId, setSelectedHazardId] = useState<string | null>(null);
   const [connection, setConnection] = useState<ConnectionState>(
@@ -109,16 +130,17 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
 
   const selected = flights.find((view) => view.flight.id === selectedId) ?? null;
   const referenceTime = fleetReferenceTime(flights);
+  const liveReferenceTime = parseTimestamp(livePositionStatus?.observed_at ?? null);
   const timing = fleetTiming(flights);
   const attentionCounts = useMemo(() => {
     return flights.reduce(
       (counts, view) => {
-        counts[attentionLevel(view, hazards, referenceTime).level] += 1;
+        counts[attentionLevel(view, hazards, referenceTime, liveReferenceTime).level] += 1;
         return counts;
       },
       { normal: 0, watch: 0, critical: 0 },
     );
-  }, [flights, hazards, referenceTime]);
+  }, [flights, hazards, liveReferenceTime, referenceTime]);
 
   const refreshFlights = useCallback(async () => {
     setRefreshing(true);
@@ -173,6 +195,23 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
     }
   }, []);
 
+  const refreshLivePositions = useCallback(async () => {
+    try {
+      const response = await fetch("/api/backend/api/live-positions/status", {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`Live position status returned HTTP ${response.status}`);
+      }
+      setLivePositionStatus(parseLivePositionStatus(await response.json()));
+      setLivePositionMessage(null);
+    } catch (statusError) {
+      setLivePositionMessage(
+        statusError instanceof Error ? statusError.message : "Live position status is unavailable",
+      );
+    }
+  }, []);
+
   const selectFlight = useCallback((flightId: string) => {
     setSelectedId(flightId);
     setTimeline([]);
@@ -185,9 +224,10 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
       refreshTimer.current = null;
       void refreshFlights();
       void refreshWeather();
+      void refreshLivePositions();
       setEventRevision((value) => value + 1);
     }, 80);
-  }, [refreshFlights, refreshWeather]);
+  }, [refreshFlights, refreshLivePositions, refreshWeather]);
 
   useEffect(() => {
     const source = new EventSource("/api/backend/api/events/stream");
@@ -235,6 +275,14 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
     const interval = setInterval(() => void refreshWeather(), 60_000);
     return () => clearInterval(interval);
   }, [refreshWeather]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void refreshLivePositions();
+      void refreshFlights();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [refreshFlights, refreshLivePositions]);
 
   useEffect(() => {
     let cancelled = false;
@@ -359,14 +407,15 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
   async function resetSimulation() {
     try {
       await invokeReplay("reset");
-      setFlights([]);
+      const liveFlights = flights.filter(isLivePosition);
+      setFlights(liveFlights);
       setHazards((current) => current.filter((hazard) => hazard.source.provider !== "simulation"));
       setObservations((current) => current.filter(
         (observation) => observation.source.provider !== "simulation",
       ));
       setSelectedHazardId(null);
       setTimeline([]);
-      setSelectedId(null);
+      setSelectedId(liveFlights[0]?.flight.id ?? null);
       setError(null);
     } catch (controlError) {
       setError(controlError instanceof Error ? controlError.message : "Simulation could not reset");
@@ -382,6 +431,15 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
         controlError instanceof Error ? controlError.message : "Feed outage could not be changed",
       );
     }
+  }
+
+  function useReplayView() {
+    const replayFlight = flights.find((view) => view.flight.source.provider === "simulation");
+    if (replayFlight) {
+      selectFlight(replayFlight.flight.id);
+      return;
+    }
+    if (replayPhase !== "unavailable") void startSimulation();
   }
 
   if (!sessionActive) {
@@ -464,6 +522,18 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
         onRestoreFeed={() => void setSimulationOutage(false)}
       />
 
+      <LivePositionSource
+        status={livePositionStatus}
+        message={livePositionMessage}
+        liveFlightsVisible={flights.some(isLivePosition)}
+        replayAvailable={
+          replayPhase !== "unavailable" ||
+          flights.some((view) => view.flight.source.provider === "simulation")
+        }
+        onUseReplay={useReplayView}
+        onRetry={() => void refreshLivePositions()}
+      />
+
       <div className="operations-grid">
         <OperationsMap
           flights={flights}
@@ -478,6 +548,7 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
           onSelect={selectFlight}
           onSelectHazard={setSelectedHazardId}
           onRetryWeather={() => void refreshWeather()}
+          liveReferenceTime={liveReferenceTime}
         />
         <div id="flight-board">
           <FlightBoard
@@ -486,6 +557,7 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
             selectedId={selectedId}
             refreshing={refreshing}
             controlsAvailable={replayPhase !== "unavailable"}
+            liveReferenceTime={liveReferenceTime}
             onSelect={selectFlight}
             onStart={() => void startSimulation()}
           />
@@ -496,6 +568,7 @@ export function OperationsConsole({ authContext, initialFleet, initialWeather }:
           hazards={hazards}
           timeline={timeline}
           timelineState={timelineState}
+          liveReferenceTime={liveReferenceTime}
         />
         <div className="alert-queue-slot">
           <AlertQueue
@@ -541,6 +614,12 @@ function isReplayStatus(value: unknown): value is {
 
 function formatTiming(value: number | null): string {
   return value === null ? "—" : formatZulu(new Date(value).toISOString());
+}
+
+function parseTimestamp(value: string | null): number | null {
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 function mergeProviderFacts<T extends { id: string; source: { provider: string } }>(

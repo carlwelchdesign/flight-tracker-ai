@@ -19,16 +19,22 @@ export const AIRPORTS: Record<string, AirportPoint> = {
 };
 
 export function callsign(view: FlightView): string {
-  return view.flight.callsign ?? view.flight.id.slice(0, 8).toUpperCase();
+  return view.flight.callsign ??
+    (isLivePosition(view) && view.flight.source.provider_record_id
+      ? `ICAO ${view.flight.source.provider_record_id.toUpperCase()}`
+      : view.flight.id.slice(0, 8).toUpperCase());
 }
 
 export function routeLabel(view: FlightView): string {
-  return `${view.flight.origin_airport_code ?? "—"} → ${
+  if (isLivePosition(view)) return "Position only · route unavailable";
+  const route = `${view.flight.origin_airport_code ?? "—"} → ${
     view.flight.destination_airport_code ?? "—"
   }`;
+  return view.flight.source.provider === "simulation" ? `Simulated ${route}` : route;
 }
 
 export function phaseLabel(view: FlightView): string {
+  if (isLivePosition(view)) return "Position only";
   const labels: Record<FlightView["flight"]["status"], string> = {
     scheduled: "Scheduled",
     active: "En route",
@@ -37,10 +43,12 @@ export function phaseLabel(view: FlightView): string {
     cancelled: "Cancelled",
     unknown: "Unknown",
   };
-  return labels[view.flight.status];
+  const label = labels[view.flight.status];
+  return view.flight.source.provider === "simulation" ? `Simulated · ${label}` : label;
 }
 
 export function scheduleVariance(view: FlightView): { label: string; minutes: number | null } {
+  if (isLivePosition(view)) return { label: "Not supplied", minutes: null };
   const departure = parseTime(view.flight.scheduled_departure_at);
   const observed = parseTime(view.flight.times.event_time);
   if (departure === null || observed === null) {
@@ -89,13 +97,17 @@ export function fleetTiming(flights: FlightView[]): {
 export function freshness(
   view: FlightView,
   referenceTime: number | null,
+  liveReferenceTime: number | null = null,
 ): { level: FreshnessLevel; label: string } {
   const eventTime = latestEventTime(view);
-  if (eventTime === null || referenceTime === null) {
+  const effectiveReference = isLivePosition(view) ? liveReferenceTime : referenceTime;
+  if (eventTime === null || effectiveReference === null) {
     return { level: "unknown", label: "No update" };
   }
-  const seconds = Math.max(0, Math.round((referenceTime - eventTime) / 1_000));
-  if (seconds <= 10) return { level: "current", label: "Current" };
+  const seconds = Math.max(0, Math.round((effectiveReference - eventTime) / 1_000));
+  if (seconds <= 10) {
+    return { level: "current", label: isLivePosition(view) ? `${seconds}s old` : "Current" };
+  }
   if (seconds <= 90) return { level: "aging", label: `${seconds}s behind` };
   return { level: "stale", label: `${Math.round(seconds / 60)}m behind` };
 }
@@ -104,6 +116,7 @@ export function attentionLevel(
   view: FlightView,
   hazards: Hazard[],
   referenceTime: number | null,
+  liveReferenceTime: number | null = null,
 ): { level: AttentionLevel; label: string; reason: string } {
   const nearbyHazard = hazards.find(
     (hazard) => isHazardActiveAt(hazard, referenceTime) && isPositionNearHazard(view, hazard),
@@ -118,7 +131,7 @@ export function attentionLevel(
   if (variance.minutes !== null && variance.minutes >= 15) {
     return { level: "watch", label: "Watch", reason: `${variance.label} departure` };
   }
-  const freshnessState = freshness(view, referenceTime);
+  const freshnessState = freshness(view, referenceTime, liveReferenceTime);
   if (freshnessState.level === "stale") {
     return { level: "watch", label: "Watch", reason: "Position data is stale" };
   }
@@ -155,6 +168,28 @@ export function formatSpeed(view: FlightView): string {
   if (!speed) return "—";
   const suffix = speed.unit === "knots" ? "kt" : "km/h";
   return `${Math.round(speed.value)} ${suffix}`;
+}
+
+export function isLivePosition(view: FlightView): boolean {
+  return (view.latest_position?.source.provider ?? view.flight.source.provider) === "adsb.lol";
+}
+
+export function sourceLabel(view: FlightView): string {
+  const provider = view.latest_position?.source.provider ?? view.flight.source.provider;
+  if (provider === "adsb.lol") return "ADSB.lol · best effort";
+  if (provider === "simulation") return "Deterministic replay";
+  return provider;
+}
+
+export function sourceQualityLabel(view: FlightView): string {
+  const quality = view.latest_position?.quality;
+  const labels = {
+    observed: "Observed ADS-B",
+    fused: "Fused / MLAT",
+    estimated: "Estimated",
+    unknown: "Quality unknown",
+  } as const;
+  return quality ? labels[quality] : "No position quality";
 }
 
 export function airportFor(code: string | null): AirportPoint | null {

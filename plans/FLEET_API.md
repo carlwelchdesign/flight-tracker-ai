@@ -22,6 +22,17 @@ Returns one typed flight view. A malformed UUID returns `400 invalid_flight_id`;
 Uses the same pagination parameters and metadata. Events are ordered by event time and then monotonic event ID. Each external fact retains its provider envelope ID and complete source attribution.
 
 All API errors use `{ "error": { "code": "...", "message": "..." } }`.
+All fleet read responses use `Cache-Control: no-store` because the optional live
+position layer is current-state data and must not enter intermediary caches.
+
+### `GET /api/live-positions/status`
+
+Returns tenant-scoped, provider-neutral state for the optional live position
+layer: state, region, accepted/fresh/stale/rejected counts, last observation,
+sanitized error code, and display attribution. It never returns a provider
+payload. The state is `disabled` unless an administrator explicitly configures
+the bounded server-side adapter. This response also uses `Cache-Control:
+no-store`.
 
 ## Live stream
 
@@ -42,7 +53,11 @@ Clients reconnect with the standard `Last-Event-ID` header. The service first re
 - Rejected, duplicate, orphaned, and out-of-order facts cannot replace current state or enter a flight timeline.
 - Replay reset clears current state, timelines, retained events, and envelope deduplication. The next SSE ID remains monotonic so connected clients never confuse a reset replay with old messages.
 
-The FT-102 projection is deliberately in-memory for the deterministic M1 console. Database-backed recovery and production retention belong to the commercial-data and operational-hardening milestones.
+The fleet projection remains deliberately in-memory. Deterministic replay and
+ephemeral ADSB.lol current positions share the same canonical boundary, but
+only replay-owned synthetic facts may be retained or replayed. ADSB.lol raw
+responses and normalized positions are not written to PostgreSQL, files,
+browser storage, analytics, exports, backups, or AI inputs.
 
 ## Metrics
 

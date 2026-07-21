@@ -2,7 +2,7 @@
 
 A non-commercial portfolio demonstration of an airline-operations intelligence console for fleet monitoring, aviation-weather correlation, and explainable dispatcher alerts. It is built for recruiters and hiring managers to explore and is not for operational use.
 
-The reliable demo path uses deterministic replay plus live NOAA weather. A free best-effort aircraft-position feed may be added later when its official terms permit public hosted display; no paid provider or SLA is required.
+The reliable demo path uses deterministic replay plus live NOAA weather. An optional ADSB.lol layer can add best-effort regional aircraft positions under visible ODbL attribution; no paid provider or SLA is required.
 
 ## Start locally
 
@@ -25,6 +25,14 @@ The Rust API applies SQLx migrations at startup. The development stack uses Post
 Local requests use one explicit development administrator, but still pass through the signed assertion, database membership, role, revocation, and tenant checks used by hosted sessions. See [plans/IDENTITY_TENANT_ISOLATION.md](plans/IDENTITY_TENANT_ISOLATION.md) for the permission matrix and production setup.
 
 Live NOAA ingestion is disabled by default. Before enabling it, create the configured operator in PostgreSQL, set `ENABLE_NOAA_WEATHER=true`, and keep the poll interval at 60 seconds or longer. See [plans/NOAA_INGESTION.md](plans/NOAA_INGESTION.md) for configuration, source-health semantics, and recovery guidance.
+
+Live ADSB.lol positions are also disabled by default. To evaluate them locally,
+use the same existing operator ID, set `ENABLE_ADSB_LOL_POSITIONS=true`, and
+configure one center point with a radius no larger than 100 nautical miles. The
+Rust adapter enforces a minimum 30-second poll interval, a five-second request
+timeout, one request at a time, bounded retry/backoff, no persistence or cache,
+and replay fallback. Do not enable it without re-checking
+[the integration decision](plans/ADSBLOL_INTEGRATION.md).
 
 Stop the stack with `make down`. Run all local checks with `make verify`.
 

@@ -6,9 +6,13 @@ use config::Config;
 use flight_tracker_api::{
     alerting::spawn_alert_worker,
     auth::{AuthService, AuthStore, InternalAssertionVerifier},
-    build_router_with_runtime_and_ingestion,
+    build_router_with_runtime_and_live_positions,
     health::CriticalWorkerRegistry,
     ingestion::{IngestionHub, IngestionSubscription},
+    live_positions::{
+        AdsbLolClient, AdsbLolClientConfig, AdsbLolRuntimeConfig, LivePositionStatusStore,
+        RetryPolicy as AdsbLolRetryPolicy, spawn_adsb_lol_runtime,
+    },
     replay::{ReplayHandle, ReplayScenario, spawn_replay_runtime},
     retention::{RetentionStore, spawn_retention_scheduler},
     weather::noaa::{
@@ -49,6 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let workers = CriticalWorkerRegistry::default();
     let mut ingestion_subscriptions = Vec::<IngestionSubscription>::new();
+    let live_position_statuses = LivePositionStatusStore::default();
     let replay = if let Some(replay_config) = config.replay {
         let scenario = ReplayScenario::load(&replay_config.scenario_path)?;
         let scenario_id = scenario.id.clone();
@@ -111,6 +116,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("NOAA aviation weather ingestion enabled");
     }
 
+    if let Some(adsb_lol_config) = config.adsb_lol {
+        let operator_exists =
+            sqlx::query_scalar::<_, bool>("SELECT EXISTS (SELECT 1 FROM operators WHERE id = $1)")
+                .bind(adsb_lol_config.operator_id.as_uuid())
+                .fetch_one(&database)
+                .await?;
+        if !operator_exists {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "ADSB_LOL_OPERATOR_ID must reference an existing operator",
+            )
+            .into());
+        }
+        let ingestion = IngestionHub::new(256);
+        ingestion_subscriptions.push(ingestion.subscription("adsb_lol_fleet_projection"));
+        let client = AdsbLolClient::new(AdsbLolClientConfig {
+            base_url: adsb_lol_config.base_url,
+            user_agent: adsb_lol_config.user_agent,
+            connect_timeout: Duration::from_secs(3),
+            request_timeout: Duration::from_secs(5),
+            retry: AdsbLolRetryPolicy::default(),
+        })?;
+        spawn_adsb_lol_runtime(
+            client,
+            ingestion,
+            live_position_statuses.clone(),
+            AdsbLolRuntimeConfig {
+                operator_id: adsb_lol_config.operator_id,
+                region: adsb_lol_config.region,
+                poll_interval: adsb_lol_config.poll_interval,
+                stale_after: Duration::from_secs(30),
+            },
+            workers.register("adsb_lol_positions"),
+        )?;
+        tracing::info!(
+            provider = "adsb.lol",
+            feed = "point",
+            "best-effort live aircraft positions enabled"
+        );
+    }
+
     spawn_retention_scheduler(
         RetentionStore::new(database.clone()),
         Duration::from_secs(30),
@@ -121,11 +167,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(address = %config.bind_address, "API listening");
     axum::serve(
         listener,
-        build_router_with_runtime_and_ingestion(
+        build_router_with_runtime_and_live_positions(
             database,
             replay,
             workers,
             ingestion_subscriptions,
+            live_position_statuses,
             auth,
         ),
     )

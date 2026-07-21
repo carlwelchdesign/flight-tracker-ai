@@ -8,6 +8,8 @@ import {
   phaseLabel,
   routeLabel,
   scheduleVariance,
+  sourceLabel,
+  sourceQualityLabel,
 } from "./operations-model";
 
 type FlightBoardProps = {
@@ -16,6 +18,7 @@ type FlightBoardProps = {
   selectedId: string | null;
   refreshing: boolean;
   controlsAvailable: boolean;
+  liveReferenceTime: number | null;
   onSelect: (flightId: string) => void;
   onStart: () => void;
 };
@@ -26,6 +29,7 @@ export function FlightBoard({
   selectedId,
   refreshing,
   controlsAvailable,
+  liveReferenceTime,
   onSelect,
   onStart,
 }: FlightBoardProps) {
@@ -69,6 +73,7 @@ export function FlightBoard({
               <tr>
                 <th scope="col">Flight</th>
                 <th scope="col">Phase</th>
+                <th scope="col">Source</th>
                 <th scope="col">Variance</th>
                 <th scope="col">Freshness</th>
                 <th scope="col"><span className="sr-only">Attention</span></th>
@@ -78,8 +83,8 @@ export function FlightBoard({
               {flights.map((view) => {
                 const selected = view.flight.id === selectedId;
                 const variance = scheduleVariance(view);
-                const freshnessState = freshness(view, referenceTime);
-                const attention = attentionLevel(view, hazards, referenceTime);
+                const freshnessState = freshness(view, referenceTime, liveReferenceTime);
+                const attention = attentionLevel(view, hazards, referenceTime, liveReferenceTime);
                 return (
                   <tr key={view.flight.id} data-selected={selected || undefined}>
                     <td>
@@ -95,6 +100,10 @@ export function FlightBoard({
                       </button>
                     </td>
                     <td><span className={`phase phase-${view.flight.status}`}>{phaseLabel(view)}</span></td>
+                    <td>
+                      <span className="flight-source-label">{sourceLabel(view)}</span>
+                      <small className="flight-quality-label">{sourceQualityLabel(view)}</small>
+                    </td>
                     <td className={variance.minutes && variance.minutes >= 15 ? "variance-watch" : ""}>
                       {variance.label}
                     </td>

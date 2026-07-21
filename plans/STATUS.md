@@ -4,20 +4,20 @@ Last updated: 2026-07-21
 
 ## Current state
 
-- Current milestone: M3 — Portfolio live data and operational workflow
-- Active ticket: None — FT-301 is complete; FT-302 is next
+- Current milestone: M4 — Portfolio launch and demonstration hardening
+- Active ticket: None — FT-302 is complete; FT-402 is next
 - Branch: None
-- Pull request: [#20](https://github.com/carlwelchdesign/flight-tracker-ai/pull/20) (verified delivery)
+- Pull request: [#21](https://github.com/carlwelchdesign/flight-tracker-ai/pull/21) (verified delivery)
 - Owner: Product and engineering
-- Overall status: M0, M1, and M2 are complete; M3 is 3/4 complete after selecting ADSB.lol as an optional ephemeral position layer; M4 is 1/4 complete, and environment-specific risks remain explicit FT-302/FT-402/FT-404 gates rather than falsely completed hosted evidence
-- Next action: Start FT-302 on `feat/ft-302-live-flight-integration` and implement the disabled-by-default ADSB.lol Rust adapter, visible source/attribution states, and automatic replay fallback under `ADSBLOL_INTEGRATION.md`.
+- Overall status: M0, M1, M2, and M3 are complete; M4 is 1/4 complete, with resilience drills, recruiter-demo validation, and public portfolio deployment still explicit gates
+- Next action: Start FT-402 on `test/ft-402-resilience-drills` and run the bounded provider, replay, queue, and recovery drills defined in M4.
 
 ## Milestone checklist
 
 - [x] M0 — Foundation, feasibility, and portfolio rebaseline
 - [x] M1 — Simulated operations console
 - [x] M2 — Live weather and hazard intelligence
-- [ ] M3 — Portfolio live data and operational workflow
+- [x] M3 — Portfolio live data and operational workflow
 - [ ] M4 — Portfolio launch and demonstration hardening
 - [ ] M5 — Optimization research and controlled recommendations
 
@@ -28,7 +28,7 @@ Last updated: 2026-07-21
 | M0 | 5 | 5 |
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
-| M3 | 3 | 4 |
+| M3 | 4 | 4 |
 | M4 | 1 | 4 |
 | M5 | 0 | 3 |
 
@@ -55,6 +55,7 @@ Last updated: 2026-07-21
 - FT-204 is delivered through PR #12. CI run `29811831163` verifies live replay persistence, route-hazard alert creation, score evidence, API acknowledgement, schema invariants, and the independent PostGIS rule oracle; M2 is complete.
 - FT-301 is re-scoped to choose an officially eligible free, best-effort aircraft-position source or record replay-only as the outcome. Commercial rights, price, SLA, operator contacts, and a 14-day trial no longer block the portfolio roadmap.
 - FT-301 is delivered through PR [#20](https://github.com/carlwelchdesign/flight-tracker-ai/pull/20) at selection commit `13d64eb`. CI run [29852787739](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29852787739) passes Rust, web, and API/PostGIS checks. ADR-011 selects ADSB.lol only for an optional ODbL-attributed, ephemeral, regional position layer with `no-store`, no persistence/export/LLM use, and deterministic replay as the only fallback; FT-302 owns implementation and activation proof.
+- FT-302 is delivered through PR [#21](https://github.com/carlwelchdesign/flight-tracker-ai/pull/21) at implementation commit `fe8957b`. CI run [29855008220](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29855008220) passes Rust, web, and API/PostGIS checks. The ADSB.lol layer is disabled by default, bounded to one regional request, ephemeral and uncached, visibly ODbL-attributed, honest about position-only facts and coverage, and independent of the deterministic replay fallback. M3 is complete.
 - FT-303 is delivered through PR #13 at implementation commit `1430ce8`. CI run `29814499315` verifies Rust, web, live authenticated replay, the identity migration, PostGIS cross-tenant route isolation, session revocation, and actor/tenant audit behavior. Hosted identity remains behind a provider-neutral boundary; tenant membership and operational authorization are app-owned and enforced by Rust.
 - FT-304 is delivered through PR #14 at implementation and CI contract commit `11bdc0d`. CI run `29816346733` verifies the additive migration, authenticated replay, workflow-version acknowledgement, tenant-safe assignment, all queue filters, structured dismissal, conflict rejection, bounded persistence volume, Rust and web quality gates, and production builds.
 - FT-301 commercial preparation package is merged through PR #15 at `c8d8a78`; PR #16 records the corrected procurement handoff. This research is retained for an optional future production track and is not an active portfolio-release gate.

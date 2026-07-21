@@ -37,11 +37,12 @@ Historical evidence: PR [#15](https://github.com/carlwelchdesign/flight-tracker-
 
 ## FT-302 — Integrate best-effort live aircraft positions
 
-Status: Not started
+Status: Complete
 
 Branch: `feat/ft-302-live-flight-integration`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `fe8957b`
+Pull request: [#21](https://github.com/carlwelchdesign/flight-tracker-ai/pull/21)
+Owner: Backend and full-stack engineering
 
 Implement the selected free source behind the canonical event boundary without weakening deterministic replay.
 
@@ -49,17 +50,34 @@ Dependencies: FT-301, FT-002, FT-104
 
 Acceptance checklist:
 
-- [ ] Provider adapter does not leak provider-specific types into the domain or UI.
-- [ ] Position and available identity fields reconcile predictably; unsupported schedule, route, and status facts are not invented.
-- [ ] Rate limits, timeouts, reconnect, duplicate, stale, and out-of-order delivery are tested.
-- [ ] Source, attribution, freshness, coverage quality, and best-effort status are visible per flight.
-- [ ] The UI persistently states `Portfolio demonstration — not for operational use` for both live and replay modes.
-- [ ] Feed failure automatically preserves a usable replay path and visibly reports the source as unavailable or degraded.
-- [ ] The ADSB.lol adapter uses only a bounded regional endpoint, polls no faster than every 30 seconds, permits one request in flight, times out, backs off with jitter, and never performs global or per-aircraft polling.
-- [ ] ADSB.lol responses remain ephemeral and uncached across Rust and Next.js, preserve `Cache-Control: no-store`, are excluded from logs, analytics, exports, LLM inputs, fixtures, PostgreSQL, and backups, and receive linked ODbL attribution whenever visible.
-- [ ] Stored samples and fixtures contain replay-owned synthetic data only; no ADSB.lol response body is committed or retained.
+- [x] Provider adapter does not leak provider-specific types into the domain or UI.
+- [x] Position and available identity fields reconcile predictably; unsupported schedule, route, and status facts are not invented.
+- [x] Rate limits, timeouts, reconnect, duplicate, stale, and out-of-order delivery are tested.
+- [x] Source, attribution, freshness, coverage quality, and best-effort status are visible per flight.
+- [x] The UI persistently states `Portfolio demonstration — not for operational use` for both live and replay modes.
+- [x] Feed failure automatically preserves a usable replay path and visibly reports the source as unavailable or degraded.
+- [x] The ADSB.lol adapter uses only a bounded regional endpoint, polls no faster than every 30 seconds, permits one request in flight, times out, backs off with jitter, and never performs global or per-aircraft polling.
+- [x] ADSB.lol responses remain ephemeral and uncached across Rust and Next.js, preserve `Cache-Control: no-store`, are excluded from logs, analytics, exports, LLM inputs, fixtures, PostgreSQL, and backups, and receive linked ODbL attribution whenever visible.
+- [x] Stored samples and fixtures contain replay-owned synthetic data only; no ADSB.lol response body is committed or retained.
 
-Verification evidence: Pending.
+Verification evidence: the provider-private Rust adapter maps only allowlisted
+identity, position, motion, and source-quality facts into canonical events; a
+sequential runtime enforces one bounded regional request, a 30-second minimum
+cadence, five-second timeout, one-megabyte response cap, and jittered bounded
+retry. The live batch reaches only the in-memory fleet projection. The
+tenant-scoped source-status API, fleet reads, and Next.js proxy preserve
+`Cache-Control: no-store`. The console distinguishes live facts from simulated
+route/schedule/status, shows per-flight source quality and freshness, includes
+linked ODbL attribution, and preserves an explicit replay action during
+degraded/unavailable states. Repository verification passes 84 Rust library
+tests, 11 binary configuration tests, 4 integration/schema tests, strict
+Clippy, formatting, 50 web tests, lint, typecheck, and a production Next.js
+build. API/PostGIS verification remained assigned to CI because the local
+PostgreSQL 14 service does not have PostGIS installed. CI run
+[29855008220](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29855008220)
+passes Rust, web, and API/PostGIS checks, including authenticated
+disabled-by-default source state and end-to-end fleet/status `no-store`
+headers.
 
 ## FT-303 — Add identity, roles, and tenant isolation
 

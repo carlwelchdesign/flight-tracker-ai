@@ -44,6 +44,7 @@ describe("operations session safety", () => {
           },
         }}
         initialWeather={{ state: "unavailable", message: "No weather" }}
+        initialLivePositions={{ state: "unavailable", message: "No live positions" }}
       />,
     );
 

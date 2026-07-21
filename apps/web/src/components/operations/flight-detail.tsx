@@ -7,9 +7,13 @@ import {
   formatAltitude,
   formatSpeed,
   formatZulu,
+  freshness,
+  isLivePosition,
   phaseLabel,
   routeLabel,
   scheduleVariance,
+  sourceLabel,
+  sourceQualityLabel,
 } from "./operations-model";
 
 type FlightDetailProps = {
@@ -18,6 +22,7 @@ type FlightDetailProps = {
   hazards: Hazard[];
   timeline: FleetEvent[];
   timelineState: "idle" | "loading" | "ready" | "error";
+  liveReferenceTime: number | null;
 };
 
 export function FlightDetail({
@@ -26,6 +31,7 @@ export function FlightDetail({
   hazards,
   timeline,
   timelineState,
+  liveReferenceTime,
 }: FlightDetailProps) {
   if (!selected) {
     return (
@@ -45,9 +51,11 @@ export function FlightDetail({
   }
 
   const referenceTime = fleetReferenceTime(flights);
-  const attention = attentionLevel(selected, hazards, referenceTime);
+  const attention = attentionLevel(selected, hazards, referenceTime, liveReferenceTime);
   const variance = scheduleVariance(selected);
   const position = selected.latest_position;
+  const positionOnly = isLivePosition(selected);
+  const freshnessState = freshness(selected, referenceTime, liveReferenceTime);
 
   return (
     <aside className="ops-panel ops-detail-panel" aria-labelledby="detail-title">
@@ -105,20 +113,33 @@ export function FlightDetail({
 
       <section className="detail-section" aria-labelledby="schedule-title">
         <div className="detail-section-title">
-          <h3 id="schedule-title">Schedule</h3>
-          <span>{selected.flight.aircraft_registration ?? "Tail unknown"}</span>
+          <h3 id="schedule-title">{positionOnly ? "Route and schedule" : "Simulated schedule"}</h3>
+          <span>
+            {positionOnly
+              ? selected.flight.source.provider_record_id
+                ? `ICAO ${selected.flight.source.provider_record_id.toUpperCase()}`
+                : "Transponder unknown"
+              : selected.flight.aircraft_registration ?? "Tail unknown"}
+          </span>
         </div>
-        <dl className="schedule-row">
-          <div>
-            <dt>{selected.flight.origin_airport_code ?? "Origin"}</dt>
-            <dd>{formatZulu(selected.flight.scheduled_departure_at)}</dd>
-          </div>
-          <span aria-hidden="true">→</span>
-          <div>
-            <dt>{selected.flight.destination_airport_code ?? "Destination"}</dt>
-            <dd>{formatZulu(selected.flight.scheduled_arrival_at)}</dd>
-          </div>
-        </dl>
+        {positionOnly ? (
+          <p className="position-only-note">
+            ADSB.lol supplies a best-effort position, not authoritative route, schedule, delay,
+            cancellation, or operational status facts. Nothing is inferred here.
+          </p>
+        ) : (
+          <dl className="schedule-row">
+            <div>
+              <dt>{selected.flight.origin_airport_code ?? "Origin"}</dt>
+              <dd>{formatZulu(selected.flight.scheduled_departure_at)}</dd>
+            </div>
+            <span aria-hidden="true">→</span>
+            <div>
+              <dt>{selected.flight.destination_airport_code ?? "Destination"}</dt>
+              <dd>{formatZulu(selected.flight.scheduled_arrival_at)}</dd>
+            </div>
+          </dl>
+        )}
       </section>
 
       <section className="detail-section timeline-section" aria-labelledby="timeline-title">
@@ -153,7 +174,11 @@ export function FlightDetail({
 
       <div className="source-strip">
         <span>Source</span>
-        <strong>{position?.source.provider ?? selected.flight.source.provider}</strong>
+        <strong>{sourceLabel(selected)}</strong>
+        <span>{sourceQualityLabel(selected)}</span>
+        <span className={`freshness freshness-${freshnessState.level}`}>
+          {freshnessState.label}
+        </span>
         <code>{(position?.source.envelope_id ?? selected.flight.source.envelope_id).slice(0, 8)}</code>
       </div>
     </aside>
