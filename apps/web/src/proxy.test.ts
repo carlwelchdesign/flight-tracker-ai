@@ -30,13 +30,14 @@ describe("hosted identity proxy", () => {
     clerk.protect.mockReset();
   });
 
-  it("keeps the portfolio landing and sign-in routes public", async () => {
+  it("keeps the portfolio landing and identity routes public", async () => {
     const { proxy } = await import("./proxy");
 
     await proxy(new NextRequest("https://example.test/"), {} as never);
     await proxy(new NextRequest("https://example.test/sign-in"), {} as never);
+    await proxy(new NextRequest("https://example.test/sign-up"), {} as never);
 
-    expect(clerk.publicPatterns).toEqual(["/", "/sign-in(.*)"]);
+    expect(clerk.publicPatterns).toEqual(["/", "/sign-in(.*)", "/sign-up(.*)"]);
     expect(clerk.protect).not.toHaveBeenCalled();
   });
 

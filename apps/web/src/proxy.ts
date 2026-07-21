@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextFetchEvent, NextRequest } from "next/server";
 import { HOSTED_IDENTITY_CSP } from "@/lib/security-policy";
 
-const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)"]);
+const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
 const hostedIdentityProxy = clerkMiddleware(
   async (auth, request) => {
     if (!isPublicRoute(request)) await auth.protect();

@@ -30,4 +30,6 @@ export const HOSTED_IDENTITY_CSP: NonNullable<
 
 export const HOSTED_CLERK_PROVIDER_OPTIONS = {
   dynamic: true,
+  signInUrl: "/sign-in",
+  signUpUrl: "/sign-up",
 } as const;

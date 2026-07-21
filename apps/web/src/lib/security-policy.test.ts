@@ -46,6 +46,10 @@ describe("browser security policy", () => {
   });
 
   it("opts Clerk into dynamic rendering so its browser script receives the CSP nonce", () => {
-    expect(HOSTED_CLERK_PROVIDER_OPTIONS).toEqual({ dynamic: true });
+    expect(HOSTED_CLERK_PROVIDER_OPTIONS).toEqual({
+      dynamic: true,
+      signInUrl: "/sign-in",
+      signUpUrl: "/sign-up",
+    });
   });
 });
