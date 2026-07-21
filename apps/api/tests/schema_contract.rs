@@ -479,6 +479,44 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
         .await
         .unwrap();
     let other_assignee = store.list_assignees(other_operator_id).await.unwrap()[0].clone();
+
+    let direct_alert_error = sqlx::query(
+        r#"
+        UPDATE alerts
+        SET assigned_identity_id = $3,
+            assigned_at = $4,
+            assigned_by_actor_id = 'direct-database-test'
+        WHERE operator_id = $1 AND id = $2
+        "#,
+    )
+    .bind(scenario.operator_id.as_uuid())
+    .bind(revised_id)
+    .bind(other_assignee.identity_id)
+    .bind(evaluated_at)
+    .execute(pool)
+    .await
+    .unwrap_err();
+    assert_foreign_key_violation(direct_alert_error, "alerts_assigned_membership_fk");
+
+    let direct_action_error = sqlx::query(
+        r#"
+        INSERT INTO alert_actions (
+            id, operator_id, alert_id, schema_version, action, actor_id,
+            occurred_at, idempotency_key, assigned_identity_id
+        ) VALUES ($1, $2, $3, 1, 'assign', 'direct-database-test', $4, $5, $6)
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(scenario.operator_id.as_uuid())
+    .bind(revised_id)
+    .bind(evaluated_at)
+    .bind(format!("direct-cross-tenant-{}", Uuid::new_v4()))
+    .bind(other_assignee.identity_id)
+    .execute(pool)
+    .await
+    .unwrap_err();
+    assert_foreign_key_violation(direct_action_error, "alert_actions_assigned_membership_fk");
+
     let cross_tenant_assign = AlertActionRequest {
         operator_id: scenario.operator_id,
         action: AlertActionKind::Assign,
@@ -495,6 +533,35 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
             .await,
         Err(AlertStoreError::InvalidAssignee)
     ));
+
+    let (auth, authorization) = authenticated_service(pool, scenario.operator_id).await;
+    let api_response = build_router(pool.clone(), auth)
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/alerts/{revised_id}/actions"))
+                .header("authorization", authorization)
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "action": "assign",
+                        "idempotency_key": "api-cross-tenant-assign",
+                        "expected_workflow_version": 2,
+                        "comment": null,
+                        "assigned_identity_id": other_assignee.identity_id,
+                        "dismissal_reason": null
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(api_response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let api_body: Value =
+        serde_json::from_slice(&api_response.into_body().collect().await.unwrap().to_bytes())
+            .unwrap();
+    assert_eq!(api_body["error"]["code"], "invalid_assignee");
 
     let assign = AlertActionRequest {
         operator_id: scenario.operator_id,
@@ -681,6 +748,14 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
             .iter()
             .all(|alert| alert.assigned_identity_id.is_none())
     );
+}
+
+fn assert_foreign_key_violation(error: sqlx::Error, constraint: &str) {
+    let sqlx::Error::Database(database_error) = error else {
+        panic!("expected database constraint error, got {error}")
+    };
+    assert_eq!(database_error.code().as_deref(), Some("23503"));
+    assert_eq!(database_error.constraint(), Some(constraint));
 }
 
 async fn assert_provider_record_revisions_are_allowed_but_identical_retries_are_rejected(
