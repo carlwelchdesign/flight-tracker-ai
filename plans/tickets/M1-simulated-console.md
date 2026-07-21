@@ -8,7 +8,7 @@ Status: Complete
 
 Branch: `feat/ft-101-replay-infrastructure`
 Final implementation commit: `47a8029`
-Pull request: [#5](https://github.com/carlwelchdesign/flight-tracker-ai/pull/5) (ready for review; required checks passed)
+Pull request: [#5](https://github.com/carlwelchdesign/flight-tracker-ai/pull/5) (merged at `efc2cf6`)
 Owner: Full-stack engineering
 
 Create a versioned scenario format and virtual clock that emits positions and operational events through the same path used by live providers.
@@ -27,11 +27,12 @@ Verification evidence: `fixtures/replay/m1-operations-v1.json`; `plans/REPLAY_SC
 
 ## FT-102 — Implement fleet API and live event stream
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-102-fleet-api-event-stream`
 Final commit: Pending
 Pull request: Pending
+Owner: Backend engineering
 
 Project current flight state from replay events and expose list, detail, timeline, and SSE endpoints.
 
