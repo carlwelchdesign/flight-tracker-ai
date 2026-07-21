@@ -22,6 +22,8 @@ pub enum AuthFailure {
     Unauthenticated,
     #[error("the current session is not authorized for this tenant or action")]
     Forbidden,
+    #[error("the authorization request contains an invalid field")]
+    InvalidRequest,
     #[error("authorization is temporarily unavailable")]
     Unavailable,
 }
@@ -49,6 +51,11 @@ impl IntoResponse for AuthFailure {
                 StatusCode::FORBIDDEN,
                 "authorization_denied",
                 "The current session is not authorized for this tenant or action",
+            ),
+            Self::InvalidRequest => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "invalid_authorization_request",
+                "The authorization request contains an invalid field",
             ),
             Self::Unavailable => (
                 StatusCode::SERVICE_UNAVAILABLE,

@@ -1680,6 +1680,28 @@ async fn assert_identity_tenant_revocation_and_audit_are_fail_closed(pool: &PgPo
         .await
         .unwrap();
     assert!(store.resolve(&claims).await.is_err());
+    let oversized_reason_error = sqlx::query(
+        r#"
+        INSERT INTO auth_session_revocations (
+            id, provider, session_id, identity_id, operator_id,
+            revoked_by_identity_id, reason, revoked_at, expires_at
+        ) VALUES ($1,'development',$2,$3,$4,$3,$5,$6,$7)
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(format!("oversized-reason-{}", Uuid::new_v4()))
+    .bind(context.identity_id)
+    .bind(operator_id.as_uuid())
+    .bind("x".repeat(501))
+    .bind(now)
+    .bind(now + Duration::minutes(5))
+    .execute(pool)
+    .await
+    .unwrap_err();
+    assert_check_violation(
+        oversized_reason_error,
+        "auth_session_revocations_reason_length",
+    );
     let audit = sqlx::query_as::<_, (Uuid, Uuid, String)>(
         "SELECT operator_id, actor_identity_id, action FROM authorization_audit_events WHERE target_id = $1",
     )
@@ -2000,12 +2022,12 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
     ));
 
     let (auth, authorization) = authenticated_service(pool, scenario.operator_id).await;
-    let api_response = build_router(pool.clone(), auth)
+    let api_response = build_router(pool.clone(), auth.clone())
         .oneshot(
             Request::builder()
                 .method("POST")
                 .uri(format!("/api/alerts/{revised_id}/actions"))
-                .header("authorization", authorization)
+                .header("authorization", authorization.clone())
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::json!({
@@ -2027,6 +2049,99 @@ async fn assert_alert_queue_is_ranked_deduplicated_superseded_and_audited(pool: 
         serde_json::from_slice(&api_response.into_body().collect().await.unwrap().to_bytes())
             .unwrap();
     assert_eq!(api_body["error"]["code"], "invalid_assignee");
+
+    let oversized_comment_response = build_router(pool.clone(), auth.clone())
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/alerts/{revised_id}/actions"))
+                .header("authorization", authorization.clone())
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "action": "comment",
+                        "idempotency_key": "api-oversized-comment",
+                        "expected_workflow_version": 2,
+                        "comment": "x".repeat(2001),
+                        "assigned_identity_id": null,
+                        "dismissal_reason": null
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        oversized_comment_response.status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let oversized_comment_body: Value = serde_json::from_slice(
+        &oversized_comment_response
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes(),
+    )
+    .unwrap();
+    assert_eq!(oversized_comment_body["error"]["code"], "invalid_comment");
+
+    let oversized_key_response = build_router(pool.clone(), auth)
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/alerts/{revised_id}/actions"))
+                .header("authorization", authorization)
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "action": "acknowledge",
+                        "idempotency_key": "k".repeat(129),
+                        "expected_workflow_version": 2,
+                        "comment": null,
+                        "assigned_identity_id": null,
+                        "dismissal_reason": null
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        oversized_key_response.status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let oversized_key_body: Value = serde_json::from_slice(
+        &oversized_key_response
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes(),
+    )
+    .unwrap();
+    assert_eq!(oversized_key_body["error"]["code"], "invalid_alert_action");
+
+    let oversized_direct_comment = sqlx::query(
+        r#"
+        INSERT INTO alert_actions (
+            id, operator_id, alert_id, schema_version, action, actor_id,
+            occurred_at, comment, idempotency_key
+        ) VALUES ($1,$2,$3,1,'comment','direct-database-test',$4,$5,$6)
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(scenario.operator_id.as_uuid())
+    .bind(revised_id)
+    .bind(evaluated_at)
+    .bind("x".repeat(2001))
+    .bind(format!("direct-oversized-comment-{}", Uuid::new_v4()))
+    .execute(pool)
+    .await
+    .unwrap_err();
+    assert_check_violation(oversized_direct_comment, "alert_actions_comment_length");
 
     let assign = AlertActionRequest {
         operator_id: scenario.operator_id,
@@ -2220,6 +2335,14 @@ fn assert_foreign_key_violation(error: sqlx::Error, constraint: &str) {
         panic!("expected database constraint error, got {error}")
     };
     assert_eq!(database_error.code().as_deref(), Some("23503"));
+    assert_eq!(database_error.constraint(), Some(constraint));
+}
+
+fn assert_check_violation(error: sqlx::Error, constraint: &str) {
+    let sqlx::Error::Database(database_error) = error else {
+        panic!("expected database constraint error, got {error}")
+    };
+    assert_eq!(database_error.code().as_deref(), Some("23514"));
     assert_eq!(database_error.constraint(), Some(constraint));
 }
 

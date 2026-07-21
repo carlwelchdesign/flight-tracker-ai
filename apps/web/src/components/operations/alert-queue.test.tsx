@@ -89,6 +89,7 @@ describe("dispatcher alert queue", () => {
     expect(await screen.findByRole("heading", { name: "80/100 attention" })).toBeInTheDocument();
     expect(screen.getByText("Hazard severity")).toBeInTheDocument();
     expect(screen.getByText(/route v1, hazard r1, rule v1, score v1/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Dispatcher note")).toHaveAttribute("maxlength", "2000");
 
     await user.click(screen.getByRole("button", { name: "Acknowledge" }));
     await waitFor(() => expect(screen.getByText("Acknowledge", { selector: ".alert-audit strong" })).toBeInTheDocument());

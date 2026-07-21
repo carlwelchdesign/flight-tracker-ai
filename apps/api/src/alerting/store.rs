@@ -9,6 +9,10 @@ use crate::domain::{AlertActionKind, AlertLifecycle, AlertSeverity, OperatorId};
 
 use super::{AlertCandidate, LifecycleError, transition_lifecycle};
 
+const MAX_ALERT_ACTOR_CHARS: usize = 256;
+const MAX_IDEMPOTENCY_KEY_CHARS: usize = 128;
+const MAX_ALERT_COMMENT_CHARS: usize = 2_000;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CreateAlertResult {
@@ -140,7 +144,7 @@ pub enum AlertStoreError {
     Database(#[from] sqlx::Error),
     #[error("alert was not found")]
     NotFound,
-    #[error("actor_id and idempotency_key must not be empty")]
+    #[error("actor_id or idempotency_key is empty or exceeds its supported length")]
     InvalidActionIdentity,
     #[error("idempotency_key was already used for a different alert")]
     IdempotencyConflict,
@@ -150,7 +154,7 @@ pub enum AlertStoreError {
     InvalidAssignee,
     #[error("dismiss requires a structured reason; other also requires an explanation")]
     InvalidDismissalReason,
-    #[error("comment requires a non-empty dispatcher note")]
+    #[error("comment requires a non-empty dispatcher note of at most 2000 characters")]
     InvalidComment,
     #[error(transparent)]
     Lifecycle(#[from] LifecycleError),
@@ -441,15 +445,25 @@ impl AlertStore {
         request: &AlertActionRequest,
         now: DateTime<Utc>,
     ) -> Result<AlertDetail, AlertStoreError> {
-        if request.actor_id.trim().is_empty() || request.idempotency_key.trim().is_empty() {
+        let actor_id = request.actor_id.trim();
+        let idempotency_key = request.idempotency_key.trim();
+        let comment = request
+            .comment
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+        if actor_id.is_empty()
+            || actor_id.chars().count() > MAX_ALERT_ACTOR_CHARS
+            || idempotency_key.is_empty()
+            || idempotency_key.chars().count() > MAX_IDEMPOTENCY_KEY_CHARS
+        {
             return Err(AlertStoreError::InvalidActionIdentity);
         }
+        if comment.is_some_and(|value| value.chars().count() > MAX_ALERT_COMMENT_CHARS) {
+            return Err(AlertStoreError::InvalidComment);
+        }
         let mut transaction = self.database.begin().await?;
-        let lock_key = format!(
-            "{}:{}",
-            request.operator_id.as_uuid(),
-            request.idempotency_key
-        );
+        let lock_key = format!("{}:{idempotency_key}", request.operator_id.as_uuid());
         sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
             .bind(lock_key)
             .execute(&mut *transaction)
@@ -458,7 +472,7 @@ impl AlertStore {
             "SELECT alert_id FROM alert_actions WHERE operator_id = $1 AND idempotency_key = $2",
         )
         .bind(request.operator_id.as_uuid())
-        .bind(&request.idempotency_key)
+        .bind(idempotency_key)
         .fetch_optional(&mut *transaction)
         .await?
         {
@@ -479,12 +493,12 @@ impl AlertStore {
         if workflow_version != request.expected_workflow_version {
             return Err(AlertStoreError::ConcurrentModification);
         }
-        validate_action_request(&mut transaction, request).await?;
+        validate_action_request(&mut transaction, request, comment).await?;
         let current = parse_lifecycle(&lifecycle)?;
         let lifecycle_reason = request
             .dismissal_reason
             .map(DismissalReason::as_str)
-            .or(request.comment.as_deref());
+            .or(comment);
         let next = transition_lifecycle(current, request.action, lifecycle_reason)?;
 
         insert_action(
@@ -492,9 +506,9 @@ impl AlertStore {
             request.operator_id.as_uuid(),
             alert_id,
             request.action,
-            request.actor_id.trim(),
-            request.idempotency_key.trim(),
-            request.comment.as_deref().map(str::trim),
+            actor_id,
+            idempotency_key,
+            comment,
             request.assigned_identity_id,
             request.dismissal_reason,
             now,
@@ -517,7 +531,7 @@ impl AlertStore {
         .bind(action_name(request.action))
         .bind(request.assigned_identity_id)
         .bind(now)
-        .bind(request.actor_id.trim())
+        .bind(actor_id)
         .execute(&mut *transaction)
         .await?;
         transaction.commit().await?;
@@ -528,6 +542,7 @@ impl AlertStore {
 async fn validate_action_request(
     transaction: &mut Transaction<'_, Postgres>,
     request: &AlertActionRequest,
+    comment: Option<&str>,
 ) -> Result<(), AlertStoreError> {
     match request.action {
         AlertActionKind::Assign => {
@@ -560,21 +575,11 @@ async fn validate_action_request(
             let Some(reason) = request.dismissal_reason else {
                 return Err(AlertStoreError::InvalidDismissalReason);
             };
-            if reason == DismissalReason::Other
-                && request
-                    .comment
-                    .as_deref()
-                    .is_none_or(|value| value.trim().is_empty())
-            {
+            if reason == DismissalReason::Other && comment.is_none() {
                 return Err(AlertStoreError::InvalidDismissalReason);
             }
         }
-        AlertActionKind::Comment
-            if request
-                .comment
-                .as_deref()
-                .is_none_or(|value| value.trim().is_empty()) =>
-        {
+        AlertActionKind::Comment if comment.is_none() => {
             return Err(AlertStoreError::InvalidComment);
         }
         _ if request.assigned_identity_id.is_some() || request.dismissal_reason.is_some() => {

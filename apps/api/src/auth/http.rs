@@ -80,12 +80,6 @@ async fn revoke_session(
     Json(request): Json<RevokeSessionRequest>,
 ) -> Result<Json<serde_json::Value>, AuthFailure> {
     require(&context, Permission::ManageMemberships)?;
-    if request.reason.trim().is_empty()
-        || request.provider.trim().is_empty()
-        || request.session_id.trim().is_empty()
-    {
-        return Err(AuthFailure::Forbidden);
-    }
     service
         .store()
         .revoke_session(
@@ -101,7 +95,8 @@ async fn revoke_session(
         )
         .await
         .map_err(|error| match error {
-            super::store::AuthStoreError::InvalidRevocationExpiry => AuthFailure::Forbidden,
+            super::store::AuthStoreError::InvalidRevocationExpiry
+            | super::store::AuthStoreError::InvalidRevocationInput => AuthFailure::InvalidRequest,
             _ => AuthFailure::Unavailable,
         })?;
     Ok(Json(serde_json::json!({ "status": "revoked" })))
