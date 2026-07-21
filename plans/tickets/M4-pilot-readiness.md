@@ -53,8 +53,8 @@ Scope-reconciliation evidence (2026-07-21): FT-005 and ADR-010 remove commercial
 Status: In progress
 
 Branch: `feat/ft-402-resilience-drills`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `bf4db1f`
+Pull request: [#22](https://github.com/carlwelchdesign/flight-tracker-ai/pull/22)
 Owner: Backend, reliability, and full-stack engineering
 
 Demonstrate a reliable recruiter-facing experience under feed, database, worker, network, and malformed-data failures.

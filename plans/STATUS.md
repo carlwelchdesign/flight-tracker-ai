@@ -7,7 +7,7 @@ Last updated: 2026-07-21
 - Current milestone: M4 — Portfolio launch and demonstration hardening
 - Active ticket: FT-402 — Run resilience and failure drills
 - Branch: `feat/ft-402-resilience-drills`
-- Pull request: Pending
+- Pull request: [#22](https://github.com/carlwelchdesign/flight-tracker-ai/pull/22)
 - Owner: Backend, reliability, and full-stack engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 1/4 complete, with resilience drills, recruiter-demo validation, and public portfolio deployment still explicit gates
 - Next action: Build and execute the repeatable provider-failure, worker-restart,
