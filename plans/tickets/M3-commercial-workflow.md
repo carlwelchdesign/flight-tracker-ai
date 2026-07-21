@@ -11,7 +11,7 @@ Preparation commit: `fadb4ea`
 Preparation pull request: [#15](https://github.com/carlwelchdesign/flight-tracker-ai/pull/15) (merged at `c8d8a78`)
 Active evidence branch: `docs/ft-301-procurement-handoff`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16) (draft)
 Owner: Product, legal, and engineering
 
 Resolve the provider feasibility work with a documented selection appropriate for the intended use.

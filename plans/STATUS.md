@@ -7,7 +7,7 @@ Last updated: 2026-07-21
 - Current milestone: M3 — Commercial flight data and operational workflow
 - Active ticket: FT-301 — Select and contract a commercial flight-data provider
 - Branch: `docs/ft-301-procurement-handoff`
-- Pull request: Pending
+- Pull request: [#16](https://github.com/carlwelchdesign/flight-tracker-ai/pull/16) (draft)
 - Owner: Product, legal, and engineering
 - Overall status: M0, M1, and M2 are complete; FT-303 and FT-304 are complete while FT-301 remains externally gated
 - Next action: Assign the named Product/Legal/Engineering/operator owners in the controlled tracker, approve the intended-use questionnaire, and submit both provider requests using `provider-evaluation/PROCUREMENT_HANDOFF.md`.
