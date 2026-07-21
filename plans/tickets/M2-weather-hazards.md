@@ -27,7 +27,7 @@ Verification evidence: `plans/NOAA_INGESTION.md`; normal, malformed, duplicate, 
 
 ## FT-202 — Render weather and hazard layers
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-202-weather-hazard-layers`
 Final implementation commit: `568bd63`
@@ -40,13 +40,13 @@ Dependencies: FT-201, FT-103
 
 Acceptance checklist:
 
-- [ ] Hazard polygons communicate type, severity, altitude, and validity.
-- [ ] Layer controls expose timestamp and source.
-- [ ] Expired or stale data is visually distinct and never silently current.
-- [ ] Selecting a hazard reveals normalized fields and raw-source access.
-- [ ] Map performance is measured with a representative regional dataset.
+- [x] Hazard polygons communicate type, severity, altitude, and validity.
+- [x] Layer controls expose timestamp and source.
+- [x] Expired or stale data is visually distinct and never silently current.
+- [x] Selecting a hazard reveals normalized fields and raw-source access.
+- [x] Map performance is measured with a representative regional dataset.
 
-Verification evidence: `plans/WEATHER_LAYERS.md`; 47 passing Rust library tests, 5 binary tests, and the schema contract; strict workspace Clippy; Rust formatting and release build; 15 passing web tests; frontend lint, typecheck, production build, and dependency audit with 0 vulnerabilities; Compose configuration and diff hygiene; deterministic 300-hazard/75-METAR benchmark with a 48.29 ms mean complete render and 0.19 ms mean projection; browser verification at 1180 x 720 and 820 x 900 with keyboard hazard selection, layer visibility, retained-data presentation, responsive layout, no horizontal overflow, and no browser errors. Awaiting required PR checks on [#10](https://github.com/carlwelchdesign/flight-tracker-ai/pull/10).
+Verification evidence: `plans/WEATHER_LAYERS.md`; 47 passing Rust library tests, 5 binary tests, and the schema contract; strict workspace Clippy; Rust formatting and release build; 15 passing web tests; frontend lint, typecheck, production build, and dependency audit with 0 vulnerabilities; Compose configuration and diff hygiene; deterministic 300-hazard/75-METAR benchmark with a 48.29 ms mean complete render and 0.19 ms mean projection; browser verification at 1180 x 720 and 820 x 900 with keyboard hazard selection, layer visibility, retained-data presentation, responsive layout, no horizontal overflow, and no browser errors; implementation commit `568bd63`; CI correction `225937f`; PR [#10](https://github.com/carlwelchdesign/flight-tracker-ai/pull/10), with Rust, web, and API/PostGIS smoke checks passing, including latest-revision, cancellation, geometry, observation, source-attribution, and raw-source route coverage against PostGIS.
 
 ## FT-203 — Implement route–hazard intersection rules
 

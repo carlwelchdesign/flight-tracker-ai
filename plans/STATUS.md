@@ -9,8 +9,8 @@ Last updated: 2026-07-20
 - Branch: `feat/ft-202-weather-hazard-layers`
 - Pull request: [#10](https://github.com/carlwelchdesign/flight-tracker-ai/pull/10)
 - Owner: Full-stack engineering with product-design review
-- Overall status: M0 and M1 are merged; FT-201 is merged and FT-202 is in progress
-- Next action: Pass the required Rust, web, and API/PostGIS checks on PR #10, record the authoritative evidence, and merge FT-202.
+- Overall status: M0 and M1 are merged; FT-201 is merged and FT-202 is complete with merge pending
+- Next action: Merge green PR #10, update local `main`, then begin FT-203 route-hazard intersection rules on its dedicated branch.
 
 ## Milestone checklist
 
@@ -27,7 +27,7 @@ Last updated: 2026-07-20
 | --- | ---: | ---: |
 | M0 | 3 | 3 |
 | M1 | 4 | 4 |
-| M2 | 1 | 4 |
+| M2 | 2 | 4 |
 | M3 | 0 | 4 |
 | M4 | 0 | 4 |
 | M5 | 0 | 3 |
@@ -46,7 +46,7 @@ Last updated: 2026-07-20
 - FT-103 is merged through PR #7 at `18a5a23` with all required checks passing.
 - FT-104 is merged through PR #8 at `da1a6ad` with all required checks passing.
 - FT-201 is merged through PR #9 at `2ce50e2`; Rust, web, and API/PostGIS checks pass, including NOAA persistence and revision behavior.
-- FT-202 implementation commit `568bd63` is under review in PR #10; local Rust/web/build/browser/performance checks pass, with API/PostGIS CI pending.
+- FT-202 implementation commit `568bd63` and CI correction `225937f` are green in PR #10; Rust, web, and API/PostGIS checks pass, including weather reads and raw-source evidence against PostGIS.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
