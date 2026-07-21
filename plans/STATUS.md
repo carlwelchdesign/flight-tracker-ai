@@ -11,7 +11,7 @@ Last updated: 2026-07-21
 - Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; completion gate remains open)
 - Owner: Security, legal/privacy, product, and engineering
 - Overall status: M0, M1, and M2 are complete; M3 remains externally gated while dependency-safe FT-401 review preparation is in progress
-- Next action: Resolve the owned FT-401 findings, beginning with credential rotation and database tenant integrity; leave commercial-provider controls blocked until FT-301 resolves.
+- Next action: Resolve the remaining dependency-safe FT-401 findings, beginning with credential rotation and browser security headers; leave commercial-provider controls blocked until FT-301 resolves.
 
 ## Milestone checklist
 
@@ -59,7 +59,8 @@ Last updated: 2026-07-21
 - FT-304 is delivered through PR #14 at implementation and CI contract commit `11bdc0d`. CI run `29816346733` verifies the additive migration, authenticated replay, workflow-version acknowledgement, tenant-safe assignment, all queue filters, structured dismissal, conflict rejection, bounded persistence volume, Rust and web quality gates, and production builds.
 - FT-301 preparation package is merged through PR #15 at `c8d8a78`; PR #16 records the corrected external procurement handoff. Selection remains gated on named accountable owners, written Order-level rights (including explicit AI/ML, retention, and upstream-data SaaS authorization), a matched real-time 14-day trial, operator-owned target tails, and priced proposals.
 - FT-004 upgrades checkout and setup-node to their official Node 24 action-runtime releases through PR #17 at implementation commit `715d7d6`; CI run `29832129375` passed all three jobs with zero check annotations while preserving application Node.js `20.20.1`.
-- FT-401 review preparation is in draft PR [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) at implementation commit `8c782f4`. It documents the implemented trust boundaries, threat model, data lifecycle/backup/incident baseline, and ten owned findings. The package is structurally validated in CI; pilot authorization remains withheld while critical/high findings and FT-301 provider obligations are open.
+- FT-401 review preparation is in draft PR [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18), with latest implementation commit `e9e5f76`. It documents the implemented trust boundaries, threat model, data lifecycle/backup/incident baseline, and ten owned findings. The package is structurally validated in CI; pilot authorization remains withheld while critical/high findings and FT-301 provider obligations are open.
+- F401-004 is closed at implementation commit `e9e5f76`: operator-scoped membership foreign keys now protect both current alert assignments and assignment audit rows. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) proves direct-database and authenticated-API cross-tenant rejection plus valid same-tenant assignment.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.

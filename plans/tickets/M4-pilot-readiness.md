@@ -7,7 +7,7 @@ Default owner: Product/operations lead, supported by engineering and security.
 Status: In progress
 
 Branch: `docs/ft-401-security-trust-review`
-Final implementation commit: `8c782f4`
+Latest implementation commit: `e9e5f76`
 Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; do not merge while completion gate fails)
 Owner: Security, legal/privacy, product, and engineering
 
@@ -32,7 +32,7 @@ Acceptance checklist:
 - [ ] Provider attribution and licensing obligations are implemented.
 - [x] Security findings have owners and deadlines.
 
-Verification evidence: [`SECURITY_PRIVACY_TRUST_REVIEW.md`](../SECURITY_PRIVACY_TRUST_REVIEW.md), [`DATA_LIFECYCLE_INCIDENT_POLICY.md`](../DATA_LIFECYCLE_INCIDENT_POLICY.md), [`SECURITY_FINDINGS.csv`](../SECURITY_FINDINGS.csv), and `python3 scripts/validate_ft401_review.py`. Structural validation passes; `--require-complete` intentionally fails while critical/high findings and the FT-301 provider gate remain open.
+Verification evidence: [`SECURITY_PRIVACY_TRUST_REVIEW.md`](../SECURITY_PRIVACY_TRUST_REVIEW.md), [`DATA_LIFECYCLE_INCIDENT_POLICY.md`](../DATA_LIFECYCLE_INCIDENT_POLICY.md), [`SECURITY_FINDINGS.csv`](../SECURITY_FINDINGS.csv), and `python3 scripts/validate_ft401_review.py`. Structural validation passes; `--require-complete` intentionally fails while critical/high findings and the FT-301 provider gate remain open. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) closes F401-004 by verifying the operator-scoped assignment migration against PostGIS, direct database violations, the authenticated API rejection, and a valid same-tenant assignment.
 
 ## FT-402 — Run resilience and failure drills
 

@@ -42,7 +42,7 @@ Evidence observed in the repository:
 - Production configuration rejects development authentication and development replay controls.
 - Only `/health` and `/readiness` are unauthenticated; operational reads, raw NOAA evidence, SSE, metrics, replay controls, alert actions, and membership administration require authorization.
 - Roles ask for named permissions. Viewers cannot mutate alerts; only administrators manage memberships/sessions.
-- Store reads and writes take `operator_id` from `AuthContext`; assignment additionally verifies an active, enabled, same-operator dispatcher/operator/administrator.
+- Store reads and writes take `operator_id` from `AuthContext`; assignment additionally verifies an active, enabled, same-operator dispatcher/operator/administrator, and composite database foreign keys prevent cross-operator alert and assignment-audit references.
 - Alert actions use idempotency keys, row/advisory locks, expected workflow versions, structured dismissal reasons, and an append-only action history.
 - Raw source evidence is currently exposed only for tenant-scoped `noaa-awc` envelopes. A generic commercial raw-message route does not exist.
 - Logs record method, route, status, latency, worker/source state, and safe correlation IDs rather than request bodies or bearer assertions.
@@ -52,7 +52,7 @@ Evidence observed in the repository:
 | ID | Threat and abuse case | Existing control | Required treatment before pilot | Finding |
 | --- | --- | --- | --- | --- |
 | T-01 | Internal assertion secret or hosted identity key is exposed and attackers mint sessions. | Server-only assertion creation, minimum secret length, issuer/audience binding, short lifetime, database authorization. | Managed secret storage, environment isolation, dual-key/rotation procedure, emergency revocation, and proof that secrets never reach browser/build output. | F401-001 |
-| T-02 | Browser changes a tenant, actor, role, assignee, or alert identifier to cross operators. | Tenant/actor derive from verified context; composite tenant keys and scoped queries; same-tenant assignee validation; cross-tenant tests. | Add database-level operator/assignee integrity so alternate write paths cannot create cross-tenant assignments. | F401-004 |
+| T-02 | Browser changes a tenant, actor, role, assignee, or alert identifier to cross operators. | Tenant/actor derive from verified context; composite tenant keys and scoped queries; active same-tenant assignee validation; composite assignment foreign keys; direct-database and API cross-tenant tests. | Closed: migration `20260721000500` prevents alternate write paths from creating cross-tenant alert assignments or assignment audit rows. | F401-004 |
 | T-03 | Stolen or revoked hosted session continues to access operational data. | Assertions live 30 seconds; hosted sessions and app revocations are checked; membership status/identity disable fail closed; SSE reconnect reauthenticates. | Define identity-disable/revocation operations runbook and maximum revocation-record cleanup delay. | F401-001, F401-008 |
 | T-04 | Malformed, oversized, duplicated, out-of-order, or adversarial provider messages exhaust workers or poison state. | NOAA timeouts/retry/cadence; provider-envelope dedupe; canonical validation; bounded channels; deterministic rule boundaries. | FT-302 adapter must impose size/rate/schema limits and quarantine with bounded evidence; FT-402 must drill poison-message and backlog recovery. | F401-006 |
 | T-05 | Stale/partial data, green transport, or model wording is mistaken for current authoritative guidance. | Separate event/receive/process times, source health, stale/degraded UI, deterministic alerts, human actions, advisory copy in flight detail. | Persistent pilot-wide advisory/environment label, approved exact wording, and tests across empty/error/queue/detail states. | F401-009 |
@@ -86,7 +86,7 @@ After FT-301 selects a provider, the adapter design must map every accepted/exce
 | Review lens | Main conclusion | Canonical control |
 | --- | --- | --- |
 | Trust/privacy/rights | Identity controls are credible, but commercial rights, deletion, export, and AI policy remain contract-specific. | FT-301 matrix plus F401-002/F401-003/F401-007/F401-008. |
-| Platform architecture | Tenant scope is enforced in application queries, while secret rotation, DB-level assignment integrity, abuse quarantine, and probe/header hardening remain open. | F401-001/F401-004/F401-005/F401-006/F401-010. |
+| Platform architecture | Tenant scope is enforced in application queries and alert assignments now have database-level operator integrity; secret rotation, abuse quarantine, and probe/header hardening remain open. | F401-004 closed; F401-001/F401-005/F401-006/F401-010 remain open. |
 | Delivery/TPM | No finding may disappear into prose; each has an owner, severity, deadline gate, status, and verification requirement. | `SECURITY_FINDINGS.csv` and FT-401 checklist. |
 
 ## Approval rule
