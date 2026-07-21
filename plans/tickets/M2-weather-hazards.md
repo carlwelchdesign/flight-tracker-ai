@@ -50,11 +50,12 @@ Verification evidence: `plans/WEATHER_LAYERS.md`; 47 passing Rust library tests,
 
 ## FT-203 — Implement route–hazard intersection rules
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-203-route-hazard-rules`
 Final commit: Pending
 Pull request: Pending
+Owner: Backend/domain engineering with independent fixture review
 
 Create deterministic, versioned rules that consider geometry, time, altitude, direction, and configurable proximity margins.
 
