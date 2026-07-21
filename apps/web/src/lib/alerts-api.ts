@@ -71,18 +71,45 @@ function parseAlert(value: unknown): AlertQueueItem {
     typeof value.id !== "string" ||
     typeof value.operator_id !== "string" ||
     typeof value.event_time !== "string" ||
+    (value.flight_id !== null && typeof value.flight_id !== "string") ||
+    (value.hazard_id !== null && typeof value.hazard_id !== "string") ||
     typeof value.alert_type !== "string" ||
     !["information", "advisory", "warning", "critical"].includes(String(value.severity)) ||
     !["open", "acknowledged", "dismissed", "resolved"].includes(String(value.lifecycle)) ||
     typeof value.attention_score !== "number" ||
     typeof value.alert_revision !== "number" ||
+    typeof value.rule_id !== "string" ||
+    typeof value.rule_version !== "number" ||
+    typeof value.series_key !== "string" ||
+    (value.supersedes_alert_id !== null && typeof value.supersedes_alert_id !== "string") ||
+    typeof value.score_version !== "number" ||
     !isRecord(value.evidence) ||
-    !isRecord(value.evidence.attention) ||
-    !isRecord(value.evidence.route_hazard)
+    !isAttention(value.evidence.attention) ||
+    !isRouteHazardEvidence(value.evidence.route_hazard)
   ) {
     throw new Error("Alert API returned an unexpected alert");
   }
   return value as AlertQueueItem;
+}
+
+function isAttention(value: unknown): value is AttentionBreakdown {
+  return isRecord(value) && [
+    "hazard_severity_points",
+    "horizontal_proximity_points",
+    "altitude_overlap_points",
+    "time_urgency_points",
+    "total",
+    "score_version",
+  ].every((key) => typeof value[key] === "number");
+}
+
+function isRouteHazardEvidence(value: unknown): boolean {
+  return isRecord(value) &&
+    ["closest_approach_nm", "proximity_margin_nm", "route_version", "hazard_revision"]
+      .every((key) => typeof value[key] === "number") &&
+    typeof value.horizontal_relation === "string" &&
+    typeof value.altitude_relation === "string" &&
+    typeof value.evaluated_at === "string";
 }
 
 function parseAction(value: unknown): AlertAction {
