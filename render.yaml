@@ -35,7 +35,17 @@ services:
       - key: ENABLE_PORTFOLIO_REPLAY
         value: "true"
       - key: ENABLE_NOAA_WEATHER
-        value: "false"
+        value: "true"
+      - key: NOAA_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: PUBLIC_WEATHER_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: NOAA_METAR_STATIONS
+        value: KSFO,KOAK,KSJC
+      - key: NOAA_POLL_INTERVAL_SECONDS
+        value: "60"
+      - key: NOAA_USER_AGENT
+        value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
       - key: ENABLE_ADSB_LOL_POSITIONS
         value: "true"
       - key: ADSB_LOL_OPERATOR_ID
@@ -89,7 +99,17 @@ services:
       - key: ENABLE_PORTFOLIO_REPLAY
         value: "true"
       - key: ENABLE_NOAA_WEATHER
-        value: "false"
+        value: "true"
+      - key: NOAA_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: PUBLIC_WEATHER_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: NOAA_METAR_STATIONS
+        value: KSFO,KOAK,KSJC
+      - key: NOAA_POLL_INTERVAL_SECONDS
+        value: "60"
+      - key: NOAA_USER_AGENT
+        value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
       - key: ENABLE_ADSB_LOL_POSITIONS
         value: "true"
       - key: ADSB_LOL_OPERATOR_ID
