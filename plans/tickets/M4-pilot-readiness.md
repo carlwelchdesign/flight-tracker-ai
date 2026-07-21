@@ -181,4 +181,10 @@ values are corrected and verified by an environment pull. The portfolio root
 now remains public long enough to present a safe sign-in state while operational
 and backend routes stay behind Clerk, and hosted 500-level configuration errors
 are replaced with bounded evaluation copy instead of disclosing variable names.
-Production Clerk keys, Render, and the full hosted smoke remain pending.
+Production Clerk keys, Render, and the full hosted smoke remain pending. Live
+Marketplace inspection reports `Production domain required` for
+`clerk-celeste-door`. Vercel's project-owner API exposes the resource read-only,
+while the provider resource-update endpoint rejects consumer credentials, so
+the domain must be set once in the authenticated Vercel resource dashboard.
+The exact value is `flight-tracker-ai-one.vercel.app`; after it is saved, the
+production Clerk keys should sync automatically before the next deployment.
