@@ -74,11 +74,11 @@ Verification evidence: `plans/ROUTE_HAZARD_RULES.md`; high-latitude great-circle
 
 ## FT-204 — Add alert ranking, lifecycle, and deduplication
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-204-alert-lifecycle`
-Final commit: Pending
-Pull request: Pending
+Final commit: `40dc489`
+Pull request: [#12](https://github.com/carlwelchdesign/flight-tracker-ai/pull/12)
 Owner: Full-stack engineering with dispatcher-workflow review
 
 Turn rule results into a manageable dispatcher queue.
@@ -87,11 +87,11 @@ Dependencies: FT-203
 
 Acceptance checklist:
 
-- [ ] Alert severity and attention score are explainable and versioned.
-- [ ] Stable dedupe key prevents repeated alerts for the same material condition.
-- [ ] New evidence can update or supersede an existing alert without erasing history.
-- [ ] Dispatcher can acknowledge, comment, dismiss with reason, and resolve.
-- [ ] Every lifecycle change creates an append-only audit event.
-- [ ] Queue ordering and suppression behavior have automated tests.
+- [x] Alert severity and attention score are explainable and versioned.
+- [x] Stable dedupe key prevents repeated alerts for the same material condition.
+- [x] New evidence can update or supersede an existing alert without erasing history.
+- [x] Dispatcher can acknowledge, comment, dismiss with reason, and resolve.
+- [x] Every lifecycle change creates an append-only audit event.
+- [x] Queue ordering and suppression behavior have automated tests.
 
-Verification evidence: Pending.
+Verification evidence: [alert lifecycle contract](../ALERT_LIFECYCLE.md); score version 1 with stored component evidence; advisory-lock concurrency and idempotency boundaries; PostGIS integration coverage for ranking, dedupe, supersession, audit actions, required dismissal reasons, terminal suppression, and history; typed queue/detail/action APIs; replay persistence and a dispatcher queue with loading, empty, unavailable, pending, evidence, and audit states; 57 passing Rust library tests, 5 binary tests, deterministic golden/replay tests, strict Clippy, formatting, and release build; 19 passing web parser/interaction tests plus lint, typecheck, production build, and dependency audit with 0 vulnerabilities; live replay alert creation and acknowledgement plus schema and PostGIS rule contracts in [CI run 29811831163](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29811831163); implementation commit `6a4182f`, live-flow verification commit `1e6ee2a`, payload-hardening commit `40dc489`; PR [#12](https://github.com/carlwelchdesign/flight-tracker-ai/pull/12), with all required checks passing.

@@ -4,19 +4,19 @@ Last updated: 2026-07-21
 
 ## Current state
 
-- Current milestone: M2 — Live weather and hazard intelligence
-- Active ticket: FT-204 — Add alert ranking, lifecycle, and deduplication
-- Branch: `feat/ft-204-alert-lifecycle`
-- Pull request: Pending
-- Owner: Full-stack engineering with dispatcher-workflow review
-- Overall status: M0 and M1 are merged; FT-201, FT-202, and FT-203 are merged; FT-204 is in progress
-- Next action: Complete PostGIS/live replay verification, review the dispatcher workflow, then open and merge the FT-204 pull request after green CI.
+- Current milestone: M3 — Commercial flight data and operational workflow
+- Active ticket: None; FT-301 requires external provider contracting, while FT-303 is the next actionable engineering ticket
+- Branch: `main` after PR #12 merge
+- Pull request: [#12](https://github.com/carlwelchdesign/flight-tracker-ai/pull/12)
+- Owner: Product for provider selection; security and full-stack engineering for FT-303
+- Overall status: M0, M1, and M2 are complete; M3 is ready to begin
+- Next action: Begin FT-303 identity, role, and tenant-isolation design while product runs the external FT-301 provider trial and contracting gate.
 
 ## Milestone checklist
 
 - [x] M0 — Foundation and feasibility
 - [x] M1 — Simulated operations console
-- [ ] M2 — Live weather and hazard intelligence
+- [x] M2 — Live weather and hazard intelligence
 - [ ] M3 — Commercial flight data and operational workflow
 - [ ] M4 — Pilot readiness and operational hardening
 - [ ] M5 — Optimization research and controlled recommendations
@@ -27,7 +27,7 @@ Last updated: 2026-07-21
 | --- | ---: | ---: |
 | M0 | 3 | 3 |
 | M1 | 4 | 4 |
-| M2 | 3 | 4 |
+| M2 | 4 | 4 |
 | M3 | 0 | 4 |
 | M4 | 0 | 4 |
 | M5 | 0 | 3 |
@@ -52,7 +52,8 @@ Last updated: 2026-07-21
 - FT-203 implementation commit `28f227f` is green in PR #11; Rust, web, and API/PostGIS checks pass, and the PostGIS 3.5 oracle independently confirmed all eight golden cases in CI run `29809973027`.
 - FT-203 is merged through PR #11 at `848af8f`; local `main` was synchronized before FT-204 began.
 - FT-204 is active on `feat/ft-204-alert-lifecycle`; deterministic Rust policy will own ranking, dedupe, transitions, and audit evidence while the web app exposes human-controlled actions.
-- FT-204 implementation now includes score version 1, series/material identities, transactional supersession and append-only actions, simulation fact persistence, typed alert APIs, and the dispatcher queue. Local unit, lint, type, component, and production-build checks pass; PostGIS and live replay verification remain before delivery.
+- FT-204 is delivered through PR #12. CI run `29811831163` verifies live replay persistence, route-hazard alert creation, score evidence, API acknowledgement, schema invariants, and the independent PostGIS rule oracle; M2 is complete.
+- FT-301 is externally gated on written commercial rights and a common 14-day provider trial. FT-303 can proceed independently and should establish authenticated tenant context before FT-304 expands the dispatcher queue.
 - The MVP should work with deterministic simulated flights before relying on a paid data feed.
 - NOAA Aviation Weather is approved as the first live integration target, with explicit source-age and degraded-state handling.
 - OpenSky must not be integrated into the automated or commercial product without a written operational/commercial license.
