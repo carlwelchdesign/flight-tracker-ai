@@ -52,6 +52,8 @@ class DrillConfig:
     forbidden_event_ids: frozenset[str]
     forbidden_markers: tuple[str, ...] = field(repr=False)
     window_hours: int = 24
+    allowed_paused_schedules: int = 0
+    allowed_failed_attempts_24h: int = 0
 
     def validate(self) -> None:
         if not SAFE_REFERENCE.fullmatch(self.environment_reference):
@@ -72,6 +74,16 @@ class DrillConfig:
                 raise DrillConfigurationError(f"{role} authentication header is invalid")
         if not 1 <= self.window_hours <= 24:
             raise DrillConfigurationError("window hours must be between 1 and 24")
+        for label, value in (
+            ("allowed paused schedules", self.allowed_paused_schedules),
+            ("allowed failed attempts", self.allowed_failed_attempts_24h),
+        ):
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or not 0 <= value <= 10_000
+            ):
+                raise DrillConfigurationError(f"{label} must be between 0 and 10,000")
         if len(self.expected_signal_event_ids) < 2:
             raise DrillConfigurationError(
                 "at least two expected sensitive-write signal event IDs are required"
@@ -386,18 +398,20 @@ def _verify_admin_contracts(
         )
         paused = integrity.get("paused_schedules")
         failed = integrity.get("failed_attempts_24h")
-        clean_schedules = (
+        disposition_counts_match = (
             isinstance(paused, int)
             and not isinstance(paused, bool)
-            and paused == 0
+            and paused == config.allowed_paused_schedules
             and isinstance(failed, int)
             and not isinstance(failed, bool)
-            and failed == 0
+            and failed == config.allowed_failed_attempts_24h
         )
-        if healthy and zero_violations and clean_schedules:
+        if healthy and zero_violations and disposition_counts_match:
             checks.append({"check": "retention_integrity", "status": "passed"})
         else:
-            failures.append("retention integrity is unhealthy or has undispositioned failures")
+            failures.append(
+                "retention integrity is unhealthy or does not match the disposition counts"
+            )
         summary["retention_integrity"] = {
             "healthy": healthy,
             "violation_total": (
@@ -453,6 +467,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--expected-signal-event-id", action="append", required=True)
     parser.add_argument("--forbidden-event-id", action="append", required=True)
     parser.add_argument("--window-hours", type=int, default=24)
+    parser.add_argument("--allowed-paused-schedules", type=int, default=0)
+    parser.add_argument("--allowed-failed-attempts-24h", type=int, default=0)
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--allow-loopback-http", action="store_true")
     return parser.parse_args(argv)
@@ -470,6 +486,8 @@ def main(argv: list[str] | None = None) -> int:
             forbidden_event_ids=frozenset(args.forbidden_event_id),
             forbidden_markers=_marker_environment(args.forbidden_markers_env),
             window_hours=args.window_hours,
+            allowed_paused_schedules=args.allowed_paused_schedules,
+            allowed_failed_attempts_24h=args.allowed_failed_attempts_24h,
         )
         client = BoundedHttpClient(
             args.base_url,

@@ -209,6 +209,26 @@ class HostedDrillVerificationTest(unittest.TestCase):
         self.assertEqual(evidence["status"], "failed")
         self.assertTrue(any("retention integrity" in failure for failure in evidence["failures"]))
 
+    def test_accepts_exact_pre_recorded_retention_disposition_counts(self) -> None:
+        responses = successful_responses()
+        integrity = json.loads(responses[("admin", "integrity")].body)
+        integrity["paused_schedules"] = 1
+        integrity["failed_attempts_24h"] = 2
+        responses[("admin", "integrity")] = json_response(integrity)
+        configured = config().__class__(
+            **{
+                **config().__dict__,
+                "allowed_paused_schedules": 1,
+                "allowed_failed_attempts_24h": 2,
+            }
+        )
+
+        evidence = verify_hosted_drill(configured, FakeClient(responses), NOW)
+
+        self.assertEqual(evidence["status"], "passed")
+        self.assertEqual(evidence["summary"]["retention_integrity"]["paused_schedules"], 1)
+        self.assertEqual(evidence["summary"]["retention_integrity"]["failed_attempts_24h"], 2)
+
     def test_configuration_rejects_unsafe_transport_and_credentials(self) -> None:
         with self.assertRaises(DrillConfigurationError):
             validate_base_url("http://example.test", allow_loopback_http=True)
