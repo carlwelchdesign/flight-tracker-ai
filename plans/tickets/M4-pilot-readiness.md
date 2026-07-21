@@ -7,8 +7,8 @@ Default owner: Product/operations lead, supported by engineering and security.
 Status: In progress
 
 Branch: `docs/ft-401-security-trust-review`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `8c782f4`
+Pull request: [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) (draft; do not merge while completion gate fails)
 Owner: Security, legal/privacy, product, and engineering
 
 Review data handling, permissions, auditability, advisory language, and external-provider obligations before a real-operations evaluation.
