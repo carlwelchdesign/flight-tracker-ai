@@ -1,4 +1,4 @@
-export function PortfolioOrientation() {
+export function PortfolioOrientation({ publicDemo = false }: { publicDemo?: boolean }) {
   return (
     <section className="portfolio-orientation" aria-labelledby="portfolio-orientation-title">
       <div className="portfolio-orientation-intro">
@@ -10,14 +10,18 @@ export function PortfolioOrientation() {
         </p>
         <nav aria-label="Walkthrough shortcuts">
           <a href="#flight-board">Explore the flight picture</a>
-          <a href="#alert-review">Review an alert</a>
+          {!publicDemo && <a href="#alert-review">Review an alert</a>}
         </nav>
       </div>
 
       <ol className="portfolio-orientation-steps" aria-label="Suggested walkthrough">
         <li><span>1</span><strong>Find attention</strong><small>Select a watch flight on the board or map.</small></li>
         <li><span>2</span><strong>Inspect evidence</strong><small>Check freshness, source, route, weather, and timing.</small></li>
-        <li><span>3</span><strong>Review the decision</strong><small>Open the ranked alert and its audit-ready explanation.</small></li>
+        {publicDemo ? (
+          <li><span>3</span><strong>Unlock controls</strong><small>Sign in to review alerts and protected actions.</small></li>
+        ) : (
+          <li><span>3</span><strong>Review the decision</strong><small>Open the ranked alert and its audit-ready explanation.</small></li>
+        )}
       </ol>
 
       <dl className="portfolio-orientation-modes">

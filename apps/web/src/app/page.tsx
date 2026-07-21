@@ -1,5 +1,6 @@
 import { OperationsConsole } from "@/components/operations/operations-console";
 import { PortfolioOrientation } from "@/components/operations/portfolio-orientation";
+import { PublicFlightTrackerDemo } from "@/components/operations/public-flight-tracker-demo";
 import Link from "next/link";
 import { getAuthContext } from "@/lib/auth-api";
 import { AuthSessionError, authMode, createInternalAssertion } from "@/lib/auth-server";
@@ -23,10 +24,11 @@ export default async function Home() {
       />
     );
   }
+  if (result.signedOut) return <PublicFlightTrackerDemo />;
   return (
     <main className="session-state">
       <p className="section-kicker">Flight Tracker AI</p>
-      <h1>{result.signedOut ? "Sign in to continue" : "Console access unavailable"}</h1>
+      <h1>Console access unavailable</h1>
       <p>{result.message}</p>
       {authMode() === "clerk" && <Link href="/sign-in">Open secure sign in</Link>}
       {!result.signedOut && <Link href="/?retry=1" prefetch={false}>Try again</Link>}
