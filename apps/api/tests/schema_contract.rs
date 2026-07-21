@@ -19,7 +19,10 @@ use flight_tracker_api::{
         OperatorId,
     },
     replay::ReplayScenario,
-    retention::{CreateRetentionPolicy, PreviewRetentionRun, RetentionError, RetentionStore},
+    retention::{
+        CreateRetentionPolicy, PreviewRetentionRun, RetentionDataClass, RetentionError,
+        RetentionStore,
+    },
     weather::noaa::{
         NoaaFeed, NoaaPayload, NoaaStore, PersistedNoaaRecord, SourceHealthTracker, prepare_records,
     },
@@ -51,6 +54,7 @@ const REQUIRED_TABLES: &[&str] = &[
     "retention_policies",
     "retention_runs",
     "data_deletion_tombstones",
+    "lifecycle_deletion_tombstones",
 ];
 
 async fn authenticated_service(pool: &PgPool, operator_id: OperatorId) -> (AuthService, String) {
@@ -209,6 +213,46 @@ async fn test_auth_context(
         .unwrap()
 }
 
+async fn complete_retention_run(
+    store: &RetentionStore,
+    requester: &flight_tracker_api::auth::AuthContext,
+    approver: &flight_tracker_api::auth::AuthContext,
+    data_class: RetentionDataClass,
+    now: chrono::DateTime<Utc>,
+) -> flight_tracker_api::retention::RetentionRunView {
+    let scope = data_class.as_str();
+    let policy = store
+        .create_policy(
+            requester,
+            &CreateRetentionPolicy {
+                data_class,
+                provider: "application".into(),
+                retention_seconds: 3_600,
+                approval_reference: format!("legal:FT-401/{scope}-v1"),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    store
+        .approve_policy(approver, policy.id, now)
+        .await
+        .unwrap();
+    let run = store
+        .preview_run(
+            requester,
+            &PreviewRetentionRun {
+                policy_id: policy.id,
+                evidence_reference: format!("incident:FT-401/{scope}-run-1"),
+            },
+            now,
+        )
+        .await
+        .unwrap();
+    store.approve_run(approver, run.id, now).await.unwrap();
+    store.execute_run(requester, run.id, now).await.unwrap()
+}
+
 async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &PgPool) {
     let operator_id = OperatorId::new();
     let other_operator_id = OperatorId::new();
@@ -286,6 +330,7 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
         .create_policy(
             &requester,
             &CreateRetentionPolicy {
+                data_class: RetentionDataClass::ProviderRawPayload,
                 provider: "retention-test".into(),
                 retention_seconds: 3_600,
                 approval_reference: "legal:FT-401/raw-v1".into(),
@@ -401,6 +446,237 @@ async fn assert_raw_retention_requires_approval_and_suppresses_restore(pool: &Pg
     .await
     .unwrap();
     assert_eq!(completion_audit, 1);
+
+    let old_audit_id = Uuid::new_v4();
+    let current_audit_id = Uuid::new_v4();
+    let other_audit_id = Uuid::new_v4();
+    for (id, context, occurred_at) in [
+        (old_audit_id, &requester, now - Duration::hours(2)),
+        (current_audit_id, &requester, now),
+        (other_audit_id, &other, now - Duration::hours(2)),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO authorization_audit_events (
+                id, operator_id, actor_identity_id, action, target_type,
+                target_id, occurred_at, metadata
+            ) VALUES ($1,$2,$3,'membership.updated','operator_membership',$4,$5,'{}')
+            "#,
+        )
+        .bind(id)
+        .bind(context.operator_id.as_uuid())
+        .bind(context.identity_id)
+        .bind(id.to_string())
+        .bind(occurred_at)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    let audit_run = complete_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::AuthorizationAudit,
+        now,
+    )
+    .await;
+    assert_eq!(
+        audit_run.deletion_counts.unwrap()["authorization_audit_events"],
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM authorization_audit_events WHERE id = $1",
+        )
+        .bind(old_audit_id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM authorization_audit_events WHERE id = ANY($1)",
+        )
+        .bind(vec![current_audit_id, other_audit_id])
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        2
+    );
+    let restored_audit = sqlx::query(
+        r#"
+        INSERT INTO authorization_audit_events (
+            id, operator_id, actor_identity_id, action, target_type,
+            target_id, occurred_at, metadata
+        ) VALUES ($1,$2,$3,'membership.updated','operator_membership',$4,$5,'{}')
+        "#,
+    )
+    .bind(old_audit_id)
+    .bind(operator_id.as_uuid())
+    .bind(requester.identity_id)
+    .bind(old_audit_id.to_string())
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(restored_audit.rows_affected(), 0);
+
+    let old_revocation_id = Uuid::new_v4();
+    let current_revocation_id = Uuid::new_v4();
+    let old_session_id = format!("expired-{}", Uuid::new_v4());
+    for (id, session_id, expires_at) in [
+        (
+            old_revocation_id,
+            old_session_id.clone(),
+            now - Duration::hours(2),
+        ),
+        (
+            current_revocation_id,
+            format!("current-{}", Uuid::new_v4()),
+            now + Duration::hours(1),
+        ),
+    ] {
+        sqlx::query(
+            r#"
+            INSERT INTO auth_session_revocations (
+                id, provider, session_id, identity_id, operator_id,
+                revoked_by_identity_id, reason, revoked_at, expires_at
+            ) VALUES ($1,'development',$2,$3,$4,$3,'retention test',$5,$6)
+            "#,
+        )
+        .bind(id)
+        .bind(session_id)
+        .bind(requester.identity_id)
+        .bind(operator_id.as_uuid())
+        .bind(expires_at - Duration::hours(1))
+        .bind(expires_at)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    let revocation_run = complete_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::SessionRevocation,
+        now,
+    )
+    .await;
+    assert_eq!(
+        revocation_run.deletion_counts.unwrap()["auth_session_revocations"],
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM auth_session_revocations WHERE id = $1",
+        )
+        .bind(old_revocation_id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM auth_session_revocations WHERE id = $1",
+        )
+        .bind(current_revocation_id)
+        .fetch_one(pool)
+        .await
+        .unwrap(),
+        1
+    );
+    let restored_revocation = sqlx::query(
+        r#"
+        INSERT INTO auth_session_revocations (
+            id, provider, session_id, identity_id, operator_id,
+            revoked_by_identity_id, reason, revoked_at, expires_at
+        ) VALUES ($1,'development',$2,$3,$4,$3,'restored reason',$5,$6)
+        "#,
+    )
+    .bind(old_revocation_id)
+    .bind(old_session_id)
+    .bind(requester.identity_id)
+    .bind(operator_id.as_uuid())
+    .bind(now - Duration::hours(3))
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    assert_eq!(restored_revocation.rows_affected(), 0);
+
+    let minimized_subject = format!("retention-minimize-{}", Uuid::new_v4());
+    let minimized =
+        test_auth_context(pool, operator_id, &minimized_subject, AuthRole::Viewer).await;
+    sqlx::query(
+        r#"
+        UPDATE operator_memberships
+        SET status = 'revoked', revoked_at = $3, updated_at = $3
+        WHERE operator_id = $1 AND identity_id = $2
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(minimized.identity_id)
+    .bind(now - Duration::hours(2))
+    .execute(pool)
+    .await
+    .unwrap();
+    let identity_run = complete_retention_run(
+        &store,
+        &requester,
+        &approver,
+        RetentionDataClass::IdentityMapping,
+        now,
+    )
+    .await;
+    assert_eq!(
+        identity_run.deletion_counts.unwrap()["auth_identities_minimized"],
+        1
+    );
+    let minimized_row =
+        sqlx::query_as::<_, (String, Option<String>, Option<chrono::DateTime<Utc>>)>(
+            "SELECT subject, display_name, disabled_at FROM auth_identities WHERE id = $1",
+        )
+        .bind(minimized.identity_id)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        minimized_row,
+        (
+            format!("deleted:{}", minimized.identity_id),
+            None,
+            Some(now)
+        )
+    );
+    sqlx::query(
+        "UPDATE auth_identities SET subject = $2, display_name = 'Restored Name', disabled_at = NULL WHERE id = $1",
+    )
+    .bind(minimized.identity_id)
+    .bind(&minimized_subject)
+    .execute(pool)
+    .await
+    .unwrap();
+    let suppressed_restore = sqlx::query_as::<_, (String, Option<String>)>(
+        "SELECT subject, display_name FROM auth_identities WHERE id = $1",
+    )
+    .bind(minimized.identity_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        suppressed_restore,
+        (format!("deleted:{}", minimized.identity_id), None)
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, String>("SELECT subject FROM auth_identities WHERE id = $1")
+            .bind(requester.identity_id)
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        requester.subject
+    );
 }
 
 async fn assert_audit_review_export_and_monitoring_are_tenant_safe(pool: &PgPool) {

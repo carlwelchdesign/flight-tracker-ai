@@ -21,8 +21,54 @@ const MIN_RETENTION_SECONDS: i64 = 3_600;
 const MAX_RETENTION_SECONDS: i64 = 315_576_000;
 const MAX_DELETE_RECORDS: i64 = 10_000;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RetentionDataClass {
+    #[default]
+    ProviderRawPayload,
+    AuthorizationAudit,
+    SessionRevocation,
+    IdentityMapping,
+}
+
+impl RetentionDataClass {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ProviderRawPayload => "provider_raw_payload",
+            Self::AuthorizationAudit => "authorization_audit",
+            Self::SessionRevocation => "session_revocation",
+            Self::IdentityMapping => "identity_mapping",
+        }
+    }
+
+    const fn inventory_key(self) -> &'static str {
+        match self {
+            Self::ProviderRawPayload => "provider_envelopes",
+            Self::AuthorizationAudit => "authorization_audit_events",
+            Self::SessionRevocation => "auth_session_revocations",
+            Self::IdentityMapping => "auth_identities_minimized",
+        }
+    }
+}
+
+impl TryFrom<&str> for RetentionDataClass {
+    type Error = RetentionError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "provider_raw_payload" => Ok(Self::ProviderRawPayload),
+            "authorization_audit" => Ok(Self::AuthorizationAudit),
+            "session_revocation" => Ok(Self::SessionRevocation),
+            "identity_mapping" => Ok(Self::IdentityMapping),
+            _ => Err(RetentionError::InvalidConfiguration),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct CreateRetentionPolicy {
+    #[serde(default)]
+    pub data_class: RetentionDataClass,
     pub provider: String,
     pub retention_seconds: i64,
     pub approval_reference: String,
@@ -134,6 +180,11 @@ impl RetentionStore {
         now: DateTime<Utc>,
     ) -> Result<RetentionPolicyView, RetentionError> {
         let provider = bounded_name(&request.provider)?;
+        if request.data_class != RetentionDataClass::ProviderRawPayload && provider != "application"
+        {
+            return Err(RetentionError::InvalidConfiguration);
+        }
+        let data_class = request.data_class.as_str();
         let approval_reference = bounded_reference(&request.approval_reference)?;
         if !(MIN_RETENTION_SECONDS..=MAX_RETENTION_SECONDS).contains(&request.retention_seconds) {
             return Err(RetentionError::InvalidConfiguration);
@@ -141,7 +192,7 @@ impl RetentionStore {
         let mut transaction = self.database.begin().await?;
         sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
             .bind(format!(
-                "retention-policy:{}:provider_raw_payload:{provider}",
+                "retention-policy:{}:{data_class}:{provider}",
                 actor.operator_id.as_uuid()
             ))
             .execute(&mut *transaction)
@@ -150,10 +201,11 @@ impl RetentionStore {
             r#"
             SELECT COALESCE(MAX(version), 0) + 1
             FROM retention_policies
-            WHERE operator_id = $1 AND data_class = 'provider_raw_payload' AND provider = $2
+            WHERE operator_id = $1 AND data_class = $2 AND provider = $3
             "#,
         )
         .bind(actor.operator_id.as_uuid())
+        .bind(data_class)
         .bind(&provider)
         .fetch_one(&mut *transaction)
         .await?;
@@ -163,11 +215,12 @@ impl RetentionStore {
             INSERT INTO retention_policies (
                 id, operator_id, data_class, provider, version, retention_seconds,
                 status, approval_reference, created_by_identity_id, created_at
-            ) VALUES ($1,$2,'provider_raw_payload',$3,$4,$5,'draft',$6,$7,$8)
+            ) VALUES ($1,$2,$3,$4,$5,$6,'draft',$7,$8,$9)
             "#,
         )
         .bind(id)
         .bind(actor.operator_id.as_uuid())
+        .bind(data_class)
         .bind(provider)
         .bind(version)
         .bind(request.retention_seconds)
@@ -237,14 +290,16 @@ impl RetentionStore {
             return Err(RetentionError::InvalidState);
         }
         let cutoff_at = now - Duration::seconds(policy.retention_seconds);
-        let count = eligible_count(
+        let data_class = RetentionDataClass::try_from(policy.data_class.as_str())?;
+        let preview_counts = inventory_counts(
             &self.database,
             actor.operator_id,
+            data_class,
             &policy.provider,
             cutoff_at,
         )
         .await?;
-        if count > MAX_DELETE_RECORDS {
+        if inventory_total(&preview_counts)? > MAX_DELETE_RECORDS {
             return Err(RetentionError::ScopeTooLarge);
         }
         let id = Uuid::new_v4();
@@ -264,7 +319,7 @@ impl RetentionStore {
         .bind(&policy.data_class)
         .bind(&policy.provider)
         .bind(cutoff_at)
-        .bind(json!({ "provider_envelopes": count }))
+        .bind(preview_counts)
         .bind(actor.identity_id)
         .bind(evidence_reference)
         .bind(now)
@@ -316,67 +371,25 @@ impl RetentionStore {
         if run.status != "approved" {
             return Err(RetentionError::InvalidState);
         }
-        let envelopes = sqlx::query_as::<_, EligibleEnvelope>(
-            r#"
-            SELECT id, feed, raw_payload_sha256
-            FROM provider_envelopes
-            WHERE operator_id = $1 AND provider = $2
-              AND received_at < $3 AND raw_payload_deleted_at IS NULL
-            ORDER BY received_at, id
-            FOR UPDATE
-            "#,
+        let data_class = RetentionDataClass::try_from(run.data_class.as_str())?;
+        let current_counts = inventory_counts_transaction(
+            &mut transaction,
+            actor.operator_id,
+            data_class,
+            &run.provider,
+            run.cutoff_at,
         )
-        .bind(actor.operator_id.as_uuid())
-        .bind(&run.provider)
-        .bind(run.cutoff_at)
-        .fetch_all(&mut *transaction)
         .await?;
-        let preview_count = run
-            .preview_counts
-            .get("provider_envelopes")
-            .and_then(Value::as_i64)
-            .ok_or(RetentionError::InvalidState)?;
-        if envelopes.len() as i64 != preview_count {
+        if current_counts != run.preview_counts {
             return Err(RetentionError::InventoryChanged);
         }
-        for envelope in &envelopes {
-            sqlx::query(
-                r#"
-                INSERT INTO data_deletion_tombstones (
-                    id, operator_id, retention_run_id, provider, feed,
-                    source_envelope_id, raw_payload_sha256, deleted_at
-                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-                "#,
-            )
-            .bind(Uuid::new_v4())
-            .bind(actor.operator_id.as_uuid())
-            .bind(run.id)
-            .bind(&run.provider)
-            .bind(&envelope.feed)
-            .bind(envelope.id)
-            .bind(&envelope.raw_payload_sha256)
-            .bind(now)
-            .execute(&mut *transaction)
-            .await?;
-        }
-        let deleted = sqlx::query(
-            r#"
-            UPDATE provider_envelopes
-            SET raw_payload = '{}'::jsonb
-            WHERE operator_id = $1 AND provider = $2
-              AND received_at < $3 AND raw_payload_deleted_at IS NULL
-            "#,
-        )
-        .bind(actor.operator_id.as_uuid())
-        .bind(&run.provider)
-        .bind(run.cutoff_at)
-        .execute(&mut *transaction)
-        .await?
-        .rows_affected();
-        if deleted != envelopes.len() as u64 {
+        let affected =
+            execute_data_class(&mut transaction, actor.operator_id, &run, data_class, now).await?;
+        let expected = inventory_total(&current_counts)? as u64;
+        if affected != expected {
             return Err(RetentionError::InventoryChanged);
         }
-        let deletion_counts = json!({ "provider_envelopes": deleted });
+        let deletion_counts = current_counts;
         sqlx::query(
             r#"
             UPDATE retention_runs
@@ -595,25 +608,350 @@ fn bounded_reference(value: &str) -> Result<String, RetentionError> {
     Ok(value.to_owned())
 }
 
-async fn eligible_count(
+fn inventory_total(counts: &Value) -> Result<i64, RetentionError> {
+    let object = counts.as_object().ok_or(RetentionError::InvalidState)?;
+    object.values().try_fold(0_i64, |total, value| {
+        value
+            .as_i64()
+            .and_then(|count| total.checked_add(count))
+            .ok_or(RetentionError::InvalidState)
+    })
+}
+
+async fn inventory_counts(
     database: &PgPool,
     operator_id: OperatorId,
+    data_class: RetentionDataClass,
     provider: &str,
     cutoff_at: DateTime<Utc>,
-) -> Result<i64, sqlx::Error> {
-    sqlx::query_scalar(
+) -> Result<Value, sqlx::Error> {
+    let count = match data_class {
+        RetentionDataClass::ProviderRawPayload => {
+            sqlx::query_scalar::<_, i64>(
+                r#"
+                SELECT COUNT(*) FROM provider_envelopes
+                WHERE operator_id = $1 AND provider = $2
+                  AND received_at < $3 AND raw_payload_deleted_at IS NULL
+                "#,
+            )
+            .bind(operator_id.as_uuid())
+            .bind(provider)
+            .bind(cutoff_at)
+            .fetch_one(database)
+            .await?
+        }
+        RetentionDataClass::AuthorizationAudit => {
+            sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM authorization_audit_events WHERE operator_id = $1 AND occurred_at < $2",
+            )
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_one(database)
+            .await?
+        }
+        RetentionDataClass::SessionRevocation => {
+            sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM auth_session_revocations WHERE operator_id = $1 AND expires_at < $2",
+            )
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_one(database)
+            .await?
+        }
+        RetentionDataClass::IdentityMapping => {
+            sqlx::query_scalar::<_, i64>(identity_candidate_count_sql())
+                .bind(operator_id.as_uuid())
+                .bind(cutoff_at)
+                .fetch_one(database)
+                .await?
+        }
+    };
+    Ok(json!({ data_class.inventory_key(): count }))
+}
+
+async fn inventory_counts_transaction(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    data_class: RetentionDataClass,
+    provider: &str,
+    cutoff_at: DateTime<Utc>,
+) -> Result<Value, sqlx::Error> {
+    let count = match data_class {
+        RetentionDataClass::ProviderRawPayload => {
+            sqlx::query_scalar::<_, i64>(
+                r#"
+                SELECT COUNT(*) FROM provider_envelopes
+                WHERE operator_id = $1 AND provider = $2
+                  AND received_at < $3 AND raw_payload_deleted_at IS NULL
+                "#,
+            )
+            .bind(operator_id.as_uuid())
+            .bind(provider)
+            .bind(cutoff_at)
+            .fetch_one(&mut **transaction)
+            .await?
+        }
+        RetentionDataClass::AuthorizationAudit => {
+            sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM authorization_audit_events WHERE operator_id = $1 AND occurred_at < $2",
+            )
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_one(&mut **transaction)
+            .await?
+        }
+        RetentionDataClass::SessionRevocation => {
+            sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM auth_session_revocations WHERE operator_id = $1 AND expires_at < $2",
+            )
+            .bind(operator_id.as_uuid())
+            .bind(cutoff_at)
+            .fetch_one(&mut **transaction)
+            .await?
+        }
+        RetentionDataClass::IdentityMapping => {
+            sqlx::query_scalar::<_, i64>(identity_candidate_count_sql())
+                .bind(operator_id.as_uuid())
+                .bind(cutoff_at)
+                .fetch_one(&mut **transaction)
+                .await?
+        }
+    };
+    Ok(json!({ data_class.inventory_key(): count }))
+}
+
+fn identity_candidate_count_sql() -> &'static str {
+    r#"
+    SELECT COUNT(*)
+    FROM auth_identities identity
+    WHERE identity.subject NOT LIKE 'deleted:%'
+      AND EXISTS (
+          SELECT 1 FROM operator_memberships own_membership
+          WHERE own_membership.identity_id = identity.id
+            AND own_membership.operator_id = $1
+            AND own_membership.status = 'revoked'
+            AND own_membership.revoked_at < $2
+      )
+      AND NOT EXISTS (
+          SELECT 1 FROM operator_memberships any_membership
+          WHERE any_membership.identity_id = identity.id
+            AND (
+                any_membership.operator_id <> $1
+                OR any_membership.status <> 'revoked'
+                OR any_membership.revoked_at IS NULL
+                OR any_membership.revoked_at >= $2
+            )
+      )
+    "#
+}
+
+async fn execute_data_class(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    run: &RetentionRunView,
+    data_class: RetentionDataClass,
+    now: DateTime<Utc>,
+) -> Result<u64, RetentionError> {
+    match data_class {
+        RetentionDataClass::ProviderRawPayload => {
+            execute_raw_payloads(transaction, operator_id, run, now).await
+        }
+        RetentionDataClass::AuthorizationAudit => {
+            execute_lifecycle_deletion(
+                transaction,
+                operator_id,
+                run,
+                data_class,
+                "authorization_audit_events",
+                "occurred_at",
+                now,
+            )
+            .await
+        }
+        RetentionDataClass::SessionRevocation => {
+            execute_lifecycle_deletion(
+                transaction,
+                operator_id,
+                run,
+                data_class,
+                "auth_session_revocations",
+                "expires_at",
+                now,
+            )
+            .await
+        }
+        RetentionDataClass::IdentityMapping => {
+            execute_identity_minimization(transaction, operator_id, run, now).await
+        }
+    }
+}
+
+async fn execute_raw_payloads(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    run: &RetentionRunView,
+    now: DateTime<Utc>,
+) -> Result<u64, RetentionError> {
+    let envelopes = sqlx::query_as::<_, EligibleEnvelope>(
         r#"
-        SELECT COUNT(*)
+        SELECT id, feed, raw_payload_sha256
         FROM provider_envelopes
+        WHERE operator_id = $1 AND provider = $2
+          AND received_at < $3 AND raw_payload_deleted_at IS NULL
+        ORDER BY received_at, id
+        FOR UPDATE
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(&run.provider)
+    .bind(run.cutoff_at)
+    .fetch_all(&mut **transaction)
+    .await?;
+    for envelope in &envelopes {
+        sqlx::query(
+            r#"
+            INSERT INTO data_deletion_tombstones (
+                id, operator_id, retention_run_id, provider, feed,
+                source_envelope_id, raw_payload_sha256, deleted_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            "#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(operator_id.as_uuid())
+        .bind(run.id)
+        .bind(&run.provider)
+        .bind(&envelope.feed)
+        .bind(envelope.id)
+        .bind(&envelope.raw_payload_sha256)
+        .bind(now)
+        .execute(&mut **transaction)
+        .await?;
+    }
+    Ok(sqlx::query(
+        r#"
+        UPDATE provider_envelopes SET raw_payload = '{}'::jsonb
         WHERE operator_id = $1 AND provider = $2
           AND received_at < $3 AND raw_payload_deleted_at IS NULL
         "#,
     )
     .bind(operator_id.as_uuid())
-    .bind(provider)
-    .bind(cutoff_at)
-    .fetch_one(database)
-    .await
+    .bind(&run.provider)
+    .bind(run.cutoff_at)
+    .execute(&mut **transaction)
+    .await?
+    .rows_affected())
+}
+
+async fn execute_lifecycle_deletion(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    run: &RetentionRunView,
+    data_class: RetentionDataClass,
+    table: &str,
+    time_column: &str,
+    now: DateTime<Utc>,
+) -> Result<u64, RetentionError> {
+    let select = format!(
+        "SELECT id FROM {table} WHERE operator_id = $1 AND {time_column} < $2 ORDER BY id FOR UPDATE"
+    );
+    let ids = sqlx::query_scalar::<_, Uuid>(&select)
+        .bind(operator_id.as_uuid())
+        .bind(run.cutoff_at)
+        .fetch_all(&mut **transaction)
+        .await?;
+    insert_lifecycle_tombstones(transaction, operator_id, run.id, data_class, &ids, now).await?;
+    let delete = format!("DELETE FROM {table} WHERE operator_id = $1 AND {time_column} < $2");
+    Ok(sqlx::query(&delete)
+        .bind(operator_id.as_uuid())
+        .bind(run.cutoff_at)
+        .execute(&mut **transaction)
+        .await?
+        .rows_affected())
+}
+
+async fn execute_identity_minimization(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    run: &RetentionRunView,
+    now: DateTime<Utc>,
+) -> Result<u64, RetentionError> {
+    let ids = sqlx::query_scalar::<_, Uuid>(
+        r#"
+        SELECT identity.id
+        FROM auth_identities identity
+        WHERE identity.subject NOT LIKE 'deleted:%'
+          AND EXISTS (
+              SELECT 1 FROM operator_memberships own_membership
+              WHERE own_membership.identity_id = identity.id
+                AND own_membership.operator_id = $1
+                AND own_membership.status = 'revoked'
+                AND own_membership.revoked_at < $2
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM operator_memberships any_membership
+              WHERE any_membership.identity_id = identity.id
+                AND (
+                    any_membership.operator_id <> $1
+                    OR any_membership.status <> 'revoked'
+                    OR any_membership.revoked_at IS NULL
+                    OR any_membership.revoked_at >= $2
+                )
+          )
+        ORDER BY identity.id
+        FOR UPDATE OF identity
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .bind(run.cutoff_at)
+    .fetch_all(&mut **transaction)
+    .await?;
+    insert_lifecycle_tombstones(
+        transaction,
+        operator_id,
+        run.id,
+        RetentionDataClass::IdentityMapping,
+        &ids,
+        now,
+    )
+    .await?;
+    Ok(sqlx::query(
+        r#"
+        UPDATE auth_identities SET subject = subject
+        WHERE id = ANY($1) AND subject NOT LIKE 'deleted:%'
+        "#,
+    )
+    .bind(&ids)
+    .execute(&mut **transaction)
+    .await?
+    .rows_affected())
+}
+
+async fn insert_lifecycle_tombstones(
+    transaction: &mut Transaction<'_, Postgres>,
+    operator_id: OperatorId,
+    run_id: Uuid,
+    data_class: RetentionDataClass,
+    ids: &[Uuid],
+    now: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    for record_id in ids {
+        sqlx::query(
+            r#"
+            INSERT INTO lifecycle_deletion_tombstones (
+                id, operator_id, retention_run_id, data_class, record_id, deleted_at
+            ) VALUES ($1,$2,$3,$4,$5,$6)
+            "#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(operator_id.as_uuid())
+        .bind(run_id)
+        .bind(data_class.as_str())
+        .bind(record_id)
+        .bind(now)
+        .execute(&mut **transaction)
+        .await?;
+    }
+    Ok(())
 }
 
 async fn fetch_policy(
@@ -753,5 +1091,10 @@ mod tests {
             "incident:FT-401/run_1"
         );
         assert!(bounded_reference("contains a secret note").is_err());
+        assert_eq!(
+            RetentionDataClass::try_from("authorization_audit").unwrap(),
+            RetentionDataClass::AuthorizationAudit
+        );
+        assert!(RetentionDataClass::try_from("passenger_records").is_err());
     }
 }
