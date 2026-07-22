@@ -5,19 +5,21 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active tickets: FT-403 neutral recruiter validation and FT-502 independent
-  aviation-domain review
-- Branch: external evidence branches as those sessions become available
-- Pull request: FT-426 [#72](https://github.com/carlwelchdesign/flight-tracker-ai/pull/72)
-  is merged; FT-425
+- Active tickets: FT-427 weather-conflict highlights, FT-403 neutral recruiter
+  validation, and FT-502 independent aviation-domain review
+- Branch: `feat/ft-427-weather-conflict-highlights`
+- Pull request: FT-427 [#74](https://github.com/carlwelchdesign/flight-tracker-ai/pull/74)
+  is open; FT-426
+  [#72](https://github.com/carlwelchdesign/flight-tracker-ai/pull/72) is merged; FT-425
   [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70) is merged
 - Owner: Project owner and external reviewers
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Run the remaining neutral recruiter session and independent
-  aviation-domain review without weakening either external evidence gate.
+- Next action: Complete FT-427's truthful replay conflict highlights, then run
+  the remaining neutral recruiter session and independent aviation-domain
+  review without weakening either external evidence gate.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.
@@ -75,6 +77,12 @@ Last updated: 2026-07-22
 | M5 | 2 | 3 |
 
 ## Handoff notes
+
+- FT-427 is in progress on `feat/ft-427-weather-conflict-highlights`. It will
+  highlight only replay aircraft backed by an effective deterministic
+  route-and-weather conflict result; live position-only aircraft remain
+  explicitly ineligible. Implementation commit `b221661` is in PR
+  [#74](https://github.com/carlwelchdesign/flight-tracker-ai/pull/74).
 
 - FT-426 is complete through implementation commit `6e48fd0`, PR
   [#72](https://github.com/carlwelchdesign/flight-tracker-ai/pull/72), merge commit

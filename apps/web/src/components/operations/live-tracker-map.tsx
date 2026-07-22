@@ -26,6 +26,7 @@ import { MapFloatingPanel } from "./map-floating-panel";
 
 type Props = {
   aircraft: PublicAircraft[];
+  conflictAircraftIds: ReadonlySet<string>;
   region: PublicLiveRegion;
   selectedId: string | null;
   status: PublicLiveStatus | null;
@@ -59,6 +60,7 @@ const WEATHER_STATION_LABEL_LAYER_ID = "public-weather-station-label";
 
 export function LiveTrackerMap({
   aircraft,
+  conflictAircraftIds,
   region,
   selectedId,
   status,
@@ -232,9 +234,10 @@ export function LiveTrackerMap({
         }
         entry.element.classList.toggle("is-selected", item.id === selectedId);
         entry.element.classList.toggle("is-stale", isStale(item, status));
+        entry.element.classList.toggle("has-weather-conflict", conflictAircraftIds.has(item.id));
         entry.element.setAttribute(
           "aria-label",
-          `Select ${displayCallsign(item)}, observed ${formatTime(item.observed_at)}`,
+          `Select ${displayCallsign(item)}${conflictAircraftIds.has(item.id) ? ", weather conflict" : ""}, observed ${formatTime(item.observed_at)}`,
         );
         entry.element.style.setProperty(
           "--aircraft-heading",
@@ -247,7 +250,7 @@ export function LiveTrackerMap({
         fitTraffic(map, aircraft);
       }
     });
-  }, [aircraft, mapReady, selectedId, status, view]);
+  }, [aircraft, conflictAircraftIds, mapReady, selectedId, status, view]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -424,7 +427,13 @@ export function LiveTrackerMap({
         >
           <AirportIntelligencePanel key={region.airport} airport={regionalAirport} forceOpen={airportSelected} />
         </MapFloatingPanel>
-        <aside className="trajectory-legend" aria-label="Selected aircraft trajectory legend">
+        <aside className="trajectory-legend" aria-label="Map legend">
+          {mode === "replay" && conflictAircraftIds.size > 0 && (
+            <>
+              <span className="trajectory-conflict"><i aria-hidden="true" />Weather conflict</span>
+              <small>Replay route + weather evidence</small>
+            </>
+          )}
           <span className="trajectory-observed"><i aria-hidden="true" />{mode === "replay" ? "Replay trail" : "Observed trail"}</span>
           <small>{mode === "replay"
             ? trail.length < 2 ? "Waiting for a second scenario point" : `${trail.length} scenario points · current marker may be interpolated`
