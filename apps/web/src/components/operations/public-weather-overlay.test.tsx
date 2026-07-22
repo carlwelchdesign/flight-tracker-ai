@@ -47,6 +47,46 @@ describe("public weather overlay", () => {
     expect(screen.getByText("No accepted weather evidence")).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
+
+  it("exposes atmospheric toggles and an allowlisted model level", async () => {
+    const setLevel = vi.fn();
+    const setSatellite = vi.fn();
+    render(
+      <PublicWeatherOverlay
+        snapshot={snapshot()}
+        state="current"
+        retained={false}
+        showHazards
+        showObservations
+        selection={null}
+        onShowHazards={vi.fn()}
+        onShowObservations={vi.fn()}
+        onSelect={vi.fn()}
+        onRetry={vi.fn()}
+        atmosphere={{
+          showRadar: true,
+          showSatellite: true,
+          showSurfaceWind: false,
+          showModelWind: true,
+          windLevel: "500",
+          windState: "loading",
+          windField: null,
+          onShowRadar: vi.fn(),
+          onShowSatellite: setSatellite,
+          onShowSurfaceWind: vi.fn(),
+          onShowModelWind: vi.fn(),
+          onWindLevel: setLevel,
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("group", { name: "Atmospheric layers" })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("checkbox", { name: "Satellite clouds" }));
+    expect(setSatellite).toHaveBeenCalledWith(false);
+    await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Model wind level" }), "300");
+    expect(setLevel).toHaveBeenCalledWith("300");
+    expect(screen.getByText("Loading model wind")).toBeInTheDocument();
+  });
 });
 
 function snapshot(): PublicWeatherSnapshot {

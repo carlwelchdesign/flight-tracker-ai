@@ -6,6 +6,7 @@ use config::{Config, ReplayConfig};
 use flight_tracker_api::{
     PublicPortfolioOperators,
     alerting::spawn_alert_worker,
+    atmosphere::{AtmosphereService, public_atmosphere_router},
     auth::{AuthService, AuthStore, InternalAssertionVerifier},
     build_router_with_runtime_and_public_live_positions,
     health::CriticalWorkerRegistry,
@@ -190,23 +191,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let listener = TcpListener::bind(config.bind_address).await?;
     tracing::info!(address = %config.bind_address, "API listening");
-    axum::serve(
-        listener,
-        build_router_with_runtime_and_public_live_positions(
-            database,
-            replay,
-            workers,
-            ingestion_subscriptions,
-            live_position_statuses,
-            PublicPortfolioOperators {
-                live_positions: public_live_operator,
-                weather: public_weather_operator,
-            },
-            auth,
-        ),
+    let router = build_router_with_runtime_and_public_live_positions(
+        database,
+        replay,
+        workers,
+        ingestion_subscriptions,
+        live_position_statuses,
+        PublicPortfolioOperators {
+            live_positions: public_live_operator,
+            weather: public_weather_operator,
+        },
+        auth,
     )
-    .with_graceful_shutdown(shutdown_signal())
-    .await?;
+    .merge(public_atmosphere_router(AtmosphereService::production()?));
+    axum::serve(listener, router)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
     Ok(())
 }

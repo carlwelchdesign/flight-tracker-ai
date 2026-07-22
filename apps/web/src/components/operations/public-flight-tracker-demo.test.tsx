@@ -30,7 +30,7 @@ describe("public flight tracker demo", () => {
   });
 
   it("labels live source evidence and visual interpolation honestly", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    const payload = {
       region_code: "sfo",
       region_name: "San Francisco",
       status: {
@@ -62,7 +62,12 @@ describe("public flight tracker demo", () => {
         received_at: new Date().toISOString(),
         provider: "adsb.lol",
       }],
-    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+    };
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => Promise.resolve(
+      String(input).includes("/live-positions")
+        ? new Response(JSON.stringify(payload), { status: 200, headers: { "Content-Type": "application/json" } })
+        : new Response(null, { status: 503 }),
+    )));
 
     render(<PublicFlightTrackerDemo />);
 
@@ -83,7 +88,7 @@ describe("public flight tracker demo", () => {
     vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
       return Promise.resolve(new Response(JSON.stringify(
-        url.includes("/weather") ? weatherPayload() : livePayload(),
+        url.includes("/weather") ? weatherPayload() : url.includes("/atmosphere/") ? windPayload() : livePayload(),
       ), { status: 200, headers: { "Content-Type": "application/json" } }));
     }));
 
@@ -111,6 +116,9 @@ describe("public flight tracker demo", () => {
       const url = String(input);
       if (url.includes("/weather")) {
         return Promise.resolve(new Response(JSON.stringify(weatherPayload()), { status: 200 }));
+      }
+      if (url.includes("/atmosphere/")) {
+        return Promise.resolve(new Response(JSON.stringify(windPayload()), { status: 200 }));
       }
       const isLosAngeles = url.includes("region=lax");
       return Promise.resolve(new Response(JSON.stringify(livePayload(
@@ -156,6 +164,27 @@ function livePayload(regionCode = "sfo", regionName = "San Francisco", callsign 
       quality: "observed", observed_at: new Date().toISOString(), received_at: new Date().toISOString(),
       provider: "adsb.lol",
     }],
+  };
+}
+
+function windPayload() {
+  return {
+    state: "current", retained: false, region_code: "sfo", region_name: "San Francisco",
+    level: { code: "500", label: "500 hPa · about 18,000 ft", pressure_hpa: 500, approximate_altitude_feet: 18_400 },
+    generated_at: "2026-07-21T23:00:00Z", forecast_time: "2026-07-21T23:00:00Z",
+    last_success_at: "2026-07-21T23:00:00Z", last_error_code: null,
+    attribution: {
+      provider: "Open-Meteo", model: "NOAA GFS / HRRR",
+      source_url: "https://open-meteo.com/",
+      license_url: "https://open-meteo.com/en/license",
+      text: "NOAA GFS/HRRR model data delivered by Open-Meteo",
+    },
+    samples: Array.from({ length: 16 }, (_, index) => ({
+      latitude_degrees: 36.5 + Math.floor(index / 4) * 0.8,
+      longitude_degrees: -123.5 + (index % 4) * 0.8,
+      speed_knots: 35 + index,
+      direction_from_degrees: 260 + index,
+    })),
   };
 }
 

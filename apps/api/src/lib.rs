@@ -14,6 +14,7 @@ use uuid::Uuid;
 use crate::domain::{FlightId, OperatorId};
 
 pub mod alerting;
+pub mod atmosphere;
 pub mod auth;
 pub mod domain;
 pub mod fleet;

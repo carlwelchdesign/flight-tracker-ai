@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-410 — Regional live-traffic selector
-- Branch: `feat/ft-410-regional-traffic-selector`
-- Pull request: [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30)
+- Active ticket: FT-403/FT-404 — remaining recruiter-validation and hosted-auth gates
+- Branch: `feat/ft-411-atmospheric-weather-overlays` (delivery closeout)
+- Pull request: [#31](https://github.com/carlwelchdesign/flight-tracker-ai/pull/31)
 - Owner: Backend and full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Merge verified PR #30, promote the Render and Vercel production
-  deployments, then begin FT-411 atmospheric overlays on a new ticket branch.
+- Next action: Merge the verified FT-411 delivery, then resume the remaining
+  recruiter-validation and authenticated hosted smoke gates.
 
 ## Milestone checklist
 
@@ -63,6 +63,24 @@ Last updated: 2026-07-21
 | M5 | 0 | 3 |
 
 ## Handoff notes
+
+- FT-411 is complete in PR [#31](https://github.com/carlwelchdesign/flight-tracker-ai/pull/31)
+  at implementation commit `523da95`. CI run
+  [29882654316](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29882654316)
+  passes all five checks. Render staging and production serve the bounded
+  Open-Meteo GFS/HRRR wind field, and promoted Vercel deployment
+  `dpl_GVX9umVXar24e9gxw4MGd7tvw1H1` is live on the public alias. Production
+  browser verification proves radar, satellite, surface-wind, two upper-air
+  levels, SFO/LAX switching, aircraft selection, visible timestamps and
+  attribution, retained panel order, and zero production-origin application
+  errors.
+
+- PR [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30) is
+  merged into `main` at `b511643`. The Render blueprint and both services now
+  track `main`; the production Rust endpoint returns distinct snapshots for all
+  seven regions. Vercel build `EsJMxpjiB` was promoted after the repository CI
+  passed, and the public browser switched from San Francisco to Los Angeles
+  without reload. FT-411 is active on its dedicated branch.
 
 - FT-410 implementation is locally verified on
   `feat/ft-410-regional-traffic-selector`. Rust owns seven 50-NM airport
