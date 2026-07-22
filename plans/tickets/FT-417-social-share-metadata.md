@@ -4,6 +4,7 @@ Status: Complete
 
 Branch: `feat/ft-417-social-share-metadata`
 Implementation commit: `8715401`
+Merge commit: `515b32e`
 Pull request: [#56](https://github.com/carlwelchdesign/flight-tracker-ai/pull/56)
 Owner: Frontend product engineering
 
@@ -58,9 +59,14 @@ Dependencies: FT-405
   [29937128296](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29937128296)
   passed Rust, web, and API/PostGIS checks. The Vercel integration also passed
   for PR #56.
-- Production deployment `dpl_2VhnnX6Q1CN7XhcrMvQf73fh8Nd1` was promoted and
-  assigned to `flight-tracker-ai-one.vercel.app`. Anonymous production requests
+- PR #56 merged to `main` as `515b32e`. Main-branch CI run
+  [29937558009](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29937558009)
+  passed Rust, web, and API/PostGIS checks.
+- Main production deployment `dpl_5WsRREDHHuNMiT8mwt8MYP8FA4q7` is assigned
+  to `flight-tracker-ai-one.vercel.app`. Anonymous production requests
   returned HTTP 200 for both the root HTML and generated PNG. The HTML contains
   the canonical production URL, index/follow policy, Open Graph website/title/
   description/image/type/dimensions/alt fields, and Twitter/X large-card fields;
-  the image is a verified 1200 by 630 PNG with no authentication redirect.
+  the image is a verified 1200 by 630 PNG with no authentication redirect. Its
+  production SHA-256 is
+  `aff9ff309b45c85e158cf8a6adc1bfa3fb178a0659c3b6bfa7c1ce458c5f9da1`.
