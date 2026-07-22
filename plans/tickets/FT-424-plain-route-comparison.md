@@ -1,6 +1,6 @@
 # FT-424 — Rewrite the public AI panel as a route comparison
 
-Status: In progress
+Status: Complete
 
 Branch: `fix/ft-424-plain-route-comparison`
 Final implementation commit: `a2c06f6`
@@ -31,7 +31,7 @@ Dependencies: FT-504
       behavior remain unchanged.
 - [x] Focused tests, the full web suite, lint, typecheck, production build,
       browser verification, and diff hygiene pass.
-- [ ] Branch, final commit, pull request, required checks, and hosted evidence
+- [x] Branch, final commit, pull request, required checks, and hosted evidence
       are recorded before completion.
 
 ## Non-goals
@@ -57,3 +57,10 @@ Dependencies: FT-504
   dataset, rule, and source evidence remain in the collapsed disclosure.
 - Implementation commit: `a2c06f6`; delivery PR:
   [#68](https://github.com/carlwelchdesign/flight-tracker-ai/pull/68).
+- GitHub checks passed: API and PostGIS smoke test, Rust checks, Web checks,
+  Vercel, and Vercel Preview Comments. PR #68 merged as `a14bfdb`.
+- Production deployment `dpl_2WP5itNQ5Faejb6BBkt4gHfcw2QV` is ready and
+  assigned to [flight-tracker-ai-one.vercel.app](https://flight-tracker-ai-one.vercel.app/).
+  Hosted browser verification loaded the OpenAI-backed `North clear` sample,
+  expanded the calculation details, confirmed the plain-language tradeoff and
+  humanized evidence, and reported no browser errors.
