@@ -5,16 +5,17 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active ticket: FT-403/FT-502 — independent validation gates
-- Branch: External evidence branches begin only when reviewer records exist
-- Pull request: FT-417 [#56](https://github.com/carlwelchdesign/flight-tracker-ai/pull/56) is merged
-- Owner: Product research and independent aviation-domain review
+- Active ticket: FT-418 — Node.js 24 web runtime
+- Branch: `chore/ft-418-node-24-runtime`
+- Pull request: Pending
+- Owner: Frontend and platform engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Record the neutral recruiter session and independent
-  aviation-domain review when actual reviewer evidence is available.
+- Next action: Upgrade and deploy the web runtime on Node.js 24, then return to
+  the neutral recruiter session and independent aviation-domain review when
+  actual reviewer evidence is available.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.

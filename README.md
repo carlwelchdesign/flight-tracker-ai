@@ -7,7 +7,8 @@ The reliable demo path uses deterministic replay plus live NOAA weather. An opti
 ## Start locally
 
 Requirements for running the stack: Docker Desktop and Make. Running the full
-local verification suite also requires Node.js 20.20.1 and npm 10.8.2.
+local verification suite also requires Node.js 24.18.0 and npm 11.16.0. Run
+`nvm use` from the repository root to select the pinned Node.js version.
 
 ```sh
 cp .env.example .env
