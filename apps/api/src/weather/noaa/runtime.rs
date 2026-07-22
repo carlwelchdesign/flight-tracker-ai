@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     domain::{OperatorId, SchemaVersion, SourceHealth, SourceHealthId, SourceHealthState},
-    health::WorkerProbe,
+    health::{WorkerProbe, maintain_worker_heartbeat},
     ingestion::IngestionHub,
 };
 
@@ -177,28 +177,29 @@ async fn run_noaa_runtime(
     let mut poll = interval(config.poll_interval);
     poll.set_missed_tick_behavior(MissedTickBehavior::Delay);
     loop {
-        poll.tick().await;
-        probe.heartbeat();
-        let metars = client.fetch_metars(&config.stations);
-        let sigmets = client.fetch_air_sigmets();
-        let (metar_result, sigmet_result) = tokio::join!(metars, sigmets);
-        process_feed_result(
-            metar_result,
-            config.operator_id,
-            &store,
-            &ingestion,
-            &mut metar_health,
-        )
+        maintain_worker_heartbeat(&probe, async {
+            poll.tick().await;
+            let metars = client.fetch_metars(&config.stations);
+            let sigmets = client.fetch_air_sigmets();
+            let (metar_result, sigmet_result) = tokio::join!(metars, sigmets);
+            process_feed_result(
+                metar_result,
+                config.operator_id,
+                &store,
+                &ingestion,
+                &mut metar_health,
+            )
+            .await;
+            process_feed_result(
+                sigmet_result,
+                config.operator_id,
+                &store,
+                &ingestion,
+                &mut sigmet_health,
+            )
+            .await;
+        })
         .await;
-        process_feed_result(
-            sigmet_result,
-            config.operator_id,
-            &store,
-            &ingestion,
-            &mut sigmet_health,
-        )
-        .await;
-        probe.heartbeat();
     }
 }
 
