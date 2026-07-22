@@ -6,12 +6,12 @@ Last updated: 2026-07-21
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
 - Active ticket: FT-403/FT-404 — remaining recruiter-validation and hosted-auth gates
-- Branch: `feat/ft-411-atmospheric-weather-overlays` (delivery closeout)
-- Pull request: [#31](https://github.com/carlwelchdesign/flight-tracker-ai/pull/31)
+- Branch: `main`
+- Pull request: [#31](https://github.com/carlwelchdesign/flight-tracker-ai/pull/31) merged
 - Owner: Backend and full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Merge the verified FT-411 delivery, then resume the remaining
-  recruiter-validation and authenticated hosted smoke gates.
+- Next action: Resume the remaining recruiter-validation and authenticated
+  hosted smoke gates.
 
 ## Milestone checklist
 
@@ -64,8 +64,9 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
-- FT-411 is complete in PR [#31](https://github.com/carlwelchdesign/flight-tracker-ai/pull/31)
-  at implementation commit `523da95`. CI run
+- FT-411 is complete and merged into `main` through PR
+  [#31](https://github.com/carlwelchdesign/flight-tracker-ai/pull/31) at merge
+  commit `9ce391f`; implementation commit `523da95` owns the product change. CI run
   [29882654316](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29882654316)
   passes all five checks. Render staging and production serve the bounded
   Open-Meteo GFS/HRRR wind field, and promoted Vercel deployment
