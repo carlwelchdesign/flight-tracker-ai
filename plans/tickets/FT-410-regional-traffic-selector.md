@@ -3,7 +3,7 @@
 Status: In progress
 
 Branch: `feat/ft-410-regional-traffic-selector`
-Latest implementation commit: `330d0d4`
+Latest implementation commit: `09b22d0`
 Final commit: Pending
 Pull request: [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30)
 Owner: Backend and full-stack product engineering
@@ -78,3 +78,5 @@ authoritative coverage.
 - CI's independent API/PostGIS job, branch commit, PR, and PR checks remain the
   final completion evidence. Implementation commit `330d0d4` is published in
   draft PR [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30).
+  Promotion commit `09b22d0` moves both Render service declarations from the
+  merged FT-405 branch to `main`; production remains manual-deploy only.

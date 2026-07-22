@@ -72,7 +72,8 @@ Last updated: 2026-07-21
   preserved the selected-aircraft-first layout, and had zero mobile horizontal
   overflow. Implementation commit `330d0d4` is published in draft PR
   [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30); required
-  CI evidence remains pending.
+  CI evidence remains pending. Promotion commit `09b22d0` moves the Render
+  service declarations to `main` while retaining manual production deploys.
 
 - FT-409 is complete and merged into FT-405 through PR [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
   at `a99c47f`. The selected-aircraft evidence panel now precedes the current
