@@ -6,6 +6,7 @@ Branch: `feat/ft-411-atmospheric-weather-overlays`
 Latest implementation commit: `523da95`
 Final implementation commit: `523da95`
 Pull request: [#31](https://github.com/carlwelchdesign/flight-tracker-ai/pull/31)
+Merge commit: `9ce391f`
 Owner: Backend and full-stack product engineering
 
 ## Outcome
