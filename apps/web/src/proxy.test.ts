@@ -42,6 +42,7 @@ describe("hosted identity proxy", () => {
     await proxy(new NextRequest("https://example.test/api/public/replay/attention"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/replay/timeline"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/weather"), {} as never);
+    await proxy(new NextRequest("https://example.test/opengraph-image?share=1"), {} as never);
 
     expect(clerk.publicPatterns).toEqual([
       "/",
@@ -51,6 +52,7 @@ describe("hosted identity proxy", () => {
       "/api/public/replay/attention",
       "/api/public/replay/timeline",
       "/api/public/weather",
+      "/opengraph-image",
       "/sign-in(.*)",
       "/sign-up(.*)",
     ]);

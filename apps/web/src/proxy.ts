@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/public/replay/attention",
   "/api/public/replay/timeline",
   "/api/public/weather",
+  "/opengraph-image",
   "/sign-in(.*)",
   "/sign-up(.*)",
 ]);
