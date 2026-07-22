@@ -1,6 +1,6 @@
 # FT-423 — Add a portfolio live-position provider failover
 
-Status: In progress
+Status: Complete
 
 Branch: `fix/ft-423-aircraft-provider-failover`
 Final implementation commit: `af0f4a0`
@@ -34,7 +34,7 @@ Dependencies: FT-405, FT-410
       propagation, and UI tests pass.
 - [x] Rust formatting, Clippy, Rust and web tests, lint, typecheck, production
       build, browser verification, hosted smoke checks, and diff hygiene pass.
-- [ ] Branch, final commit, pull request, required checks, rollout evidence, and
+- [x] Branch, final commit, pull request, required checks, rollout evidence, and
       handoff notes are recorded before completion.
 
 ## Portfolio-only constraint
@@ -70,6 +70,20 @@ permission where necessary.
 - Direct SFO compatibility probe on 2026-07-22 returned HTTP 200 from both
   ADSB.lol (145 aircraft) and Airplanes.live (146 aircraft). Production will
   therefore continue using the primary until a request fails.
-- Implementation commit `af0f4a0` is pushed and PR
-  [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66) is open.
-  Hosted deployment, browser smoke, and required-check evidence are pending.
+- Implementation commit `af0f4a0` and evidence commit `61fab8d` were merged by
+  PR [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66) at
+  merge commit `fc90f70`.
+- GitHub Actions run
+  [29949145197](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29949145197)
+  passed Rust, web, and API/PostGIS checks. Vercel preview deployment
+  `dpl_25WqYowjjTxBnM8o4qDhVHzbbErr` completed Ready.
+- Render production deployed merge commit `fc90f70`. The hosted Rust response
+  returned HTTP 200, `state=current`, provider `adsb.lol`, 142 current aircraft,
+  the new provider-specific attribution contract, and 142 public records.
+- Vercel production deployment `dpl_ATxRFpymtYQRc7aipg6xxrDTsvVu` is Ready and
+  assigned to `flight-tracker-ai-one.vercel.app`. The public proxy returned HTTP
+  200 with `Cache-Control: no-store` and the same 142-aircraft current picture.
+- Production browser verification showed `Live best-effort positions`, 142
+  tracked and fresh aircraft, 142 rendered rows, linked ADSB.lol/ODbL
+  attribution, no application alerts, and no console errors. MapLibre emitted
+  only its pre-existing missing sprite/glyph fallback warnings.

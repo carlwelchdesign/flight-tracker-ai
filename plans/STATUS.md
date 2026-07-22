@@ -5,20 +5,18 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active tickets: FT-423 live-position provider failover, FT-403 neutral
-  recruiter validation, and FT-502 independent aviation-domain review
-- Branch: `fix/ft-423-aircraft-provider-failover`
-- Pull request: FT-504 [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64)
-  is merged; FT-423 [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66)
-  is open
+- Active tickets: FT-403 neutral recruiter validation and FT-502 independent
+  aviation-domain review
+- Branch: external evidence branches as those sessions become available
+- Pull request: FT-423 [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66)
+  is merged
 - Owner: Project owner and external reviewers
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Complete FT-423 implementation and hosted verification, then run
-  the remaining neutral recruiter session and independent aviation-domain
-  review without weakening either external evidence gate.
+- Next action: Run the remaining neutral recruiter session and independent
+  aviation-domain review without weakening either external evidence gate.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.
@@ -77,10 +75,20 @@ Last updated: 2026-07-22
 
 ## Handoff notes
 
-- FT-423 is in progress on `fix/ft-423-aircraft-provider-failover`. ADSB.lol
-  remains primary; Airplanes.live is being added as a rate-limited,
-  portfolio-only secondary source with actual-provider attribution and replay
-  retained as the guaranteed fallback.
+- FT-423 is complete through implementation commit `af0f4a0`, PR
+  [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66), and merge
+  commit `fc90f70`. ADSB.lol remains primary; Airplanes.live is now a globally
+  rate-limited, portfolio-only secondary source after primary request failure.
+  The accepted provider reaches canonical events, public filtering, status,
+  logs, and linked attribution while provider data remains ephemeral,
+  uncached, unpersisted, excluded from LLM use, and backed by deterministic
+  replay. GitHub Actions run
+  [29949145197](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29949145197)
+  passed all required checks. Render production deployed `fc90f70`; Vercel
+  production deployment `dpl_ATxRFpymtYQRc7aipg6xxrDTsvVu` is assigned to the
+  public domain. Hosted API and browser verification showed 142 current SFO
+  aircraft, 142 fresh, linked ADSB.lol/ODbL attribution, `no-store`, no
+  application alerts, and no console errors.
 
 - FT-504 is complete through implementation commit `063f2df`, PR
   [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64), and merge
