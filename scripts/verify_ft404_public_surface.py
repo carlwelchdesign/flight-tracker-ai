@@ -193,9 +193,10 @@ def _is_public_flight_tracker(response: HttpResponse) -> bool:
     return (
         "text/html" in content_type
         and b"Flight Tracker AI" in response.body
-        and b"Fleet + weather" in response.body
-        and b"Flight board" in response.body
-        and b"Public recruiter demo" in response.body
+        and b"Realtime regional aircraft explorer" in response.body
+        and b"Traffic region" in response.body
+        and b"Current picture" in response.body
+        and b"Protected operations console" in response.body
         and b'href="/sign-in"' in response.body
         and b"Sign in to continue" not in response.body
     )

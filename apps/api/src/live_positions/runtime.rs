@@ -2,9 +2,13 @@ use std::time::Duration;
 
 use chrono::Utc;
 use thiserror::Error;
-use tokio::time::{MissedTickBehavior, interval};
+use tokio::time::MissedTickBehavior;
 
-use crate::{domain::OperatorId, health::WorkerProbe, ingestion::IngestionHub};
+use crate::{
+    domain::OperatorId,
+    health::{WorkerProbe, maintain_worker_heartbeat},
+    ingestion::IngestionHub,
+};
 
 use super::{
     AdsbLolClient,
@@ -77,19 +81,22 @@ async fn run_runtime(
     config: AdsbLolRuntimeConfig,
     probe: WorkerProbe,
 ) {
-    tokio::time::sleep(config.initial_delay).await;
-    let mut poll = interval(config.poll_interval);
+    let mut poll = tokio::time::interval_at(
+        tokio::time::Instant::now() + config.initial_delay,
+        config.poll_interval,
+    );
     poll.set_missed_tick_behavior(MissedTickBehavior::Delay);
     loop {
-        poll.tick().await;
-        probe.heartbeat();
-        process_poll(
-            client.fetch_point(config.region).await,
-            &ingestion,
-            &statuses,
-            &config,
-        );
-        probe.heartbeat();
+        maintain_worker_heartbeat(&probe, async {
+            poll.tick().await;
+            process_poll(
+                client.fetch_point(config.region).await,
+                &ingestion,
+                &statuses,
+                &config,
+            );
+        })
+        .await;
     }
 }
 

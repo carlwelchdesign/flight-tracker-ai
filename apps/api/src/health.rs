@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeMap,
+    future::Future,
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
@@ -8,6 +9,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 const DEFAULT_MAX_HEARTBEAT_AGE: Duration = Duration::from_secs(3);
+const DEFAULT_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Default)]
 pub struct CriticalWorkerRegistry {
@@ -155,6 +157,35 @@ impl Drop for WorkerProbe {
     }
 }
 
+pub(crate) async fn maintain_worker_heartbeat<F>(probe: &WorkerProbe, future: F) -> F::Output
+where
+    F: Future,
+{
+    maintain_worker_heartbeat_at(probe, DEFAULT_HEARTBEAT_INTERVAL, future).await
+}
+
+async fn maintain_worker_heartbeat_at<F>(
+    probe: &WorkerProbe,
+    heartbeat_interval: Duration,
+    future: F,
+) -> F::Output
+where
+    F: Future,
+{
+    let mut heartbeat = tokio::time::interval(heartbeat_interval);
+    heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    tokio::pin!(future);
+    loop {
+        tokio::select! {
+            _ = heartbeat.tick() => probe.heartbeat(),
+            output = &mut future => {
+                probe.heartbeat();
+                return output;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,5 +218,24 @@ mod tests {
         assert_eq!(snapshot[1].state, WorkerState::Stale);
         assert_eq!(snapshot[2].state, WorkerState::Stopped);
         assert!(!registry.is_ready());
+    }
+
+    #[tokio::test]
+    async fn long_running_work_heartbeats_before_completion() {
+        let registry = CriticalWorkerRegistry::default();
+        let probe = registry.register("polling");
+
+        let task = tokio::spawn(async move {
+            maintain_worker_heartbeat_at(&probe, Duration::from_millis(5), async {
+                tokio::time::sleep(Duration::from_millis(30)).await;
+                42
+            })
+            .await
+        });
+
+        tokio::time::sleep(Duration::from_millis(12)).await;
+        assert!(registry.is_ready());
+        assert_eq!(registry.snapshot()[0].state, WorkerState::Running);
+        assert_eq!(task.await.unwrap(), 42);
     }
 }

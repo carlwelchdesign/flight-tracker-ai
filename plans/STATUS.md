@@ -6,8 +6,8 @@ Last updated: 2026-07-22
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
 - Active ticket: FT-403/FT-404 — remaining recruiter-validation and hosted-auth gates
-- Branch: `main`
-- Pull request: [#33](https://github.com/carlwelchdesign/flight-tracker-ai/pull/33) merged
+- Branch: `fix/ft-404-hosted-smoke-closeout`
+- Pull request: [#36](https://github.com/carlwelchdesign/flight-tracker-ai/pull/36)
 - Owner: Backend and full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
 - Next action: Complete the remaining recruiter-validation and authenticated
@@ -68,6 +68,19 @@ Last updated: 2026-07-22
 | M5 | 0 | 3 |
 
 ## Handoff notes
+
+- FT-404 hosted smoke resumed on
+  `fix/ft-404-hosted-smoke-closeout`. Production `/health` is healthy, but the
+  first current-state check found `/readiness` failing because long-interval
+  NOAA and regional ADSB.lol workers did not heartbeat while waiting or
+  fetching. The branch adds a shared periodic heartbeat wrapper, updates the
+  stale public verifier contract after FT-412, and passes all 101 Rust library
+  tests, 13 binary tests, integration/doc tests, strict Clippy, formatting,
+  eight verifier tests, and diff hygiene. Implementation commit `7f529e3` is
+  published in draft PR
+  [#36](https://github.com/carlwelchdesign/flight-tracker-ai/pull/36). Staged
+  deployment, production promotion, and authenticated browser/FT-401 evidence
+  remain to be recorded.
 
 - The post-launch product direction is now durable in
   [`tickets/M4.1-public-decision-intelligence.md`](tickets/M4.1-public-decision-intelligence.md).

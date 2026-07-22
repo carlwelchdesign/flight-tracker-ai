@@ -67,9 +67,9 @@ def healthy_api():
 
 def public_tracker_body():
     return (
-        b'<main><h1>Flight Tracker AI</h1><p>Public recruiter demo</p>'
-        b'<section>Fleet + weather</section><section>Flight board</section>'
-        b'<a href="/sign-in">Sign in for protected controls</a></main>'
+        b'<main><p>Flight Tracker AI</p><span>Realtime regional aircraft explorer</span>'
+        b'<label>Traffic region</label><section>Current picture</section>'
+        b'<a href="/sign-in">Protected operations console</a></main>'
     )
 
 
