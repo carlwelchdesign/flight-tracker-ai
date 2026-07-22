@@ -1,6 +1,6 @@
 # FT-427 — Highlight evaluated weather conflicts
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-427-weather-conflict-highlights`
 Final implementation commit: `b221661`
@@ -25,9 +25,9 @@ Dependencies: FT-413, FT-426
       the public feed does not include route evidence.
 - [x] A concise replay legend explains the highlight without implying an
       operational or live assessment.
-- [ ] Focused tests, full web tests, lint, typecheck, production build, browser
+- [x] Focused tests, full web tests, lint, typecheck, production build, browser
       verification, and diff hygiene pass.
-- [ ] Branch, commits, pull request, required checks, and hosted evidence are
+- [x] Branch, commits, pull request, required checks, and hosted evidence are
       recorded before completion.
 
 ## Non-goals
@@ -45,4 +45,15 @@ Dependencies: FT-413, FT-426
 - Tests prove the highlight is absent from live traffic, appears only after the
   replay evaluation becomes effective, clears when the time machine rewinds,
   and updates the map marker's accessible label.
-- `git diff --check` passed. Preview and hosted browser evidence remain pending.
+- `git diff --check` passed.
+- PR #74 passed its Rust, web, API/PostGIS, and Vercel checks and merged as
+  `5b9eb86f19eb9b7ae982a3543990016fc751417c`.
+- Production deployment `dpl_8xAatBpWrdEyxUuo4nBNDjTbPsG2` is Ready and
+  assigned to <https://flight-tracker-ai-one.vercel.app/>.
+- Hosted browser verification at replay time 60 seconds confirmed FT303's
+  highlighted map marker, “Weather conflict” list badge, replay-evidence
+  legend, accessible marker label, and critical evidence panel. Rewinding to
+  zero removed the highlight, and live traffic showed no conflict badge or
+  conflict marker.
+- The hosted replay URL returned HTTP 200 and the deployment had no error-level
+  runtime logs during verification.
