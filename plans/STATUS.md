@@ -7,7 +7,7 @@ Last updated: 2026-07-22
 - Current milestone: M5 — Optimization research and controlled recommendations
 - Active ticket: FT-403/FT-502 — independent validation gates
 - Branch: External evidence branches begin only when reviewer records exist
-- Pull request: FT-421 [#62](https://github.com/carlwelchdesign/flight-tracker-ai/pull/62) passes required checks
+- Pull request: FT-422 [#63](https://github.com/carlwelchdesign/flight-tracker-ai/pull/63) passes required checks
 - Owner: Product research and independent aviation-domain review
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
@@ -72,6 +72,16 @@ Last updated: 2026-07-22
 | M5 | 2 | 3 |
 
 ## Handoff notes
+
+- FT-422 is complete through implementation commit `3485e3f` and PR
+  [#63](https://github.com/carlwelchdesign/flight-tracker-ai/pull/63). The NOAA
+  layers and airport-intelligence surfaces are independently closable, bounded
+  draggable desktop panels with focus stacking and one accessible recovery
+  menu. Narrow viewports stack both panels in document flow and disable drag.
+  All 147 web tests, lint, TypeScript, production build, diff hygiene, desktop
+  and 390-pixel browser checks pass. GitHub Actions run
+  [29944316820](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29944316820)
+  and the Vercel preview passed.
 
 - FT-421 is complete through implementation commit `2bd1349` and PR
   [#62](https://github.com/carlwelchdesign/flight-tracker-ai/pull/62). FT303's
