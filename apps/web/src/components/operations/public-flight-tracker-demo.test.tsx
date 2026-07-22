@@ -526,10 +526,10 @@ function replayTimelinePayload() {
     source: "portfolio deterministic replay",
     observations: [
       replayObservation("FT101", "N101FT", 1_000, -122.05, 37.42, 22_000, 142, 430),
-      replayObservation("FT303", "N303FT", 1_000, -121.72, 37, 28_000, 315, 445),
+      replayObservation("FT303", "N303FT", 1_000, -121.4, 37, 28_000, 315, 445),
       replayObservation("FT101", "N101FT", 60_000, -121.95, 37.25, 24_000, 142, 435),
       replayObservation("FT303", "N303FT", 60_000, -121.62, 37.18, 27_000, 315, 438),
-      replayObservation("FT303", "N303FT", 180_000, -121.48, 37.38, 25_000, 318, 425),
+      replayObservation("FT303", "N303FT", 180_000, -121.87, 37.38, 25_000, 318, 425),
     ],
   };
 }
