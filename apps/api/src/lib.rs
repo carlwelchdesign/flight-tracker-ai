@@ -25,6 +25,7 @@ pub mod live_positions;
 pub mod metrics;
 pub mod observability;
 pub mod optimization;
+pub mod public_ai_draft;
 pub mod public_attention;
 pub mod public_replay;
 pub mod replay;
@@ -42,6 +43,7 @@ use ingestion::IngestionSubscription;
 use live_positions::{LivePositionStatus, LivePositionStatusStore, find_public_live_region};
 use metrics::{ApiMetrics, observe_request};
 use observability::correlate_request;
+use public_ai_draft::public_ai_draft_router;
 use public_attention::public_attention_router;
 use public_replay::public_replay_router;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
@@ -385,6 +387,7 @@ fn build_router_with_services_and_health(
         .layer(middleware::from_fn_with_state(auth, authenticate_request))
         .merge(public)
         .merge(public_attention_router())
+        .merge(public_ai_draft_router())
         .merge(public_replay_router())
         .merge(airport_intelligence_router())
         .merge(public_weather_routes)

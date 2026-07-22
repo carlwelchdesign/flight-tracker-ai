@@ -28,3 +28,4 @@ Every ticket section has delivery fields. `Branch`, `Final commit`, and `Pull re
 - [FT-421 — Replay aircraft heading alignment](FT-421-replay-heading-alignment.md)
 - [FT-422 — Draggable and recoverable map panels](FT-422-draggable-map-panels.md)
 - [M5 — Optimization research](M5-optimization.md): FT-501–FT-503
+- [FT-504 — Public AI drafting demonstration](FT-504-public-ai-draft-demo.md)

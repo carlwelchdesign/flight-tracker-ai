@@ -170,6 +170,7 @@ pub enum GenerationFailureCode {
     Unavailable,
     Timeout,
     RateLimited,
+    QuotaExhausted,
     Refused,
     InvalidResponse,
     FailedValidation,

@@ -39,6 +39,7 @@ describe("hosted identity proxy", () => {
     await proxy(new NextRequest("https://example.test/api/public/live-positions"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/airport-intelligence?airport=KDEN"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/atmosphere/wind"), {} as never);
+    await proxy(new NextRequest("https://example.test/api/public/ai-draft"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/replay/attention"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/replay/timeline"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/weather"), {} as never);
@@ -49,6 +50,7 @@ describe("hosted identity proxy", () => {
       "/api/public/live-positions",
       "/api/public/airport-intelligence",
       "/api/public/atmosphere/wind",
+      "/api/public/ai-draft",
       "/api/public/replay/attention",
       "/api/public/replay/timeline",
       "/api/public/weather",

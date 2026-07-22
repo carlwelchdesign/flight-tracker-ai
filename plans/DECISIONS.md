@@ -192,6 +192,21 @@
 - Future extension: Per-aircraft or per-region preview images require a separate
   ticket with bounded public inputs and stale-link behavior under R-20.
 
+### ADR-019 — The public AI demo is fixed-input, cached, and review-only
+
+- Date: 2026-07-22
+- Decision: Expose the FT-503 drafting pipeline publicly for one project-authored
+  synthetic recommendation case. The Rust endpoint accepts no caller input,
+  caches the generated package for the process lifetime, and always returns an
+  `awaiting_review` package with no approval, send, or action capability.
+- Reason: Recruiters should be able to see the implemented OpenAI integration,
+  its grounded evidence, and its safety boundary without creating an abusable
+  prompt proxy or implying that AI controls a flight decision.
+- Constraint: Never include ADSB.lol, NOAA, tenant, protected, or user-supplied
+  data. OpenAI may draft wording only after deterministic offline evaluation and
+  synthetic human approval of the fixed evidence. Validation failure or provider
+  unavailability must use the deterministic template and remain visible.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |

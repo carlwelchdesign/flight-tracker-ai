@@ -45,6 +45,7 @@ import {
 } from "@/lib/public-tracker-url";
 import { displayCallsign, LiveTrackerMap } from "./live-tracker-map";
 import { ReplayTimeMachine } from "./replay-time-machine";
+import { PublicAiDraftPanel } from "./public-ai-draft-panel";
 import { TrackerExplorationControls } from "./tracker-exploration-controls";
 
 const POLL_INTERVAL_MS = 75_000;
@@ -511,6 +512,8 @@ export function PublicFlightTrackerDemo() {
           </section>
         </div>
       </div>
+
+      <PublicAiDraftPanel />
 
       <footer className="operations-footer live-footer">
         <span>{mode === "replay" ? "Deterministic portfolio replay" : "Best-effort ADS-B positions from ADSB.lol"}</span>
