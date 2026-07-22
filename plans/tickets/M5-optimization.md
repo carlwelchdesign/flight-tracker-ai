@@ -46,7 +46,7 @@ Verification evidence:
 
 ## FT-502 — Build an offline recommendation experiment
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-502-offline-recommendations`
 Final commit: `49c8c85`
@@ -133,3 +133,7 @@ Verification evidence:
   classified the failure, exposed no credential or provider body, and returned
   the valid deterministic fallback in `awaiting_review`. This validates the
   failure path and is not represented as a successful model-generated draft.
+- GitHub Actions run
+  [29934635940](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29934635940)
+  passed Rust, web, and API/PostGIS checks, and the Vercel preview deployment
+  passed. PR #52 contains the ticket-scoped implementation and evidence.
