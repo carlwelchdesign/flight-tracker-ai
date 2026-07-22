@@ -8,7 +8,8 @@ Last updated: 2026-07-22
 - Active tickets: FT-427 weather-conflict highlights, FT-403 neutral recruiter
   validation, and FT-502 independent aviation-domain review
 - Branch: `feat/ft-427-weather-conflict-highlights`
-- Pull request: FT-427 pending; FT-426
+- Pull request: FT-427 [#74](https://github.com/carlwelchdesign/flight-tracker-ai/pull/74)
+  is open; FT-426
   [#72](https://github.com/carlwelchdesign/flight-tracker-ai/pull/72) is merged; FT-425
   [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70) is merged
 - Owner: Project owner and external reviewers
@@ -80,7 +81,8 @@ Last updated: 2026-07-22
 - FT-427 is in progress on `feat/ft-427-weather-conflict-highlights`. It will
   highlight only replay aircraft backed by an effective deterministic
   route-and-weather conflict result; live position-only aircraft remain
-  explicitly ineligible.
+  explicitly ineligible. Implementation commit `b221661` is in PR
+  [#74](https://github.com/carlwelchdesign/flight-tracker-ai/pull/74).
 
 - FT-426 is complete through implementation commit `6e48fd0`, PR
   [#72](https://github.com/carlwelchdesign/flight-tracker-ai/pull/72), merge commit

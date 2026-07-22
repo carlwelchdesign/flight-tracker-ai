@@ -3,8 +3,8 @@
 Status: In progress
 
 Branch: `feat/ft-427-weather-conflict-highlights`
-Final implementation commit: Pending
-Pull request: Pending
+Final implementation commit: `b221661`
+Pull request: [#74](https://github.com/carlwelchdesign/flight-tracker-ai/pull/74)
 Owner: Frontend engineering and product design
 
 Make aircraft with deterministic route-and-weather conflict evidence visibly
