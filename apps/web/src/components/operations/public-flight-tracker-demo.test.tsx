@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PublicFlightTrackerDemo } from "./public-flight-tracker-demo";
 
 describe("public flight tracker demo", () => {
-  it("shows the navigable map, replay fallback, aircraft detail, and protected console link", async () => {
+  it("shows the navigable map, replay fallback, and aircraft detail without an authentication prompt", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
     const user = userEvent.setup();
     render(<PublicFlightTrackerDemo />);
@@ -21,10 +21,8 @@ describe("public flight tracker demo", () => {
     const selectedAircraft = screen.getByRole("heading", { name: "FT101" });
     const currentPicture = screen.getByRole("heading", { name: "Aircraft" });
     expect(selectedAircraft.compareDocumentPosition(currentPicture) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole("link", { name: /protected operations console/i })).toHaveAttribute(
-      "href",
-      "/sign-in",
-    );
+    expect(screen.queryByRole("link", { name: /protected operations console/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/sign in/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /FT303/i }));
     expect(screen.getByRole("heading", { name: "FT303" })).toBeInTheDocument();

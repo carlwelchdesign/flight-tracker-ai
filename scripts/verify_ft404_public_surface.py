@@ -196,8 +196,8 @@ def _is_public_flight_tracker(response: HttpResponse) -> bool:
         and b"Realtime regional aircraft explorer" in response.body
         and b"Traffic region" in response.body
         and b"Current picture" in response.body
-        and b"Protected operations console" in response.body
-        and b'href="/sign-in"' in response.body
+        and b"Protected operations console" not in response.body
+        and b'href="/sign-in"' not in response.body
         and b"Sign in to continue" not in response.body
     )
 

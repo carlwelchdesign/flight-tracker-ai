@@ -116,11 +116,12 @@
 ### ADR-015 — Explainable public exploration precedes recommendation work
 
 - Date: 2026-07-22
-- Decision: After FT-403 and FT-404 close the launch gate, deliver four public
+- Decision: After FT-404 closes the public launch gate, deliver four public
   product tickets in order: selected-flight attention explanation, deterministic
   time machine and telemetry, aircraft search and shareable URLs, then airport
   TAF/PIREP intelligence. Continue the existing M5 recommendation and
-  human-reviewed drafting work only after this M4.1 sequence.
+  human-reviewed drafting work only after this M4.1 sequence. Run FT-403 neutral
+  validation on the finished public sequence rather than blocking it beforehand.
 - Reason: The public tracker already proves live mapping and atmospheric-layer
   engineering, but its differentiating deterministic decision logic is mostly
   visible only after sign-in. The next portfolio work should make evidence,
@@ -137,6 +138,25 @@
 - M5 boundary: Deterministic code continues to own alert eligibility and
   severity. Optimization remains offline until validated, LLM output remains a
   reviewable draft, and no automatic message or operational action is enabled.
+
+### ADR-016 — Keep authentication out of the public portfolio journey
+
+- Date: 2026-07-22
+- Decision: The hosted recruiter experience is the public, read-only tracker.
+  It does not invite sign-in, branch into the protected operations console, or
+  block public product work on Clerk user/session drills. Direct `/sign-in` and
+  `/sign-up` requests return to the tracker.
+- Reason: The protected console is an internal engineering surface, not the
+  product a recruiter is being asked to evaluate. Its empty production identity
+  state repeatedly diverted the project into account setup and error recovery
+  without improving the flight-tracker demonstration.
+- Security boundary: Protected Rust endpoints continue to reject unauthenticated
+  requests, and tenant data, alert actions, notes, evidence URLs, and audit
+  history remain non-public. Removing the public auth journey does not open
+  those APIs or weaken their tested authorization contracts.
+- Delivery consequence: FT-404 closes on the public Vercel/Render/Neon smoke
+  evidence. FT-403 becomes a final neutral review of the completed FT-413–416
+  public experience instead of a prerequisite that blocks building it.
 
 ## Open decisions
 

@@ -69,7 +69,7 @@ def public_tracker_body():
     return (
         b'<main><p>Flight Tracker AI</p><span>Realtime regional aircraft explorer</span>'
         b'<label>Traffic region</label><section>Current picture</section>'
-        b'<a href="/sign-in">Protected operations console</a></main>'
+        b'</main>'
     )
 
 
@@ -105,6 +105,25 @@ class PublicSurfaceVerificationTest(unittest.TestCase):
 
         evidence = verify_public_surface(
             SurfaceConfig("production-sign-in-wall", WEB, API),
+            FakeClient(responses),
+        )
+
+        self.assertEqual(evidence["status"], "failed")
+        self.assertFalse(evidence["publication_ready"])
+
+    def test_public_tracker_rejects_protected_console_invitation(self):
+        responses = healthy_api()
+        responses[(WEB, "/")] = response(
+            200,
+            public_tracker_body().replace(
+                b"</main>",
+                b'<a href="/sign-in">Protected operations console</a></main>',
+            ),
+            {"content-type": "text/html; charset=utf-8", **SECURITY_HEADERS},
+        )
+
+        evidence = verify_public_surface(
+            SurfaceConfig("production-auth-prompt", WEB, API),
             FakeClient(responses),
         )
 
