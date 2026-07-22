@@ -7,16 +7,15 @@ Last updated: 2026-07-22
 - Current milestone: M5 — Optimization research and controlled recommendations
 - Active ticket: FT-403/FT-502 — independent validation gates
 - Branch: External evidence branches begin only when reviewer records exist
-- Pull request: FT-503 merged through [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52)
+- Pull request: FT-405 closeout [#54](https://github.com/carlwelchdesign/flight-tracker-ai/pull/54) is green pending merge
 - Owner: Product research and independent aviation-domain review
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 4/4 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Give production commit `9811eb0` to one neutral recruiter or
-  hiring-manager reviewer and the existing FT-502 packet to one independent
-  aviation-domain reviewer; record their actual observations on isolated
-  ticket branches and close each ticket only if its gate passes.
+- Next action: Merge green FT-405 closeout PR #54, then record the neutral
+  recruiter session and independent aviation-domain review on isolated ticket
+  branches when actual reviewer evidence is available.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.
@@ -52,12 +51,13 @@ Last updated: 2026-07-22
   five-minute motion projection without persisting provider positions or
   claiming a filed route, destination, ETA, or authoritative prediction. See
   [`FT-406-flight-trajectories.md`](tickets/FT-406-flight-trajectories.md).
-- FT-405 is active on `feat/ft-405-live-navigable-tracker`. The existing public
-  SVG/replay surface has been replaced in production by a sanitized public
+- FT-405 is complete through implementation PR #25 and closeout PR #54. The
+  original public SVG/replay surface was replaced by a sanitized public
   no-store ADSB.lol read model, a navigable MapLibre/OpenFreeMap view, animated
   aircraft updates, truthful evidence fields, and an explicit replay fallback.
-  It is a working live core, not the final map: airport and NOAA hazard/weather
-  overlays plus forced hosted failure-state verification remain. See
+  Follow-up tickets added trajectories, weather layers, regional traffic,
+  replay telemetry, and airport intelligence. Direct lifecycle/motion tests and
+  an isolated hosted source-failure check close the former gaps. See
   [`FT-405-live-navigable-tracker.md`](tickets/FT-405-live-navigable-tracker.md).
 
 ## Ticket progress
@@ -73,6 +73,14 @@ Last updated: 2026-07-22
 | M5 | 2 | 3 |
 
 ## Handoff notes
+
+- FT-405 closeout commit `b6a5944` adds direct polling, MapLibre lifecycle,
+  marker selection, interpolation, reduced-motion, cleanup, and map-failure
+  coverage. All 140 web tests, lint, TypeScript, and the clean production build
+  pass. Hosted Preview deployment `GENwMrgCEMzCfH4VVXZR3bEG7jkV` switched to
+  the deterministic fallback under an isolated branch-only API failure,
+  retained three aircraft after retry, fit the 390 by 844 mobile viewport, and
+  logged zero browser errors. The temporary Vercel override was removed.
 
 - FT-503 is complete and merged through PR
   [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52) at merge
