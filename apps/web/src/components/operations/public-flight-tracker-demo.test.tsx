@@ -139,9 +139,11 @@ describe("public flight tracker demo", () => {
     expect(screen.getByText("Ground speed")).toBeInTheDocument();
     expect(screen.getByText("Heading")).toBeInTheDocument();
     expect(screen.getByText("Freshness")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Not evaluated" })).not.toBeVisible();
+    expect(screen.getByRole("heading", { name: "Route risk unavailable" })).not.toBeVisible();
     await user.click(screen.getByText("More aircraft details"));
-    expect(screen.getByRole("heading", { name: "Not evaluated" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Route risk unavailable" })).toBeVisible();
+    expect(screen.getByText("Live traffic does not include the route information needed to evaluate weather conflicts.")).toBeVisible();
+    expect(screen.queryByText("Decision intelligence")).not.toBeInTheDocument();
     expect(screen.getByText("Received")).toBeInTheDocument();
     expect(screen.getByText("Snapshot age")).toBeInTheDocument();
     expect(screen.getByText("Provider state")).toBeInTheDocument();
@@ -311,10 +313,10 @@ describe("public flight tracker demo", () => {
     render(<PublicFlightTrackerDemo />);
 
     expect(await screen.findByRole("heading", { name: "UAL123" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Not evaluated" })).not.toBeVisible();
+    expect(screen.getByRole("heading", { name: "Route risk unavailable" })).not.toBeVisible();
     await user.click(screen.getByText("More aircraft details"));
-    expect(screen.getByRole("heading", { name: "Not evaluated" })).toBeVisible();
-    expect(screen.getByText("Live position only")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Route risk unavailable" })).toBeVisible();
+    expect(screen.getByText("Position data only")).toBeInTheDocument();
 
     const replayButton = screen.getByRole("button", { name: "Replay demo" });
     replayButton.focus();
@@ -343,8 +345,8 @@ describe("public flight tracker demo", () => {
     expect(screen.getByRole("heading", { name: "critical priority" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /FT101/i }));
-    expect(screen.getByRole("heading", { name: "Not evaluated" })).toBeVisible();
-    expect(screen.getByText(/no route evidence/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Route risk unavailable" })).toBeVisible();
+    expect(screen.getByText(/does not include enough route evidence/i)).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
@@ -393,10 +395,10 @@ describe("public flight tracker demo", () => {
 
     expect(await screen.findByText("Live source degraded")).toBeInTheDocument();
     expect(screen.getByText(/last accepted live picture is retained/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Not evaluated" })).not.toBeVisible();
+    expect(screen.getByRole("heading", { name: "Route risk unavailable" })).not.toBeVisible();
     await user.click(screen.getByText("More aircraft details"));
-    expect(screen.getByRole("heading", { name: "Not evaluated" })).toBeVisible();
-    expect(screen.getByText("Live position only")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Route risk unavailable" })).toBeVisible();
+    expect(screen.getByText("Position data only")).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
