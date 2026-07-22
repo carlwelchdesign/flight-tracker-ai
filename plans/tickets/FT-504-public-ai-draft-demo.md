@@ -1,10 +1,12 @@
 # FT-504 — Expose the bounded AI drafting demonstration
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-504-public-ai-draft-demo`
 Final implementation commit: `063f2df`
-Pull request: [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64)
+Documentation commit: `0e2b58a`
+Merge commit: `b88b9e3`
+Pull request: [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64) (merged)
 Owner: Backend, AI product, and frontend engineering
 
 Make the existing FT-503 OpenAI integration visible in the public portfolio
@@ -31,7 +33,7 @@ Dependencies: FT-502, FT-503
       degrade to the validated deterministic template.
 - [x] Focused Rust and web tests, lint, typecheck, production build, runtime
       smoke, and diff hygiene pass.
-- [ ] Branch, final commit, pull request, required checks, and hosted evidence
+- [x] Branch, final commit, pull request, required checks, and hosted evidence
       are recorded before completion.
 
 ## Non-goals
@@ -61,6 +63,23 @@ Dependencies: FT-502, FT-503
   returned its validated deterministic template, preserved `awaiting_review`,
   and kept `automatic_send_available: false`. No credential or provider body
   appeared in application output.
+- GitHub Actions run
+  [29945949109](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29945949109)
+  passed Rust, web, API/PostGIS smoke, Vercel, and Vercel Preview Comments for
+  implementation commit `063f2df`. PR #64 merged to `main` as `b88b9e3`.
+- Render staging deploy `dep-d9ggkof41pts738rlgn0` and production deploy
+  `dep-d9ggn5btqb8s73cula80` both expose the fixed public draft endpoint.
+  Production `/health` returned `ok`, `/readiness` returned `ready`, and two
+  consecutive `/api/public/ai-draft` response bodies had the same SHA-256
+  digest, confirming the process cache. The endpoint returned
+  `openai_responses_api`, model `gpt-5.6-luna`, no fallback reason,
+  `awaiting_review`, and `automatic_send_available: false`, with
+  `Cache-Control: no-store`.
+- Vercel production deployment `dpl_HrCfTqKN1bmDReYh76KUzgLaESre` is assigned
+  to `flight-tracker-ai-one.vercel.app`. Its public proxy returned the same
+  successful model result. A production browser check selected
+  `Generate AI draft`, found one visible OpenAI model label and one visible
+  `Awaiting human review` state, and found zero approve or send buttons.
 - A 1440-pixel browser check exercised the model-success presentation with the
   fixed route contract, found the AI and review status visible, zero approve or
   send controls, zero framework overlays, and no horizontal overflow. The

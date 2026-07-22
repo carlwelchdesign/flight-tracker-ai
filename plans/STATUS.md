@@ -5,16 +5,18 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active ticket: FT-504 — public AI drafting demonstration
-- Branch: `feat/ft-504-public-ai-draft-demo`
+- Active tickets: FT-403 neutral recruiter validation and FT-502 independent
+  aviation-domain review
+- Branch: external evidence branches as those sessions become available
 - Pull request: FT-504 [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64)
-- Owner: Backend, AI product, and frontend engineering
+  is merged
+- Owner: Project owner and external reviewers
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Expose the existing bounded Rust/OpenAI draft flow through one
-  fixed synthetic public demonstration, then verify it locally and hosted.
+- Next action: Run the remaining neutral recruiter session and independent
+  aviation-domain review without weakening either external evidence gate.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.
@@ -73,11 +75,20 @@ Last updated: 2026-07-22
 
 ## Handoff notes
 
-- FT-504 is in progress on `feat/ft-504-public-ai-draft-demo`. It will make the
-  existing FT-503 Responses API work visible through one fixed synthetic case,
-  with no arbitrary prompt, live/provider data, approval, send, or operational
-  action path. Rust retains evidence minimization, validation, deterministic
-  fallback, and the mandatory `awaiting_review` state.
+- FT-504 is complete through implementation commit `063f2df`, PR
+  [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64), and merge
+  commit `b88b9e3`. The production portfolio now exposes the existing FT-503
+  Responses API work through one fixed synthetic case, with no arbitrary
+  prompt, live/provider data, approval, send, or operational action path. Rust
+  retains evidence minimization, validation, deterministic fallback, and the
+  mandatory `awaiting_review` state. GitHub Actions run
+  [29945949109](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29945949109)
+  passed all required checks. Render production deploy
+  `dep-d9ggn5btqb8s73cula80` returned an actual `gpt-5.6-luna` draft with no
+  fallback and stable cached response bodies. Vercel production deployment
+  `dpl_HrCfTqKN1bmDReYh76KUzgLaESre` is assigned to the public domain; its live
+  browser flow shows the model and human-review state with no approve or send
+  controls.
 
 - FT-422 is complete through implementation commit `3485e3f` and PR
   [#63](https://github.com/carlwelchdesign/flight-tracker-ai/pull/63). The NOAA
