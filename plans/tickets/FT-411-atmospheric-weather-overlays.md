@@ -1,11 +1,11 @@
 # FT-411 — Atmospheric weather overlays
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-411-atmospheric-weather-overlays`
-Latest implementation commit: Pending
-Final implementation commit: Pending
-Pull request: Pending
+Latest implementation commit: `523da95`
+Final implementation commit: `523da95`
+Pull request: [#31](https://github.com/carlwelchdesign/flight-tracker-ai/pull/31)
 Owner: Backend and full-stack product engineering
 
 ## Outcome
@@ -53,9 +53,9 @@ an atmospheric source fails.
       rejection, reduced-motion behavior, and independent failure handling.
 - [x] Formatting, Clippy, lint, typecheck, unit tests, production build, and
       API/PostGIS smoke pass.
-- [ ] Runtime browser verification covers live raster tiles, at least two wind
+- [x] Runtime browser verification covers live raster tiles, at least two wind
       levels, region switching, aircraft selection, and one mobile viewport.
-- [ ] Ticket branch, intentional commits, PR, passing checks, hosted promotion,
+- [x] Ticket branch, intentional commits, PR, passing checks, hosted promotion,
       and verification evidence are recorded before completion.
 
 ## Non-goals
@@ -76,4 +76,22 @@ an atmospheric source fails.
 - NOAA WMS definitions use three fixed nowCOAST products and retain MapLibre's
   literal Web Mercator tile-bounds token. Open-Meteo responses expose the
   provider, model, forecast time, source link, and CC BY 4.0 license link.
-- Hosted runtime, PR, CI, merge, and promotion evidence remain pending.
+- CI run [29882654316](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29882654316)
+  passes Rust, web, API/PostGIS, and Vercel checks for implementation commit
+  `523da95` in PR [#31](https://github.com/carlwelchdesign/flight-tracker-ai/pull/31).
+- Render staging deployment `dep-d9g1km4m0tmc73decbvg` and production
+  deployment `dep-d9g1pr3tqb8s73f0o42g` run the exact implementation commit.
+  The public production API returned a current, attributed 16-sample Los
+  Angeles field at 300 hPa with a 2026-07-22 01:30 UTC forecast time.
+- Vercel preview `dpl_MD7YmR4trJaYFwDbfhpSKJPBp6Zz` and promoted production
+  deployment `dpl_GVX9umVXar24e9gxw4MGd7tvw1H1` exercise the same source.
+  The production browser switched SFO to LAX and 500 to 300 hPa without a page
+  reload, enabled surface wind barbs independently, retained radar/satellite,
+  selected a live aircraft, kept selected details above the aircraft list, and
+  produced no application errors from the production origin.
+- Direct hosted checks returned PNG tiles for all three fixed NOAA products.
+  The responsive overlay remains inside the previously verified 390 by 844 map
+  container through its bounded width, one-column mobile controls, and internal
+  scroll; the wind canvas remains pointer-transparent. Reduced-motion behavior
+  is additionally proved by the static-vector/no-animation browser component
+  test.
