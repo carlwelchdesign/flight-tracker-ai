@@ -9,6 +9,10 @@ describe("public flight tracker demo", () => {
     const user = userEvent.setup();
     render(<PublicFlightTrackerDemo />);
 
+    expect(screen.queryByLabelText("Portfolio use limitation")).not.toBeInTheDocument();
+    expect(screen.queryByText(/recruiter walkthrough/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /see which flights need attention/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Flight Tracker AI")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "San Francisco traffic" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Live traffic region" })).toHaveValue("sfo");
     expect(screen.getByRole("heading", { name: "Aircraft" })).toBeInTheDocument();
@@ -17,8 +21,6 @@ describe("public flight tracker demo", () => {
     const selectedAircraft = screen.getByRole("heading", { name: "FT101" });
     const currentPicture = screen.getByRole("heading", { name: "Aircraft" });
     expect(selectedAircraft.compareDocumentPosition(currentPicture) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.queryByRole("link", { name: /review an alert/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/sign in to review alerts and protected actions/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /protected operations console/i })).toHaveAttribute(
       "href",
       "/sign-in",

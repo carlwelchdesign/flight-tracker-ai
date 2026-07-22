@@ -78,43 +78,6 @@ a:focus-visible {
 }
 .skip-link:focus { transform: translateY(0); }
 
-.operations-trust-banner {
-  position: sticky;
-  z-index: 90;
-  top: 0;
-  min-height: 34px;
-  display: grid;
-  grid-template-columns: max-content minmax(320px, 1fr) max-content;
-  align-items: center;
-  gap: 18px;
-  padding: 7px 22px;
-  border-bottom: 1px solid #6b4d26;
-  background: #241a0f;
-  color: #f5d59f;
-  font-size: 10px;
-  line-height: 1.35;
-}
-
-.operations-trust-banner strong {
-  font: 680 9px/1 "Geist Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  white-space: nowrap;
-}
-
-.operations-trust-banner span:last-child {
-  color: #c7b48f;
-  text-align: right;
-}
-
-.trust-banner-evaluation {
-  border-color: #315b7d;
-  background: #101d29;
-  color: #b9d8f2;
-}
-
-.trust-banner-evaluation span:last-child { color: #91afc5; }
-
 .operations-shell {
   min-height: 100vh;
   display: flex;
@@ -873,12 +836,6 @@ a:focus-visible {
 
 @media (max-width: 820px) {
   .portfolio-orientation-steps, .portfolio-orientation-modes { grid-template-columns: 1fr; }
-  .operations-trust-banner {
-    grid-template-columns: 1fr;
-    gap: 3px;
-    padding: 8px 14px;
-  }
-  .operations-trust-banner span:last-child { text-align: left; }
   .operations-header { grid-template-columns: 1fr; gap: 10px; padding: 12px 14px; }
   .operations-controls { grid-column: 1; grid-row: auto; flex-wrap: wrap; justify-content: space-between; }
   .live-tracker-shell .operations-controls { grid-template-columns: 1fr; justify-content: stretch; }

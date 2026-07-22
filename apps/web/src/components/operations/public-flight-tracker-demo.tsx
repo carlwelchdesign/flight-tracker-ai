@@ -25,7 +25,6 @@ import {
   type PublicWeatherSnapshot,
 } from "@/lib/public-weather";
 import { displayCallsign, LiveTrackerMap } from "./live-tracker-map";
-import { PortfolioOrientation } from "./portfolio-orientation";
 
 const POLL_INTERVAL_MS = 75_000;
 const WEATHER_POLL_INTERVAL_MS = 60_000;
@@ -123,7 +122,6 @@ export function PublicFlightTrackerDemo() {
   return (
     <main className="operations-shell live-tracker-shell">
       <a className="skip-link" href="#live-flight-list">Skip to aircraft list</a>
-      <PortfolioOrientation publicDemo />
       <header className="operations-header">
         <div className="product-lockup">
           <span className="product-mark" aria-hidden="true"><i /><i /><i /></span>
