@@ -3,6 +3,7 @@
 Status: In progress — live core deployed; overlay and forced-failure verification remain
 
 Branch: `feat/ft-405-live-navigable-tracker`
+Closeout branch: `test/ft-405-live-map-verification`
 Latest implementation commit: `27bcec3`
 Final commit: Pending
 Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)

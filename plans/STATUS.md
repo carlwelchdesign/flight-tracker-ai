@@ -5,18 +5,17 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active ticket: FT-403/FT-502 — independent validation gates
-- Branch: External evidence branches begin only when reviewer records exist
-- Pull request: FT-503 merged through [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52)
-- Owner: Product research and independent aviation-domain review
+- Active ticket: FT-405 — live-map verification closeout
+- Branch: `test/ft-405-live-map-verification`
+- Pull request: Pending
+- Owner: Frontend and full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 4/4 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Give production commit `9811eb0` to one neutral recruiter or
-  hiring-manager reviewer and the existing FT-502 packet to one independent
-  aviation-domain reviewer; record their actual observations on isolated
-  ticket branches and close each ticket only if its gate passes.
+- Next action: Add direct polling, marker interpolation, reduced-motion, and
+  MapLibre lifecycle tests; reconcile FT-405's remaining hosted evidence from
+  its completed follow-up tickets, then return to the two independent reviews.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.

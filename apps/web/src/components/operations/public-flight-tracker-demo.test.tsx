@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PublicFlightTrackerDemo } from "./public-flight-tracker-demo";
@@ -31,6 +31,41 @@ describe("public flight tracker demo", () => {
 
     await user.click(screen.getByRole("button", { name: /FT303/i }));
     expect(screen.getByRole("heading", { name: "FT303" })).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("refreshes live traffic on the bounded 75-second polling cadence", async () => {
+    const intervals: Array<{ callback: () => void; delay: number }> = [];
+    vi.spyOn(window, "setInterval").mockImplementation(((callback: TimerHandler, delay?: number) => {
+      if (typeof callback === "function") intervals.push({ callback: () => callback(), delay: delay ?? 0 });
+      return intervals.length;
+    }) as typeof window.setInterval);
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const payload = url.includes("/weather")
+        ? weatherPayload()
+        : url.includes("/replay/attention")
+          ? attentionPayload()
+          : url.includes("/replay/timeline")
+            ? replayTimelinePayload()
+            : url.includes("/atmosphere/")
+              ? windPayload()
+              : livePayload();
+      return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<PublicFlightTrackerDemo />);
+    expect(await screen.findByRole("heading", { name: "UAL123" })).toBeInTheDocument();
+    const liveRequestsBefore = fetchMock.mock.calls.filter(([input]) => String(input).includes("/live-positions")).length;
+    const trafficPoll = intervals.find(({ delay }) => delay === 75_000);
+    expect(trafficPoll).toBeDefined();
+
+    await act(async () => trafficPoll?.callback());
+    await waitFor(() => {
+      const liveRequestsAfter = fetchMock.mock.calls.filter(([input]) => String(input).includes("/live-positions")).length;
+      expect(liveRequestsAfter).toBe(liveRequestsBefore + 1);
+    });
     vi.unstubAllGlobals();
   });
 
