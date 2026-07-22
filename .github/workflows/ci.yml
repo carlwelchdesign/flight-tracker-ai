@@ -108,6 +108,7 @@ jobs:
           DEV_AUTH_ROLE: administrator
           ENABLE_REPLAY_CONTROLS: "true"
           REPLAY_SCENARIO_PATH: fixtures/replay/m1-operations-v1.json
+          PUBLIC_WEATHER_OPERATOR_ID: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
         run: target/debug/flight-tracker-api > /tmp/flight-tracker-api.log 2>&1 &
       - name: Verify health and readiness
         run: |

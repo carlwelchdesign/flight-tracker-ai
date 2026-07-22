@@ -68,6 +68,7 @@ pub struct Config {
     pub database_url: String,
     pub replay: Option<ReplayConfig>,
     pub noaa: Option<NoaaConfig>,
+    pub public_weather_operator: Option<OperatorId>,
     pub adsb_lol: Option<AdsbLolConfig>,
     pub auth: AuthConfig,
 }
@@ -104,6 +105,8 @@ pub enum ConfigError {
     MissingNoaaUserAgent,
     #[error("NOAA_POLL_INTERVAL_SECONDS must be an integer of at least 60")]
     InvalidNoaaPollInterval,
+    #[error("PUBLIC_WEATHER_OPERATOR_ID must be a UUID when configured")]
+    InvalidPublicWeatherOperator,
     #[error("ENABLE_ADSB_LOL_POSITIONS must be true or false")]
     InvalidAdsbLolToggle,
     #[error("ADSB_LOL_OPERATOR_ID must be a UUID when ADSB.lol ingestion is enabled")]
@@ -239,6 +242,14 @@ impl Config {
         } else {
             None
         };
+        let public_weather_operator = match lookup("PUBLIC_WEATHER_OPERATOR_ID") {
+            Some(value) => Some(
+                Uuid::parse_str(&value)
+                    .map(OperatorId::from_uuid)
+                    .map_err(|_| ConfigError::InvalidPublicWeatherOperator)?,
+            ),
+            None => noaa.as_ref().map(|value| value.operator_id),
+        };
         let adsb_lol_enabled = parse_bool(
             lookup("ENABLE_ADSB_LOL_POSITIONS")
                 .as_deref()
@@ -366,6 +377,7 @@ impl Config {
             database_url,
             replay,
             noaa,
+            public_weather_operator,
             adsb_lol,
             auth: AuthConfig {
                 mode: auth_mode,
@@ -521,6 +533,25 @@ mod tests {
         ])
         .unwrap_err();
         assert!(matches!(error, ConfigError::InvalidNoaaPollInterval));
+    }
+
+    #[test]
+    fn public_weather_operator_can_be_configured_without_starting_ingestion() {
+        let configured = config(&[(
+            "PUBLIC_WEATHER_OPERATOR_ID",
+            "00000000-0000-0000-0000-000000000001",
+        )])
+        .unwrap();
+        assert_eq!(
+            configured.public_weather_operator,
+            Some(OperatorId::from_uuid(
+                Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap()
+            ))
+        );
+        assert!(matches!(
+            config(&[("PUBLIC_WEATHER_OPERATOR_ID", "not-a-uuid")]),
+            Err(ConfigError::InvalidPublicWeatherOperator)
+        ));
     }
 
     #[test]

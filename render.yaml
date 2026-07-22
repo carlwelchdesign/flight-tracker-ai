@@ -7,7 +7,7 @@ services:
     repo: https://github.com/carlwelchdesign/flight-tracker-ai
     # FT-404 is verified from its feature branch before the release PR merges.
     # Change both service branches to main in the final promotion commit.
-    branch: feat/ft-404-production-deployment
+    branch: feat/ft-405-live-navigable-tracker
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
@@ -35,9 +35,31 @@ services:
       - key: ENABLE_PORTFOLIO_REPLAY
         value: "true"
       - key: ENABLE_NOAA_WEATHER
-        value: "false"
+        value: "true"
+      - key: NOAA_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: PUBLIC_WEATHER_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: NOAA_METAR_STATIONS
+        value: KSFO,KOAK,KSJC
+      - key: NOAA_POLL_INTERVAL_SECONDS
+        value: "60"
+      - key: NOAA_USER_AGENT
+        value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
       - key: ENABLE_ADSB_LOL_POSITIONS
-        value: "false"
+        value: "true"
+      - key: ADSB_LOL_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: ADSB_LOL_LATITUDE
+        value: "37.62"
+      - key: ADSB_LOL_LONGITUDE
+        value: "-122.38"
+      - key: ADSB_LOL_RADIUS_NM
+        value: "50"
+      - key: ADSB_LOL_POLL_INTERVAL_SECONDS
+        value: "30"
+      - key: ADSB_LOL_USER_AGENT
+        value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
       - key: RUST_LOG
         value: flight_tracker_api=info
 
@@ -50,7 +72,7 @@ services:
     plan: free
     region: virginia
     repo: https://github.com/carlwelchdesign/flight-tracker-ai
-    branch: feat/ft-404-production-deployment
+    branch: feat/ft-405-live-navigable-tracker
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
@@ -77,8 +99,30 @@ services:
       - key: ENABLE_PORTFOLIO_REPLAY
         value: "true"
       - key: ENABLE_NOAA_WEATHER
-        value: "false"
+        value: "true"
+      - key: NOAA_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: PUBLIC_WEATHER_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: NOAA_METAR_STATIONS
+        value: KSFO,KOAK,KSJC
+      - key: NOAA_POLL_INTERVAL_SECONDS
+        value: "60"
+      - key: NOAA_USER_AGENT
+        value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
       - key: ENABLE_ADSB_LOL_POSITIONS
-        value: "false"
+        value: "true"
+      - key: ADSB_LOL_OPERATOR_ID
+        value: 9c704a09-a62c-43d5-bac6-94ea2fd53b32
+      - key: ADSB_LOL_LATITUDE
+        value: "37.62"
+      - key: ADSB_LOL_LONGITUDE
+        value: "-122.38"
+      - key: ADSB_LOL_RADIUS_NM
+        value: "50"
+      - key: ADSB_LOL_POLL_INTERVAL_SECONDS
+        value: "30"
+      - key: ADSB_LOL_USER_AGENT
+        value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
       - key: RUST_LOG
         value: flight_tracker_api=info

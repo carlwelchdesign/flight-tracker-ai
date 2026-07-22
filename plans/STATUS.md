@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-404 — Deploy the public portfolio and preview environments
-- Branch: `feat/ft-404-production-deployment`
-- Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
-- Owner: Platform, backend, security, and full-stack engineering
+- Active ticket: FT-405 — Live navigable flight tracker release closeout
+- Branch: `feat/ft-405-live-navigable-tracker`
+- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
+- Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Enroll the reviewer in the production Clerk organization and run
-  the authenticated browser and hosted FT-401 smoke before final promotion.
+- Next action: Close the remaining FT-405 direct motion/lifecycle coverage and
+  forced hosted fallback checks before merging the parent release PR.
 
 ## Milestone checklist
 
@@ -21,6 +21,29 @@ Last updated: 2026-07-21
 - [x] M3 — Portfolio live data and operational workflow
 - [ ] M4 — Portfolio launch and demonstration hardening
 - [ ] M5 — Optimization research and controlled recommendations
+
+## Current product correction
+
+- FT-408 is complete and merged through stacked PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28).
+  It ports NOAA METAR and SIGMET capability to the public navigable map through
+  a fixed-operator sanitized Rust read boundary and is live in production. See
+  [`FT-408-public-weather-map-layers.md`](tickets/FT-408-public-weather-map-layers.md).
+- FT-407 is complete and merged through stacked PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27). It corrects
+  the public live-map glyph axis without changing ADS-B headings, trajectory
+  math, or the protected console's separate north-facing SVG marker. See
+  [`FT-407-aircraft-marker-heading.md`](tickets/FT-407-aircraft-marker-heading.md).
+- FT-406 is complete and merged through stacked PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26). It adds a selected live
+  aircraft's ten-minute observed trail and a separately labeled estimated
+  five-minute motion projection without persisting provider positions or
+  claiming a filed route, destination, ETA, or authoritative prediction. See
+  [`FT-406-flight-trajectories.md`](tickets/FT-406-flight-trajectories.md).
+- FT-405 is active on `feat/ft-405-live-navigable-tracker`. The existing public
+  SVG/replay surface has been replaced in production by a sanitized public
+  no-store ADSB.lol read model, a navigable MapLibre/OpenFreeMap view, animated
+  aircraft updates, truthful evidence fields, and an explicit replay fallback.
+  It is a working live core, not the final map: airport and NOAA hazard/weather
+  overlays plus forced hosted failure-state verification remain. See
+  [`FT-405-live-navigable-tracker.md`](tickets/FT-405-live-navigable-tracker.md).
 
 ## Ticket progress
 
@@ -35,6 +58,43 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
+- FT-409 is complete and merged into FT-405 through PR [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
+  at `a99c47f`. The selected-aircraft evidence panel now precedes the current
+  aircraft list in visual and document order, while the list retains its own
+  scrolling region. All five checks pass. Vercel production deployment
+  `dpl_GL7BncuJF6ptg8aeBmDXpSvLxLK1` is live, and the public browser check
+  confirms the intended order with no application errors or overflow.
+- FT-408 is merged into the FT-405 feature branch through PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28)
+  at merge commit `d222094`; hosted-enablement commit `1ed490c` passes all five
+  checks. Render staging and production return a sanitized no-store NOAA
+  snapshot with three Bay Area METAR observations and 19 current provider
+  hazards. Vercel production deployment
+  `dpl_Cv3Z6XafLmTTh7and9SzBcx3fpzi` is live at
+  `https://flight-tracker-ai-one.vercel.app`; production browser verification
+  proves visible stale/current source truth, independent METAR/SIGMET controls,
+  selection evidence, attribution, live aircraft continuity, and no application
+  errors. The separate Clerk Marketplace DNS advisory remains unchanged.
+- FT-407 is merged into the FT-405 feature branch through PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27)
+  at merge commit `965a779`. Final CI run
+  [29875782640](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875782640)
+  passes all five checks. Production deployment
+  `dpl_9CXK2vvtPbdcNiaBnX9ZK52FgPfN` is live at
+  `https://flight-tracker-ai-one.vercel.app`. The public live MapLibre marker now applies an
+  explicit negative 90-degree glyph-axis correction; browser verification
+  proved supplied headings render with the exact correction in local and public
+  production without changing source evidence or trajectory math.
+- FT-406 is merged into the FT-405 feature branch through PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26)
+  at merge commit `2df6deb`. Final CI run
+  [29875004160](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875004160)
+  passes all five checks. Production deployment
+  `dpl_6NHNmJBCJPiaFHrtURRJ8zv8832E` is live at
+  `https://flight-tracker-ai-one.vercel.app`. Selected live aircraft now show a bounded ten-minute
+  page-memory trail and a separately styled deterministic five-minute motion
+  estimate; neither is persisted or represented as a route, destination, ETA,
+  or new observation. Live desktop/mobile browser verification captured two
+  accepted source points and a 9.6 NM projection after one provider refresh on
+  the public production site. Mobile verification confirms a bounded 560-pixel
+  aircraft panel and zero horizontal overflow at `390x844`.
 - GitHub repository: `carlwelchdesign/flight-tracker-ai`.
 - `main` and `origin` are established; planning baseline commit: `8feb57d`.
 - FT-001 is merged through PR #1 at `c8e0bb4`.

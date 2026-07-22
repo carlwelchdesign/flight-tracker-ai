@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 import { OperationsTrustBanner } from "@/components/operations/operations-trust-banner";
 import { authMode } from "@/lib/auth-server";
