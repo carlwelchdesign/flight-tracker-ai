@@ -34,8 +34,18 @@ import {
   parsePublicWeatherSnapshot,
   type PublicWeatherSnapshot,
 } from "@/lib/public-weather";
+import {
+  aircraftMatchesKey,
+  aircraftUrlKey,
+  defaultPublicTrackerUrlState,
+  parsePublicTrackerUrl,
+  serializePublicTrackerUrl,
+  type PublicMapView,
+  type PublicWeatherLayers,
+} from "@/lib/public-tracker-url";
 import { displayCallsign, LiveTrackerMap } from "./live-tracker-map";
 import { ReplayTimeMachine } from "./replay-time-machine";
+import { TrackerExplorationControls } from "./tracker-exploration-controls";
 
 const POLL_INTERVAL_MS = 75_000;
 const WEATHER_POLL_INTERVAL_MS = 60_000;
@@ -56,6 +66,11 @@ export function PublicFlightTrackerDemo() {
   const [attentionLoading, setAttentionLoading] = useState(true);
   const [attentionFailed, setAttentionFailed] = useState(false);
   const [preferReplay, setPreferReplay] = useState(false);
+  const [urlReady, setUrlReady] = useState(false);
+  const [requestedAircraftKey, setRequestedAircraftKey] = useState<string | null>(null);
+  const [aircraftQuery, setAircraftQuery] = useState("");
+  const [mapView, setMapView] = useState<PublicMapView | null>(null);
+  const [weatherLayers, setWeatherLayers] = useState<PublicWeatherLayers>(() => defaultPublicTrackerUrlState().weather);
   const [replayTimeline, setReplayTimeline] = useState<PublicReplayTimeline | null>(null);
   const [replayTimelineLoading, setReplayTimelineLoading] = useState(true);
   const [replayTimelineFailed, setReplayTimelineFailed] = useState(false);
@@ -71,6 +86,35 @@ export function PublicFlightTrackerDemo() {
     () => (replayPicture?.aircraft ?? replayAircraft()).filter((item) => item.callsign !== "FT202"),
     [replayPicture],
   );
+
+  const applyUrlState = useCallback((search: string) => {
+    const next = parsePublicTrackerUrl(search);
+    setRegion(findPublicLiveRegion(next.regionCode) ?? DEFAULT_PUBLIC_LIVE_REGION);
+    setPreferReplay(next.mode === "replay");
+    setRequestedAircraftKey(next.aircraftKey);
+    setReplayElapsedMs(next.replayElapsedMs);
+    setReplayPlaying(false);
+    setMapView(next.mapView);
+    setWeatherLayers(next.weather);
+    setSnapshot(null);
+    setSelectedId(null);
+    setTrajectoryHistory(new Map());
+    setLoading(true);
+    setRefreshFailed(false);
+  }, []);
+
+  useEffect(() => {
+    const initial = window.setTimeout(() => {
+      applyUrlState(window.location.search);
+      setUrlReady(true);
+    }, 0);
+    const handlePopState = () => applyUrlState(window.location.search);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.clearTimeout(initial);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [applyUrlState]);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -137,6 +181,7 @@ export function PublicFlightTrackerDemo() {
   }, []);
 
   useEffect(() => {
+    if (!urlReady) return;
     const controller = new AbortController();
     const initial = window.setTimeout(() => void refresh(controller.signal), 0);
     const timer = window.setInterval(() => void refresh(controller.signal), POLL_INTERVAL_MS);
@@ -145,7 +190,7 @@ export function PublicFlightTrackerDemo() {
       window.clearTimeout(initial);
       window.clearInterval(timer);
     };
-  }, [refresh]);
+  }, [refresh, urlReady]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -192,18 +237,31 @@ export function PublicFlightTrackerDemo() {
   const hasAcceptedLivePicture = (snapshot?.data.length ?? 0) > 0;
   const fallbackReplay = !hasAcceptedLivePicture && !loading;
   const useReplay = preferReplay || fallbackReplay;
-  const aircraft = preferReplay
+  const aircraft = useMemo(() => preferReplay
     ? portfolioReplayAircraft
     : fallbackReplay
       ? fallbackAircraftForRegion
-      : snapshot?.data ?? [];
+      : snapshot?.data ?? [], [fallbackAircraftForRegion, fallbackReplay, portfolioReplayAircraft, preferReplay, snapshot?.data]);
+  const normalizedQuery = aircraftQuery.trim().toUpperCase();
+  const visibleAircraft = normalizedQuery
+    ? aircraft.filter((item) => [item.callsign, item.icao_hex, item.aircraft_registration]
+      .some((value) => value?.toUpperCase().includes(normalizedQuery)))
+    : aircraft;
   const displayedRegion = preferReplay ? PORTFOLIO_REPLAY_REGION : region;
   const mode: TrackerMode = useReplay ? "replay" : refreshFailed || snapshot?.status.state !== "current" ? "stale" : "live";
   const sourceState = loading ? "connecting" : snapshot?.status.state ?? (refreshFailed ? "unavailable" : "connecting");
-  const selected = aircraft.find((item) => item.id === selectedId)
-    ?? (preferReplay ? aircraft.find((item) => item.callsign === "FT303") : null)
-    ?? aircraft[0]
-    ?? null;
+  const requestedAircraft = requestedAircraftKey
+    ? aircraft.find((item) => aircraftMatchesKey(item, requestedAircraftKey)) ?? null
+    : null;
+  const selectedFromPicture = requestedAircraftKey
+    ? requestedAircraft
+    : aircraft.find((item) => item.id === selectedId)
+      ?? (preferReplay ? aircraft.find((item) => item.callsign === "FT303") : null)
+      ?? aircraft[0]
+      ?? null;
+  const selected = normalizedQuery
+    ? visibleAircraft.find((item) => item.id === selectedFromPicture?.id) ?? visibleAircraft[0] ?? null
+    : selectedFromPicture;
   const attentionEffectiveMs = replayTimeline && attentionPicture
     ? Date.parse(attentionPicture.scenario_time) - Date.parse(replayTimeline.start_time)
     : 60_000;
@@ -217,31 +275,79 @@ export function PublicFlightTrackerDemo() {
       : [];
   const selectedProjection = selected && !useReplay ? estimateTrajectory(selected) : null;
   const weatherState = weather?.state ?? (weatherLoading ? "loading" : "unavailable");
+  const missingAircraftKey = urlReady && !loading && requestedAircraftKey
+    && !aircraft.some((item) => aircraftMatchesKey(item, requestedAircraftKey))
+    ? requestedAircraftKey
+    : null;
+
+  useEffect(() => {
+    if (!urlReady) return;
+    const search = serializePublicTrackerUrl({
+      mode: preferReplay ? "replay" : "live",
+      regionCode: region.code,
+      aircraftKey: requestedAircraftKey,
+      replayElapsedMs,
+      mapView,
+      weather: weatherLayers,
+    });
+    const next = `${window.location.pathname}${search}${window.location.hash}`;
+    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (next !== current) window.history.replaceState({}, "", next);
+  }, [mapView, preferReplay, region.code, replayElapsedMs, requestedAircraftKey, urlReady, weatherLayers]);
+
+  function checkpointHistory() {
+    window.history.pushState({}, "", window.location.href);
+  }
 
   function handleRegionChange(code: string) {
     const nextRegion = findPublicLiveRegion(code);
     if (!nextRegion || nextRegion.code === region.code) return;
+    checkpointHistory();
     setRegion(nextRegion);
     setSnapshot(null);
     setSelectedId(null);
     setTrajectoryHistory(new Map());
     setLoading(true);
     setRefreshFailed(false);
+    setRequestedAircraftKey(null);
+    setMapView(null);
   }
 
   function handlePictureMode(nextMode: "live" | "replay") {
     const replay = nextMode === "replay";
+    checkpointHistory();
     setPreferReplay(replay);
     setReplayPlaying(false);
     if (replay) setReplayElapsedMs(Math.max(0, Math.min(replayTimeline?.duration_ms ?? 60_000, attentionEffectiveMs)));
-    setSelectedId(replay
-      ? portfolioReplayAircraft.find((item) => item.callsign === "FT303")?.id ?? null
-      : snapshot?.data[0]?.id ?? null);
+    const nextSelected = replay
+      ? portfolioReplayAircraft.find((item) => item.callsign === "FT303") ?? null
+      : snapshot?.data[0] ?? null;
+    setSelectedId(nextSelected?.id ?? null);
+    setRequestedAircraftKey(nextSelected ? aircraftUrlKey(nextSelected) : null);
   }
 
   function handleReplayElapsedChange(value: number) {
     setReplayPlaying(false);
     setReplayElapsedMs(Math.max(0, Math.min(replayTimeline?.duration_ms ?? value, value)));
+  }
+
+  function handleAircraftSelect(id: string) {
+    const next = aircraft.find((item) => item.id === id);
+    checkpointHistory();
+    setSelectedId(id);
+    setRequestedAircraftKey(next ? aircraftUrlKey(next) : null);
+  }
+
+  function currentShareUrl() {
+    const search = serializePublicTrackerUrl({
+      mode: preferReplay ? "replay" : "live",
+      regionCode: region.code,
+      aircraftKey: selected ? aircraftUrlKey(selected) : requestedAircraftKey,
+      replayElapsedMs,
+      mapView,
+      weather: weatherLayers,
+    });
+    return `${window.location.origin}${window.location.pathname}${search}`;
   }
 
   return (
@@ -325,20 +431,30 @@ export function PublicFlightTrackerDemo() {
       )}
 
       <div className="live-tracker-grid">
-        <LiveTrackerMap
-          aircraft={aircraft}
-          region={displayedRegion}
-          selectedId={selected?.id ?? null}
-          status={snapshot?.status ?? null}
-          mode={mode}
-          trail={selectedTrail}
-          projection={selectedProjection}
-          weather={weather}
-          weatherState={weatherState}
-          weatherRetained={weatherRefreshFailed && weather !== null}
-          onRetryWeather={() => void refreshWeather()}
-          onSelect={setSelectedId}
-        />
+        {urlReady ? (
+          <LiveTrackerMap
+            aircraft={visibleAircraft}
+            region={displayedRegion}
+            selectedId={selected?.id ?? null}
+            status={snapshot?.status ?? null}
+            mode={mode}
+            trail={selectedTrail}
+            projection={selectedProjection}
+            weather={weather}
+            weatherState={weatherState}
+            weatherRetained={weatherRefreshFailed && weather !== null}
+            view={mapView}
+            layers={weatherLayers}
+            onRetryWeather={() => void refreshWeather()}
+            onSelect={handleAircraftSelect}
+            onViewChange={setMapView}
+            onLayersChange={setWeatherLayers}
+          />
+        ) : (
+          <section className="ops-panel live-map-panel tracker-url-loading" aria-live="polite">
+            Restoring shared tracker view…
+          </section>
+        )}
         <div className="live-tracker-sidebar">
           <AircraftInspector
             aircraft={selected}
@@ -354,18 +470,30 @@ export function PublicFlightTrackerDemo() {
           <section className="ops-panel live-traffic-panel" id="live-flight-list" aria-labelledby="traffic-title">
             <div className="ops-panel-heading">
               <div><p className="ops-eyebrow">Current picture</p><h2 id="traffic-title">Aircraft</h2></div>
-              <span className="traffic-count">{aircraft.length}</span>
+              <span className="traffic-count">{visibleAircraft.length}</span>
             </div>
+            <TrackerExplorationControls
+              query={aircraftQuery}
+              visibleCount={visibleAircraft.length}
+              totalCount={aircraft.length}
+              missingAircraftKey={missingAircraftKey}
+              onQueryChange={setAircraftQuery}
+              onClearMissingAircraft={() => {
+                checkpointHistory();
+                setRequestedAircraftKey(null);
+              }}
+              getShareUrl={currentShareUrl}
+            />
             <div className="live-aircraft-list">
-              {aircraft.map((item) => (
+              {visibleAircraft.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   className={item.id === selected?.id ? "live-flight-row is-selected" : "live-flight-row"}
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={() => handleAircraftSelect(item.id)}
                 >
                   <strong>{displayCallsign(item)}</strong>
-                  <span>{formatAltitude(item)} · {formatSpeed(item)}</span>
+                  <span>{formatAltitude(item)} · {formatSpeed(item)}{item.icao_hex ? ` · ICAO ${item.icao_hex}` : ""}</span>
                   <time dateTime={item.observed_at}>
                     {useReplay
                       ? `Replay · ${formatScenarioTime(item.observed_at)}`
@@ -374,6 +502,9 @@ export function PublicFlightTrackerDemo() {
                 </button>
               ))}
               {!loading && aircraft.length === 0 && <p className="empty-traffic">No aircraft are visible in this regional snapshot.</p>}
+              {!loading && aircraft.length > 0 && visibleAircraft.length === 0 && (
+                <p className="empty-traffic">No callsign, ICAO hex, or registration matches this picture.</p>
+              )}
             </div>
           </section>
         </div>
@@ -437,6 +568,7 @@ function AircraftInspector({
           />
           <Fact label="Freshness" value={mode === "replay" ? "Simulated" : isAircraftStale(aircraft, status) ? "Stale" : "Fresh"} />
           <Fact label="Provider state" value={mode === "replay" ? "Deterministic replay" : status?.state ?? "Connecting"} />
+          {aircraft.icao_hex && <Fact label="ICAO hex" value={aircraft.icao_hex} />}
           <Fact label="Source quality" value={mode === "replay" ? aircraft.quality === "estimated" ? "Visual interpolation" : "Observed replay point" : aircraft.quality} />
           <Fact
             label="Observed trail"
@@ -571,6 +703,7 @@ function replayAircraft(center?: readonly [longitude: number, latitude: number])
     id: view.flight.id,
     callsign: view.flight.callsign,
     aircraft_registration: view.flight.aircraft_registration,
+    icao_hex: null,
     longitude_degrees: center ? center[0] + offsets[index][0] : view.latest_position.point.longitude_degrees,
     latitude_degrees: center ? center[1] + offsets[index][1] : view.latest_position.point.latitude_degrees,
     altitude: view.latest_position.altitude,

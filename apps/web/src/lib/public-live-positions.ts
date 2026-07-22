@@ -2,6 +2,7 @@ export type PublicAircraft = {
   id: string;
   callsign: string | null;
   aircraft_registration: string | null;
+  icao_hex?: string | null;
   longitude_degrees: number;
   latitude_degrees: number;
   altitude: { value: number; unit: "feet" | "meters"; reference: string } | null;
@@ -65,6 +66,7 @@ function parseAircraft(value: unknown): PublicAircraft {
     typeof value.id !== "string" ||
     !nullableString(value.callsign) ||
     !nullableString(value.aircraft_registration) ||
+    !nullableIcaoHex(value.icao_hex) ||
     !finiteCoordinate(value.longitude_degrees, -180, 180) ||
     !finiteCoordinate(value.latitude_degrees, -90, 90) ||
     typeof value.observed_at !== "string" ||
@@ -73,7 +75,15 @@ function parseAircraft(value: unknown): PublicAircraft {
   ) {
     throw new Error("Live tracker returned an invalid aircraft record");
   }
-  return value as PublicAircraft;
+  return {
+    ...(value as PublicAircraft),
+    icao_hex: typeof value.icao_hex === "string" ? value.icao_hex.toUpperCase() : null,
+  };
+}
+
+function nullableIcaoHex(value: unknown): boolean {
+  return value === undefined || value === null
+    || (typeof value === "string" && /^[A-Fa-f0-9]{6}$/.test(value));
 }
 
 function isStatus(value: unknown): value is PublicLiveStatus {

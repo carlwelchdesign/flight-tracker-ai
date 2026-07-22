@@ -7,6 +7,7 @@ import type { EstimatedTrajectory, TrajectoryPoint } from "@/lib/flight-trajecto
 import type { PublicAircraft, PublicLiveStatus } from "@/lib/public-live-positions";
 import type { PublicLiveRegion } from "@/lib/public-live-regions";
 import type { PublicWeatherSnapshot, PublicWeatherState } from "@/lib/public-weather";
+import type { PublicMapView, PublicWeatherLayers } from "@/lib/public-tracker-url";
 import {
   parsePublicWindField,
   type PublicWindField,
@@ -32,8 +33,12 @@ type Props = {
   weather: PublicWeatherSnapshot | null;
   weatherState: PublicWeatherState | "loading";
   weatherRetained: boolean;
+  view: PublicMapView | null;
+  layers: PublicWeatherLayers;
   onRetryWeather: () => void;
   onSelect: (id: string) => void;
+  onViewChange: (view: PublicMapView) => void;
+  onLayersChange: (layers: PublicWeatherLayers) => void;
 };
 
 type MarkerEntry = { marker: MapLibreMarker; element: HTMLButtonElement; animationFrame: number | null };
@@ -60,24 +65,23 @@ export function LiveTrackerMap({
   weather,
   weatherState,
   weatherRetained,
+  view,
+  layers,
   onRetryWeather,
   onSelect,
+  onViewChange,
+  onLayersChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef(new Map<string, MarkerEntry>());
   const windFieldRef = useRef<PublicWindField | null>(null);
+  const initialViewRef = useRef(view);
   const onSelectRef = useRef(onSelect);
+  const onViewChangeRef = useRef(onViewChange);
   const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [showHazards, setShowHazards] = useState(true);
-  const [showObservations, setShowObservations] = useState(true);
-  const [showRadar, setShowRadar] = useState(true);
-  const [showSatellite, setShowSatellite] = useState(true);
-  const [showSurfaceWind, setShowSurfaceWind] = useState(false);
-  const [showModelWind, setShowModelWind] = useState(true);
-  const [windLevel, setWindLevel] = useState<WindLevelCode>("500");
   const [windField, setWindField] = useState<PublicWindField | null>(null);
   const [windState, setWindState] = useState<"idle" | "loading" | "current" | "degraded" | "unavailable">("idle");
   const [weatherSelection, setWeatherSelection] = useState<WeatherSelection | null>(null);
@@ -86,6 +90,10 @@ export function LiveTrackerMap({
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    onViewChangeRef.current = onViewChange;
+  }, [onViewChange]);
 
   useEffect(() => {
     windFieldRef.current = windField;
@@ -102,9 +110,10 @@ export function LiveTrackerMap({
         const map = new maplibre.Map({
           container: containerRef.current,
           style: "https://tiles.openfreemap.org/styles/dark",
-          center: DEFAULT_CENTER,
-          zoom: 7.5,
-          pitch: 18,
+          center: initialViewRef.current ? [initialViewRef.current.longitude, initialViewRef.current.latitude] : DEFAULT_CENTER,
+          zoom: initialViewRef.current?.zoom ?? 7.5,
+          bearing: initialViewRef.current?.bearing ?? 0,
+          pitch: initialViewRef.current?.pitch ?? 18,
           attributionControl: { compact: true },
         });
         map.addControl(new maplibre.NavigationControl({ visualizePitch: true }), "top-right");
@@ -122,6 +131,16 @@ export function LiveTrackerMap({
           setMapError(sourceId.startsWith("noaa-nowcoast")
             ? "A NOAA imagery layer is temporarily unavailable"
             : "Basemap temporarily unavailable");
+        });
+        map.on("moveend", () => {
+          const center = map.getCenter();
+          onViewChangeRef.current({
+            longitude: center.lng,
+            latitude: center.lat,
+            zoom: map.getZoom(),
+            bearing: map.getBearing(),
+            pitch: map.getPitch(),
+          });
         });
         resizeObserver = new ResizeObserver(() => map.resize());
         resizeObserver.observe(containerRef.current);
@@ -148,8 +167,14 @@ export function LiveTrackerMap({
     const map = mapRef.current;
     hasFitRef.current = false;
     if (!map || !mapReady) return;
-    map.easeTo({ center: [...region.center], zoom: 7.5, duration: 600 });
-  }, [mapReady, region]);
+    if (view) {
+      if (!viewMatchesMap(map, view)) {
+        map.easeTo({ center: [view.longitude, view.latitude], zoom: view.zoom, bearing: view.bearing, pitch: view.pitch, duration: 0 });
+      }
+      return;
+    }
+    map.easeTo({ center: [...region.center], zoom: 7.5, bearing: 0, pitch: 18, duration: 600 });
+  }, [mapReady, region, view]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -190,12 +215,12 @@ export function LiveTrackerMap({
         );
         animateMarker(entry, [item.longitude_degrees, item.latitude_degrees]);
       }
-      if (!hasFitRef.current && aircraft.length > 0) {
+      if (!hasFitRef.current && aircraft.length > 0 && !view) {
         hasFitRef.current = true;
         fitTraffic(map, aircraft);
       }
     });
-  }, [aircraft, mapReady, selectedId, status]);
+  }, [aircraft, mapReady, selectedId, status, view]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -208,36 +233,36 @@ export function LiveTrackerMap({
     const map = mapRef.current;
     if (!map || !mapReady) return;
     const source = map.getSource(WEATHER_SOURCE_ID) as GeoJSONSource | undefined;
-    source?.setData(weatherGeoJson(weather, showHazards, showObservations, weatherSelection));
-  }, [mapReady, showHazards, showObservations, weather, weatherSelection]);
+    source?.setData(weatherGeoJson(weather, layers.hazards, layers.observations, weatherSelection));
+  }, [layers.hazards, layers.observations, mapReady, weather, weatherSelection]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    setAtmosphericRasterVisibility(map, "radar", showRadar);
-    setAtmosphericRasterVisibility(map, "satellite", showSatellite);
-    setAtmosphericRasterVisibility(map, "surfaceWind", showSurfaceWind);
-  }, [mapReady, showRadar, showSatellite, showSurfaceWind]);
+    setAtmosphericRasterVisibility(map, "radar", layers.radar);
+    setAtmosphericRasterVisibility(map, "satellite", layers.satellite);
+    setAtmosphericRasterVisibility(map, "surfaceWind", layers.surfaceWind);
+  }, [layers.radar, layers.satellite, layers.surfaceWind, mapReady]);
 
   useEffect(() => {
-    if (!showModelWind) return;
+    if (!layers.modelWind) return;
     const controller = new AbortController();
     let disposed = false;
 
     async function loadWind() {
-      if (windFieldRef.current?.region_code !== region.code || windFieldRef.current.level.code !== windLevel) {
+      if (windFieldRef.current?.region_code !== region.code || windFieldRef.current.level.code !== layers.windLevel) {
         windFieldRef.current = null;
         setWindField(null);
       }
       setWindState("loading");
       try {
-        const response = await fetch(`/api/public/atmosphere/wind?region=${region.code}&level=${windLevel}`, {
+        const response = await fetch(`/api/public/atmosphere/wind?region=${region.code}&level=${layers.windLevel}`, {
           cache: "no-store",
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("Atmospheric wind is unavailable");
         const next = parsePublicWindField(await response.json());
-        if (next.region_code !== region.code || next.level.code !== windLevel) {
+        if (next.region_code !== region.code || next.level.code !== layers.windLevel) {
           throw new Error("Atmospheric wind returned the wrong selection");
         }
         if (!disposed) {
@@ -248,7 +273,7 @@ export function LiveTrackerMap({
       } catch {
         if (disposed || controller.signal.aborted) return;
         const retained = windFieldRef.current?.region_code === region.code
-          && windFieldRef.current.level.code === windLevel;
+          && windFieldRef.current.level.code === layers.windLevel;
         setWindState(retained ? "degraded" : "unavailable");
         if (!retained) setWindField(null);
       }
@@ -261,15 +286,15 @@ export function LiveTrackerMap({
       window.clearInterval(refresh);
       controller.abort();
     };
-  }, [region.code, showModelWind, windLevel]);
+  }, [layers.modelWind, layers.windLevel, region.code]);
 
   function handleShowHazards(value: boolean) {
-    setShowHazards(value);
+    onLayersChange({ ...layers, hazards: value });
     if (!value && weatherSelection?.kind === "hazard") setWeatherSelection(null);
   }
 
   function handleShowObservations(value: boolean) {
-    setShowObservations(value);
+    onLayersChange({ ...layers, observations: value });
     if (!value && weatherSelection?.kind === "observation") setWeatherSelection(null);
   }
 
@@ -299,7 +324,7 @@ export function LiveTrackerMap({
           className="maplibre-canvas"
           aria-label="Interactive aircraft map. Drag to pan, scroll to zoom, and use the controls to rotate or reset north."
         />
-        <WindParticleLayer map={mapReady ? mapInstance : null} field={windField} visible={showModelWind} />
+        <WindParticleLayer map={mapReady ? mapInstance : null} field={windField} visible={layers.modelWind} />
         {!mapReady && <div className="map-loading">Loading navigable map…</div>}
         {mapError && <div className="map-error" role="status">{mapError}</div>}
         <div className="map-help">Drag to pan · Scroll to zoom · Right-drag to rotate</div>
@@ -307,26 +332,26 @@ export function LiveTrackerMap({
           snapshot={weather}
           state={weatherState}
           retained={weatherRetained}
-          showHazards={showHazards}
-          showObservations={showObservations}
+          showHazards={layers.hazards}
+          showObservations={layers.observations}
           selection={weatherSelection}
           onShowHazards={handleShowHazards}
           onShowObservations={handleShowObservations}
           onSelect={setWeatherSelection}
           onRetry={onRetryWeather}
           atmosphere={{
-            showRadar,
-            showSatellite,
-            showSurfaceWind,
-            showModelWind,
-            windLevel,
-            windState: showModelWind ? windState : "idle",
+            showRadar: layers.radar,
+            showSatellite: layers.satellite,
+            showSurfaceWind: layers.surfaceWind,
+            showModelWind: layers.modelWind,
+            windLevel: layers.windLevel,
+            windState: layers.modelWind ? windState : "idle",
             windField,
-            onShowRadar: setShowRadar,
-            onShowSatellite: setShowSatellite,
-            onShowSurfaceWind: setShowSurfaceWind,
-            onShowModelWind: setShowModelWind,
-            onWindLevel: setWindLevel,
+            onShowRadar: (value) => onLayersChange({ ...layers, radar: value }),
+            onShowSatellite: (value) => onLayersChange({ ...layers, satellite: value }),
+            onShowSurfaceWind: (value) => onLayersChange({ ...layers, surfaceWind: value }),
+            onShowModelWind: (value) => onLayersChange({ ...layers, modelWind: value }),
+            onWindLevel: (value: WindLevelCode) => onLayersChange({ ...layers, windLevel: value }),
           }}
         />
         <aside className="trajectory-legend" aria-label="Selected aircraft trajectory legend">
@@ -344,6 +369,15 @@ export function LiveTrackerMap({
       </div>
     </section>
   );
+}
+
+function viewMatchesMap(map: MapLibreMap, view: PublicMapView): boolean {
+  const center = map.getCenter();
+  return Math.abs(center.lng - view.longitude) < 0.0001
+    && Math.abs(center.lat - view.latitude) < 0.0001
+    && Math.abs(map.getZoom() - view.zoom) < 0.01
+    && Math.abs(map.getBearing() - view.bearing) < 0.1
+    && Math.abs(map.getPitch() - view.pitch) < 0.1;
 }
 
 function addWeatherLayers(map: MapLibreMap, onSelect: (selection: WeatherSelection) => void) {
