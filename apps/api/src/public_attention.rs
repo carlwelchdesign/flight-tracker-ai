@@ -15,7 +15,8 @@ use crate::{
     replay::{ReplayScenario, ScenarioPayload},
 };
 
-const PORTFOLIO_SCENARIO: &str = include_str!("../../../fixtures/replay/m1-operations-v1.json");
+pub(crate) const PORTFOLIO_SCENARIO: &str =
+    include_str!("../../../fixtures/replay/m1-operations-v1.json");
 const ATTENTION_CALLSIGN: &str = "FT303";
 
 static PUBLIC_PICTURE: LazyLock<Result<PublicAttentionPicture, String>> =

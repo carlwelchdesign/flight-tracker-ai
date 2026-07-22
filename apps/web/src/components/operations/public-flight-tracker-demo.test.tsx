@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { PublicFlightTrackerDemo } from "./public-flight-tracker-demo";
@@ -151,6 +151,8 @@ describe("public flight tracker demo", () => {
       const url = String(input);
       const payload = url.includes("/replay/attention")
         ? attentionPayload()
+        : url.includes("/replay/timeline")
+          ? replayTimelinePayload()
         : url.includes("/weather")
           ? weatherPayload()
           : url.includes("/atmosphere/")
@@ -180,6 +182,19 @@ describe("public flight tracker demo", () => {
     expect(screen.getByText("Hazard severity")).toBeInTheDocument();
     expect(screen.getByText(/route_hazard_proximity v1/i)).toBeInTheDocument();
     expect(screen.getByText(/not a filed route/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "16:01:00 UTC" })).toBeInTheDocument();
+    expect(screen.getByText("2 replay points")).toBeInTheDocument();
+    expect(screen.getByText("Replay trail")).toBeInTheDocument();
+    expect(screen.getByText(/2 scenario points/i)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Altitude: 2 observations/i })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("slider", { name: "Replay scenario time" }), { target: { value: "0" } });
+    expect(screen.getByRole("heading", { name: "None selected" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "critical priority" })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("slider", { name: "Replay scenario time" }), { target: { value: "60000" } });
+    expect(screen.getByRole("heading", { name: "FT303" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "critical priority" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /FT101/i }));
     expect(screen.getByRole("heading", { name: "Not evaluated" })).toBeInTheDocument();
@@ -360,6 +375,50 @@ function attentionPayload() {
         },
       },
     ],
+  };
+}
+
+function replayTimelinePayload() {
+  const start = Date.parse("2026-07-20T16:00:00Z");
+  return {
+    schema_version: 1,
+    scenario_id: "m1-operations-v1",
+    start_time: new Date(start).toISOString(),
+    end_time: new Date(start + 180_000).toISOString(),
+    duration_ms: 180_000,
+    playback_speeds: [0.5, 1, 2],
+    source: "portfolio deterministic replay",
+    observations: [
+      replayObservation("FT101", "N101FT", 1_000, -122.05, 37.42, 22_000, 142, 430),
+      replayObservation("FT303", "N303FT", 1_000, -121.72, 37, 28_000, 315, 445),
+      replayObservation("FT101", "N101FT", 60_000, -121.95, 37.25, 24_000, 142, 435),
+      replayObservation("FT303", "N303FT", 60_000, -121.62, 37.18, 27_000, 315, 438),
+      replayObservation("FT303", "N303FT", 180_000, -121.48, 37.38, 25_000, 318, 425),
+    ],
+  };
+}
+
+function replayObservation(
+  callsign: string,
+  registration: string,
+  offsetMs: number,
+  longitude: number,
+  latitude: number,
+  altitude: number,
+  heading: number,
+  speed: number,
+) {
+  return {
+    callsign,
+    aircraft_registration: registration,
+    offset_ms: offsetMs,
+    observed_at: new Date(Date.parse("2026-07-20T16:00:00Z") + offsetMs).toISOString(),
+    longitude_degrees: longitude,
+    latitude_degrees: latitude,
+    altitude: { value: altitude, unit: "feet", reference: "mean_sea_level" },
+    heading_true_degrees: heading,
+    ground_speed: { value: speed, unit: "knots" },
+    quality: "observed",
   };
 }
 
