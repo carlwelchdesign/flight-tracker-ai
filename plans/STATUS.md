@@ -5,20 +5,18 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active tickets: FT-425 sidebar aircraft priority, FT-403 neutral recruiter
-  validation, and FT-502 independent aviation-domain review
-- Branch: `fix/ft-425-sidebar-priority`
+- Active tickets: FT-403 neutral recruiter validation and FT-502 independent
+  aviation-domain review
+- Branch: external evidence branches as those sessions become available
 - Pull request: FT-425 [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70)
-  is open; FT-424
-  [#68](https://github.com/carlwelchdesign/flight-tracker-ai/pull/68) is merged
+  is merged
 - Owner: Project owner and external reviewers
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Complete FT-425's sidebar hierarchy correction, then run the
-  remaining neutral recruiter session and independent aviation-domain review
-  without weakening either external evidence gate.
+- Next action: Run the remaining neutral recruiter session and independent
+  aviation-domain review without weakening either external evidence gate.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.
@@ -77,12 +75,14 @@ Last updated: 2026-07-22
 
 ## Handoff notes
 
-- FT-425 is in progress on `fix/ft-425-sidebar-priority`. It keeps selected
-  aircraft above the list while reversing the current 70/30 sidebar height
-  bias and moving secondary aircraft evidence behind progressive disclosure.
-  Implementation commit `ba478c3` is in
-  [PR #70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70);
-  required checks and hosted evidence remain before closeout.
+- FT-425 is complete through implementation commit `ba478c3`, PR
+  [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70), merge commit
+  `bb294ed`, production deployment `dpl_4D5NeyPECy9xhQ8YyEDcjCB6T3Ur`, and
+  hosted browser verification at
+  [flight-tracker-ai-one.vercel.app](https://flight-tracker-ai-one.vercel.app/).
+  Selected aircraft remains above the list, but the aircraft list now receives
+  most of the right-rail height and secondary evidence expands within bounded
+  inspector scrolling instead of moving the list.
 
 - FT-424 is complete through implementation commit `a2c06f6`, PR
   [#68](https://github.com/carlwelchdesign/flight-tracker-ai/pull/68), merge commit
