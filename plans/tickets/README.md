@@ -31,3 +31,4 @@ Every ticket section has delivery fields. `Branch`, `Final commit`, and `Pull re
 - [FT-504 — Public AI drafting demonstration](FT-504-public-ai-draft-demo.md)
 - [FT-424 — Plain-language route comparison](FT-424-plain-route-comparison.md)
 - [FT-425 — Sidebar aircraft-list priority](FT-425-sidebar-aircraft-priority.md)
+- [FT-426 — Plain route-risk unavailable copy](FT-426-route-risk-copy.md)

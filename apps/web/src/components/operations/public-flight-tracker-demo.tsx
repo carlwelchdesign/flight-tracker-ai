@@ -687,10 +687,10 @@ function AttentionExplanation({
     return (
       <section className="attention-explanation attention-unavailable" aria-labelledby="attention-title">
         <div className="attention-heading">
-          <div><p className="ops-eyebrow">Decision intelligence</p><h3 id="attention-title">Not evaluated</h3></div>
-          <span className="attention-state">Live position only</span>
+          <div><p className="ops-eyebrow">Route assessment</p><h3 id="attention-title">Route risk unavailable</h3></div>
+          <span className="attention-state">Position data only</span>
         </div>
-        <p>Live ADS-B supplies position and motion, but not the route and hazard evidence required for this deterministic assessment.</p>
+        <p>Live traffic does not include the route information needed to evaluate weather conflicts.</p>
       </section>
     );
   }
@@ -709,10 +709,10 @@ function AttentionExplanation({
     return (
       <section className="attention-explanation attention-unavailable" aria-labelledby="attention-title">
         <div className="attention-heading">
-          <div><p className="ops-eyebrow">Decision intelligence</p><h3 id="attention-title">Not evaluated</h3></div>
+          <div><p className="ops-eyebrow">Route assessment</p><h3 id="attention-title">Route risk unavailable</h3></div>
           <span className="attention-state">Evidence incomplete</span>
         </div>
-        <p>{attention?.summary ?? "No deterministic assessment is available for this replay aircraft."}</p>
+        <p>This replay aircraft does not include enough route evidence to evaluate weather conflicts.</p>
         {attention?.source_times.flight_observed_at && <small>Replay position: {formatTimestamp(attention.source_times.flight_observed_at)}</small>}
       </section>
     );
