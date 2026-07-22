@@ -4,17 +4,21 @@ Last updated: 2026-07-22
 
 ## Current state
 
-- Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-403/FT-404 — remaining recruiter-validation and hosted-auth gates
-- Branch: `fix/ft-404-hosted-smoke-closeout`
-- Pull request: [#36](https://github.com/carlwelchdesign/flight-tracker-ai/pull/36)
-- Owner: Backend and full-stack product engineering
-- Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Complete the remaining recruiter-validation and authenticated
-  hosted smoke gates, then begin FT-413 on its dedicated feature branch.
-- Approved delivery direction: M4 completion → FT-413 public attention
-  explanation → FT-414 time machine and telemetry → FT-415 search/shareable
-  URLs → FT-416 airport TAF/PIREP intelligence → existing M5 research.
+- Current milestone: M5 — Optimization research and controlled recommendations
+- Active ticket: FT-403/FT-502 — independent validation gates
+- Branch: `feat/ft-503-human-reviewed-drafts`
+- Pull request: [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52)
+- Owner: Product research and independent aviation-domain review
+- Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
+  M4.1 engineering is 4/4 complete, and M5 is 2/3 complete. Neutral recruiter
+  validation and FT-502 independent aviation-domain review remain external
+  gates.
+- Next action: Merge green FT-503 PR #52, then obtain and record the neutral
+  recruiter session required by FT-403 and the independent aviation-domain
+  review required by FT-502.
+- Sequencing exception: On 2026-07-22 the project owner explicitly authorized
+  FT-503 engineering to proceed while FT-502's independent domain review
+  remains pending; the review requirement itself is unchanged.
 
 ## Milestone checklist
 
@@ -63,11 +67,30 @@ Last updated: 2026-07-22
 | M1 | 4 | 4 |
 | M2 | 4 | 4 |
 | M3 | 4 | 4 |
-| M4 | 2 | 4 |
-| M4.1 | 0 | 4 |
-| M5 | 0 | 3 |
+| M4 | 3 | 4 |
+| M4.1 | 4 | 4 |
+| M5 | 2 | 3 |
 
 ## Handoff notes
+
+- FT-503 is active on `feat/ft-503-human-reviewed-drafts` with explicit owner
+  authorization to proceed while FT-502's external domain review remains
+  pending. Rust will keep source-fact minimization, draft validation,
+  deterministic fallback, and review state separate from the optional OpenAI
+  Responses API adapter. No model output can select a route, alter eligibility,
+  approve itself, or trigger a message or operational action.
+  Implementation and local verification are complete: twelve focused drafting
+  tests and all 130 Rust library tests pass, along with binary/integration/
+  example tests, strict Clippy, formatting, and diff hygiene. Seven versioned
+  evaluation cases matched their expected findings. A live OpenAI probe was
+  rate-limited and safely degraded to a deterministic draft that still required
+  explicit review; the local credential remains ignored and uncommitted.
+  Implementation commit `f7cb5c6` is published in PR
+  [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52). GitHub
+  Actions run
+  [29934635940](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29934635940)
+  passed Rust, web, and API/PostGIS checks; Vercel preview also passed. FT-503
+  is complete pending the authorized merge of that green PR.
 
 - FT-404 hosted smoke resumed on
   `fix/ft-404-hosted-smoke-closeout`. Production `/health` is healthy, but the

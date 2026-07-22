@@ -46,7 +46,7 @@ Verification evidence:
 
 ## FT-502 — Build an offline recommendation experiment
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-502-offline-recommendations`
 Final commit: `49c8c85`
@@ -87,23 +87,53 @@ Verification evidence:
 
 ## FT-503 — Add human-reviewed message drafting
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-503-human-reviewed-drafts`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `f7cb5c6`
+Pull request: [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52)
 
 Optionally use an LLM to turn approved structured evidence into concise draft language while preserving source traceability and human control.
 
 Dependencies: FT-502
 
+Sequencing note: On 2026-07-22 the project owner explicitly authorized FT-503
+engineering to proceed while FT-502's independent aviation-domain review
+remains pending. This does not waive or complete the FT-502 review gate.
+
 Acceptance checklist:
 
-- [ ] LLM receives only structured, minimized evidence needed for the draft.
-- [ ] Draft visibly separates source facts from generated wording.
-- [ ] Source timestamps and citations are presented to the reviewer.
-- [ ] Reviewer must explicitly approve or edit; no automatic send path exists.
-- [ ] Evaluation set measures omissions, fabricated details, unit changes, and unsafe phrasing.
-- [ ] Model failure or unavailability degrades to deterministic templates.
+- [x] LLM receives only structured, minimized evidence needed for the draft.
+- [x] Draft visibly separates source facts from generated wording.
+- [x] Source timestamps and citations are presented to the reviewer.
+- [x] Reviewer must explicitly approve or edit; no automatic send path exists.
+- [x] Evaluation set measures omissions, fabricated details, unit changes, and unsafe phrasing.
+- [x] Model failure or unavailability degrades to deterministic templates.
 
-Verification evidence: Pending.
+Verification evidence:
+
+- `apps/api/src/drafting/mod.rs` owns the pure minimization, validation,
+  deterministic fallback, and explicit review state. It cannot select or alter
+  the FT-502 recommendation and has no persistence, HTTP, message, send, or
+  aircraft-control adapter.
+- `apps/api/src/drafting/openai.rs` is a bounded optional Responses API adapter.
+  It sends only `MinimizedDraftEvidence`, requests strict structured output,
+  uses `store: false`, caps response bytes and output tokens, and maps provider
+  failures to non-sensitive failure codes.
+- `fixtures/drafting/ft503-evals-v1.json` contains seven versioned cases. The
+  captured [`../evidence/ft-503/EVALUATION_REPORT.json`](../evidence/ft-503/EVALUATION_REPORT.json)
+  records 7/7 expected findings matched across grounded output, omission,
+  fabrication, unit changes, unsafe phrasing, unknown references, and output
+  bounds.
+- Twelve focused drafting tests and all 130 Rust library tests pass. Binary,
+  integration, example, strict Clippy, formatting, and diff-hygiene checks also
+  pass. The offline smoke proves `awaiting_review` to explicit approval and
+  reports `automatic_send_available: false`.
+- A live OpenAI Responses API probe returned `rate_limited`; the application
+  classified the failure, exposed no credential or provider body, and returned
+  the valid deterministic fallback in `awaiting_review`. This validates the
+  failure path and is not represented as a successful model-generated draft.
+- GitHub Actions run
+  [29934635940](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29934635940)
+  passed Rust, web, and API/PostGIS checks, and the Vercel preview deployment
+  passed. PR #52 contains the ticket-scoped implementation and evidence.

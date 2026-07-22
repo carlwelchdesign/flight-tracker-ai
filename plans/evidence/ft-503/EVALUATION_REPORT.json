@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "ticket": "FT-503",
+  "evaluated_at": "2026-07-22",
+  "fixture": "fixtures/drafting/ft503-evals-v1.json",
+  "fixture_version": "ft503-evals-v1",
+  "evidence_case": "held-multi-01",
+  "summary": {
+    "cases": 7,
+    "expected_results_matched": 7,
+    "expected_results_mismatched": 0
+  },
+  "coverage": [
+    "valid grounded draft",
+    "required fact omission",
+    "fabricated numeric detail",
+    "unit change",
+    "unsafe authority phrasing",
+    "unknown fact reference",
+    "unbounded output"
+  ],
+  "control_evidence": {
+    "minimized_structured_input": true,
+    "facts_separate_from_generated_wording": true,
+    "source_timestamps_and_citations_visible": true,
+    "initial_review_status": "awaiting_review",
+    "explicit_review_transition": "approved",
+    "automatic_send_available": false,
+    "model_failure_fallback": "deterministic_template"
+  },
+  "live_provider_probe": {
+    "provider": "OpenAI Responses API",
+    "model": "gpt-5.6-luna",
+    "credential_exposure": "none",
+    "outcome": "rate_limited",
+    "application_behavior": "returned a valid deterministic template in awaiting_review state"
+  },
+  "verification": [
+    "cargo test -p flight-tracker-api drafting:: --lib",
+    "cargo test -p flight-tracker-api --lib",
+    "cargo test -p flight-tracker-api --bins --tests --examples",
+    "cargo clippy -p flight-tracker-api --lib --bins --tests --examples -- -D warnings",
+    "cargo fmt --all --check",
+    "env -u OPENAI_API_KEY cargo run -q -p flight-tracker-api --example ft503_draft_smoke",
+    "git diff --check"
+  ]
+}
