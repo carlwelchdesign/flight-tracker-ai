@@ -23,6 +23,7 @@ pub mod ingestion;
 pub mod live_positions;
 pub mod metrics;
 pub mod observability;
+pub mod public_attention;
 pub mod replay;
 pub mod retention;
 pub mod weather;
@@ -38,6 +39,7 @@ use ingestion::IngestionSubscription;
 use live_positions::{LivePositionStatus, LivePositionStatusStore, find_public_live_region};
 use metrics::{ApiMetrics, observe_request};
 use observability::correlate_request;
+use public_attention::public_attention_router;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
 use retention::{RetentionStore, retention_router};
 use weather::{public_weather_router, weather_router};
@@ -364,6 +366,7 @@ fn build_router_with_services_and_health(
         .merge(retention_router(retention_store))
         .layer(middleware::from_fn_with_state(auth, authenticate_request))
         .merge(public)
+        .merge(public_attention_router())
         .merge(public_weather_routes)
         .layer(middleware::from_fn_with_state(metrics, observe_request))
         .layer(middleware::from_fn(correlate_request))

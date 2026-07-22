@@ -13,6 +13,8 @@ describe("public flight tracker demo", () => {
     expect(screen.queryByText(/recruiter walkthrough/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /see which flights need attention/i })).not.toBeInTheDocument();
     expect(screen.getByText("Flight Tracker AI")).toBeInTheDocument();
+    expect(screen.getByText("Connecting to live traffic")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "None selected" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "San Francisco traffic" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Live traffic region" })).toHaveValue("sfo");
     expect(screen.getByRole("heading", { name: "Aircraft" })).toBeInTheDocument();
@@ -142,6 +144,97 @@ describe("public flight tracker demo", () => {
     );
     vi.unstubAllGlobals();
   });
+
+  it("switches from honest live non-evaluation to an explainable replay attention state", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const payload = url.includes("/replay/attention")
+        ? attentionPayload()
+        : url.includes("/weather")
+          ? weatherPayload()
+          : url.includes("/atmosphere/")
+            ? windPayload()
+            : livePayload();
+      return Promise.resolve(new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+    }));
+
+    render(<PublicFlightTrackerDemo />);
+
+    expect(await screen.findByRole("heading", { name: "UAL123" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Not evaluated" })).toBeInTheDocument();
+    expect(screen.getByText("Live position only")).toBeInTheDocument();
+
+    const replayButton = screen.getByRole("button", { name: "Replay demo" });
+    replayButton.focus();
+    expect(replayButton).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(await screen.findByRole("heading", { name: "FT303" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "critical priority" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Attention score 85 out of 100")).toBeInTheDocument();
+    expect(screen.getAllByText("27,000 ft").length).toBeGreaterThan(0);
+    expect(screen.getByText("Hazard severity")).toBeInTheDocument();
+    expect(screen.getByText(/route_hazard_proximity v1/i)).toBeInTheDocument();
+    expect(screen.getByText(/not a filed route/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /FT101/i }));
+    expect(screen.getByRole("heading", { name: "Not evaluated" })).toBeInTheDocument();
+    expect(screen.getByText(/no route evidence/i)).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the replay usable when its explanation is unavailable", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/replay/attention")) return Promise.resolve(new Response(null, { status: 503 }));
+      const payload = url.includes("/weather")
+        ? weatherPayload()
+        : url.includes("/atmosphere/")
+          ? windPayload()
+          : livePayload();
+      return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+    }));
+
+    render(<PublicFlightTrackerDemo />);
+    expect(await screen.findByRole("heading", { name: "UAL123" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Replay demo" }));
+
+    expect(await screen.findByText(/replay explanation is unavailable/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FT303" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try explanation again" })).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("retains a degraded live picture without inventing an assessment", async () => {
+    const degraded = livePayload();
+    degraded.status.state = "degraded";
+    degraded.status.fresh_position_count = 0;
+    degraded.status.stale_position_count = 1;
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const payload = url.includes("/weather")
+        ? weatherPayload()
+        : url.includes("/atmosphere/")
+          ? windPayload()
+          : url.includes("/replay/attention")
+            ? attentionPayload()
+            : degraded;
+      return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+    }));
+
+    render(<PublicFlightTrackerDemo />);
+
+    expect(await screen.findByText("Live source degraded")).toBeInTheDocument();
+    expect(screen.getByText(/last accepted live picture is retained/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Not evaluated" })).toBeInTheDocument();
+    expect(screen.getByText("Live position only")).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
 });
 
 function livePayload(regionCode = "sfo", regionName = "San Francisco", callsign = "UAL123") {
@@ -214,5 +307,76 @@ function weatherPayload() {
       wind_direction_true_degrees: 280, wind_speed: { value: 15, unit: "knots" }, wind_gust: null,
       visibility_statute_miles: 10, visibility_greater_than: false, ceiling: null, flight_category: "visual",
     }],
+  };
+}
+
+function attentionPayload() {
+  const evaluatedAt = "2026-07-20T16:01:00Z";
+  return {
+    schema_version: 1,
+    scenario_id: "m1-operations-v1",
+    scenario_time: evaluatedAt,
+    source: "portfolio deterministic replay",
+    aircraft: [
+      nonEvaluatedAttention("FT101", evaluatedAt),
+      nonEvaluatedAttention("FT202", evaluatedAt),
+      {
+        callsign: "FT303",
+        state: "requires_attention",
+        priority: "critical",
+        summary: "A significant convective hazard intersects the remaining replay route at the aircraft's demonstrated altitude.",
+        observed_facts: [
+          { label: "Replay route", value: "LAS to SFO · route version 1" },
+          { label: "Aircraft altitude", value: "27000 feet" },
+          { label: "Hazard evidence", value: "convective cell · significant · revision 1" },
+        ],
+        score: {
+          hazard_severity_points: 45,
+          horizontal_proximity_points: 25,
+          altitude_overlap_points: 10,
+          time_urgency_points: 5,
+          total: 85,
+          score_version: 1,
+        },
+        rule_result: {
+          rule_id: "route_hazard_proximity",
+          rule_version: 1,
+          outcome: "match",
+          route_version: 1,
+          hazard_revision: 1,
+          horizontal_relation: "intersects",
+          altitude_relation: "overlap",
+        },
+        geometric_estimate: {
+          closest_approach_nautical_miles: 0,
+          proximity_margin_nautical_miles: 25,
+          geometry_resolution_nautical_miles: 1,
+          disclaimer: "Geometric rule estimate, not a filed route, clearance, destination prediction, or provider observation.",
+        },
+        source_times: {
+          flight_observed_at: evaluatedAt,
+          hazard_issued_at: "2026-07-20T16:00:00Z",
+          evaluated_at: evaluatedAt,
+        },
+      },
+    ],
+  };
+}
+
+function nonEvaluatedAttention(callsign: string, evaluatedAt: string) {
+  return {
+    callsign,
+    state: "not_evaluated",
+    priority: null,
+    summary: "Not evaluated: this replay aircraft has no route evidence in the current scenario frame.",
+    observed_facts: [{ label: "Replay position", value: evaluatedAt }],
+    score: null,
+    rule_result: null,
+    geometric_estimate: null,
+    source_times: {
+      flight_observed_at: evaluatedAt,
+      hazard_issued_at: null,
+      evaluated_at: evaluatedAt,
+    },
   };
 }
