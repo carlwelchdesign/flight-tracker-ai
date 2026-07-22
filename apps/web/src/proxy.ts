@@ -6,6 +6,7 @@ import { HOSTED_IDENTITY_CSP } from "@/lib/security-policy";
 const isPublicRoute = createRouteMatcher([
   "/",
   "/api/public/live-positions",
+  "/api/public/airport-intelligence",
   "/api/public/atmosphere/wind",
   "/api/public/replay/attention",
   "/api/public/replay/timeline",

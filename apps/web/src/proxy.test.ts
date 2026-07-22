@@ -37,6 +37,7 @@ describe("hosted identity proxy", () => {
     await proxy(new NextRequest("https://example.test/sign-in"), {} as never);
     await proxy(new NextRequest("https://example.test/sign-up"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/live-positions"), {} as never);
+    await proxy(new NextRequest("https://example.test/api/public/airport-intelligence?airport=KDEN"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/atmosphere/wind"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/replay/attention"), {} as never);
     await proxy(new NextRequest("https://example.test/api/public/replay/timeline"), {} as never);
@@ -45,6 +46,7 @@ describe("hosted identity proxy", () => {
     expect(clerk.publicPatterns).toEqual([
       "/",
       "/api/public/live-positions",
+      "/api/public/airport-intelligence",
       "/api/public/atmosphere/wind",
       "/api/public/replay/attention",
       "/api/public/replay/timeline",
