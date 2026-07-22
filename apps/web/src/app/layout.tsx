@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
-import { OperationsTrustBanner } from "@/components/operations/operations-trust-banner";
 import { authMode } from "@/lib/auth-server";
-import { getOperationalContext } from "@/lib/operational-context";
 import { HOSTED_CLERK_PROVIDER_OPTIONS } from "@/lib/security-policy";
 
 const geistSans = Geist({
@@ -28,14 +26,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const operationalContext = getOperationalContext();
   const document = (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <OperationsTrustBanner context={operationalContext} />
         {children}
       </body>
     </html>
