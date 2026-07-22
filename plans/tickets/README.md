@@ -23,4 +23,5 @@ Every ticket section has delivery fields. `Branch`, `Final commit`, and `Pull re
 - [M4.1 — Public decision intelligence and exploration](M4.1-public-decision-intelligence.md): FT-413–FT-416
 - [FT-417 — Branded social-share metadata](FT-417-social-share-metadata.md)
 - [FT-418 — Node.js 24 web runtime](FT-418-node-24-runtime.md)
+- [FT-419 — Product README and screenshots](FT-419-product-readme.md)
 - [M5 — Optimization research](M5-optimization.md): FT-501–FT-503
