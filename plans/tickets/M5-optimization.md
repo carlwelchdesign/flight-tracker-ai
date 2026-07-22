@@ -90,8 +90,8 @@ Verification evidence:
 Status: In progress
 
 Branch: `feat/ft-503-human-reviewed-drafts`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `f7cb5c6`
+Pull request: [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52)
 
 Optionally use an LLM to turn approved structured evidence into concise draft language while preserving source traceability and human control.
 

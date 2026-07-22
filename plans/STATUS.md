@@ -7,7 +7,7 @@ Last updated: 2026-07-22
 - Current milestone: M5 — Optimization research and controlled recommendations
 - Active ticket: FT-503 — human-reviewed message drafting
 - Branch: `feat/ft-503-human-reviewed-drafts`
-- Pull request: Pending
+- Pull request: [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52)
 - Owner: Backend and full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 4/4 complete, and M5 is 1/3 complete. Neutral recruiter
@@ -85,6 +85,9 @@ Last updated: 2026-07-22
   evaluation cases matched their expected findings. A live OpenAI probe was
   rate-limited and safely degraded to a deterministic draft that still required
   explicit review; the local credential remains ignored and uncommitted.
+  Implementation commit `f7cb5c6` is published in draft PR
+  [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52); required
+  checks and merge are pending.
 
 - FT-404 hosted smoke resumed on
   `fix/ft-404-hosted-smoke-closeout`. Production `/health` is healthy, but the
