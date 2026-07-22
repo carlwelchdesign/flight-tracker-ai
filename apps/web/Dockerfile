@@ -1,4 +1,4 @@
-FROM node:20.20.1-bookworm-slim AS dependencies
+FROM node:24.18.0-bookworm-slim AS dependencies
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -15,7 +15,7 @@ FROM dependencies AS builder
 COPY . .
 RUN npm run build
 
-FROM node:20.20.1-bookworm-slim AS production
+FROM node:24.18.0-bookworm-slim AS production
 
 ENV NODE_ENV=production
 WORKDIR /app

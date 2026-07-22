@@ -2,9 +2,9 @@
   "name": "web",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "npm@10.8.2",
+  "packageManager": "npm@11.16.0",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "next dev",
@@ -28,7 +28,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

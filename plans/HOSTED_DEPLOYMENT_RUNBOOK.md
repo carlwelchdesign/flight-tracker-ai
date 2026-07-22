@@ -3,7 +3,8 @@
 ## Approved shape
 
 - **Web:** Vercel project `flight-tracker-ai`, Git-connected to this repository
-  with `apps/web` as its root and Node.js 20.x.
+  with `apps/web` as its root and Node.js 24.x. The `engines.node` contract in
+  `apps/web/package.json` overrides stale project settings on each deployment.
 - **API and supervised workers:** Explicit staging and production Render Docker
   web services from [`render.yaml`](../render.yaml). Free services are
   acceptable for this hobby portfolio, not an availability claim: they sleep
