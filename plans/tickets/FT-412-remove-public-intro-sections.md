@@ -6,6 +6,7 @@ Branch: `fix/ft-412-remove-top-intro-sections`
 Latest implementation commit: `0f38fc6`
 Final implementation commit: `0f38fc6`
 Pull request: [#33](https://github.com/carlwelchdesign/flight-tracker-ai/pull/33)
+Merge commit: `914ca72`
 Owner: Frontend product engineering
 
 ## Outcome
