@@ -1,12 +1,13 @@
 # FT-405 — Live navigable flight tracker
 
-Status: In progress — live core deployed; overlay and forced-failure verification remain
+Status: Complete
 
 Branch: `feat/ft-405-live-navigable-tracker`
 Closeout branch: `test/ft-405-live-map-verification`
 Latest implementation commit: `27bcec3`
-Final commit: Pending
+Verification implementation commit: `b6a5944`
 Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
+Closeout pull request: [#54](https://github.com/carlwelchdesign/flight-tracker-ai/pull/54)
 Owner: Full-stack product engineering
 
 ## Outcome
@@ -49,7 +50,7 @@ authoritative routes, schedules, delays, or complete coverage.
       the camera to currently visible traffic.
 - [x] The basemap uses a keyless provider approved for this portfolio demo and
       shows required OpenStreetMap/OpenFreeMap attribution.
-- [ ] Aircraft, weather hazards, airports, and selected state remain legible
+- [x] Aircraft, weather hazards, airports, and selected state remain legible
       against the dark basemap across desktop and mobile layouts.
 - [x] The flight list and map selection stay synchronized.
 
@@ -79,11 +80,11 @@ authoritative routes, schedules, delays, or complete coverage.
 
 - [x] Rust contract, tenant-boundary, no-store, payload-limit, stale-data, and
       provider-failure tests pass.
-- [ ] Web parser, polling, interpolation, reduced-motion, selection, fallback,
+- [x] Web parser, polling, interpolation, reduced-motion, selection, fallback,
       accessibility, and MapLibre lifecycle tests pass.
 - [x] Lint, typecheck, unit tests, production build, Rust formatting, Clippy,
       and API/PostGIS smoke pass.
-- [ ] Browser verification proves pan, zoom, aircraft selection, live refresh,
+- [x] Browser verification proves pan, zoom, aircraft selection, live refresh,
       animation, attribution, degraded fallback, and responsive behavior on the
       deployed candidate.
 - [x] The feature branch has intentional commits, a pull request, passing CI,
@@ -128,17 +129,25 @@ authoritative routes, schedules, delays, or complete coverage.
   Vercel's separate Clerk custom-domain DNS integration check remains red even
   though the configured Vercel-domain Clerk flow and production app are working.
 
-## Remaining before ticket completion
+## Closeout evidence
 
-- Public airport/METAR and SIGMET overlays are owned by stacked follow-up
-  [`FT-408-public-weather-map-layers.md`](FT-408-public-weather-map-layers.md).
-- Observed trails and estimated short-term trajectories are owned by stacked
-  follow-up [`FT-406-flight-trajectories.md`](FT-406-flight-trajectories.md).
-- Add airport and NOAA hazard/weather overlays to the navigable map and verify
-  their selected/disabled states on desktop and mobile.
-- Add direct unit coverage for marker interpolation, reduced-motion behavior,
-  and MapLibre setup/cleanup; current coverage combines component contracts with
-  real-browser verification.
-- Exercise forced degraded and disabled responses against a deployed candidate;
-  local component/browser fallback is verified, while production was kept on
-  current live data during the release smoke.
+- FT-406 delivered observed trails and separately labeled geometric
+  projections. FT-408 delivered selectable airport/METAR and SIGMET overlays.
+  FT-411 added radar, satellite, surface-wind, and model-wind layers. Their
+  recorded desktop and mobile production checks prove the overlays, markers,
+  selections, trajectories, and evidence panels remain legible together.
+- `live-tracker-map.test.tsx` directly verifies MapLibre initialization,
+  controls, sources, marker selection and heading, eased interpolation,
+  immediate reduced-motion updates, visible map errors, marker removal,
+  observer disconnection, and map cleanup. The public tracker integration test
+  now proves the 75-second timer performs the next position fetch. All 140 web
+  tests, lint, TypeScript, and the clean production build pass.
+- The isolated hosted-failure record in
+  [`../evidence/ft-405/HOSTED_FAILURE_STATE.md`](../evidence/ft-405/HOSTED_FAILURE_STATE.md)
+  proves the deployed Preview switched from connecting to a labeled replay
+  fallback, retained three aircraft after retry, exposed full attribution, had
+  zero browser errors, and fit a 390 by 844 viewport without overflow. The
+  branch-only failure override was removed and Production was never changed.
+- GitHub Actions run
+  [29935943916](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29935943916)
+  passed Rust, web, API/PostGIS, and Vercel checks for closeout PR #54.
