@@ -3,8 +3,8 @@
 Status: In progress
 
 Branch: `fix/ft-424-plain-route-comparison`
-Final implementation commit: Pending
-Pull request: Pending
+Final implementation commit: `a2c06f6`
+Pull request: [#68](https://github.com/carlwelchdesign/flight-tracker-ai/pull/68)
 Owner: Frontend engineering and product design
 
 Replace the internal, AI-centric presentation of the fixed public drafting demo
@@ -55,3 +55,5 @@ Dependencies: FT-504
 - The main panel contains no model name, raw fixture identifier, approval
   state, generated-draft label, or deterministic-fixture language. Provider,
   dataset, rule, and source evidence remain in the collapsed disclosure.
+- Implementation commit: `a2c06f6`; delivery PR:
+  [#68](https://github.com/carlwelchdesign/flight-tracker-ai/pull/68).

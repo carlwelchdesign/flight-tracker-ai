@@ -8,7 +8,8 @@ Last updated: 2026-07-22
 - Active tickets: FT-424 plain route comparison, FT-403 neutral recruiter
   validation, and FT-502 independent aviation-domain review
 - Branch: `fix/ft-424-plain-route-comparison`
-- Pull request: FT-423 [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66)
+- Pull request: FT-424 [#68](https://github.com/carlwelchdesign/flight-tracker-ai/pull/68)
+  is open; FT-423 [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66)
   is merged
 - Owner: Project owner and external reviewers
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
@@ -79,7 +80,9 @@ Last updated: 2026-07-22
 - FT-424 is in progress on `fix/ft-424-plain-route-comparison`. It reframes the
   fixed FT-504 demo around the actual route tradeoff, moves model and rule
   provenance into a disclosure, and removes AI-centric internal language
-  without changing the backend integration or safety boundary.
+  without changing the backend integration or safety boundary. Implementation
+  commit `a2c06f6` is in [PR #68](https://github.com/carlwelchdesign/flight-tracker-ai/pull/68);
+  required checks and hosted evidence remain before closeout.
 
 - FT-423 is complete through implementation commit `af0f4a0`, PR
   [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66), and merge
