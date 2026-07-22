@@ -1,10 +1,10 @@
 # FT-410 — Regional live-traffic selector
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-410-regional-traffic-selector`
 Latest implementation commit: `09b22d0`
-Final commit: Pending
+Final implementation commit: `09b22d0`
 Pull request: [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30)
 Owner: Backend and full-stack product engineering
 
@@ -54,14 +54,16 @@ authoritative coverage.
       failure independence. Evidence: 94 Rust library tests and 13 binary tests pass.
 - [x] Web tests prove region requests, state reset, labels, selection, and
       accessible control behavior. Evidence: all 95 web tests pass.
-- [ ] Formatting, Clippy, lint, typecheck, unit tests, production build, and
-      API/PostGIS smoke pass.
+- [x] Formatting, Clippy, lint, typecheck, unit tests, production build, and
+      API/PostGIS smoke pass. Evidence: CI run
+      [29880472585](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29880472585).
 - [x] Runtime browser verification covers at least two regions on desktop and
       one mobile viewport. Evidence: production-built local browser run showed
       132 current SFO aircraft, 173 current LAX aircraft, 173 rendered LAX
       markers, no application errors, and zero horizontal overflow at 390x844.
-- [ ] Ticket branch, intentional commits, PR, passing checks, and verification
-      evidence are recorded before completion.
+- [x] Ticket branch, intentional commits, PR, passing checks, and verification
+      evidence are recorded before completion. Evidence: draft PR
+      [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30).
 
 ## Non-goals
 
@@ -75,8 +77,10 @@ authoritative coverage.
   regions current, zero consecutive failures, and 77–187 aircraft per region.
 - `cargo fmt --all -- --check`, Clippy with warnings denied, all Rust tests,
   all 95 web tests, TypeScript, ESLint, `next build`, and `git diff --check` pass.
-- CI's independent API/PostGIS job, branch commit, PR, and PR checks remain the
-  final completion evidence. Implementation commit `330d0d4` is published in
-  draft PR [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30).
+- CI run
+  [29880472585](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29880472585)
+  passes Rust, web, API/PostGIS, and Vercel checks. Implementation commit
+  `330d0d4` is published in draft PR
+  [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30).
   Promotion commit `09b22d0` moves both Render service declarations from the
   merged FT-405 branch to `main`; production remains manual-deploy only.
