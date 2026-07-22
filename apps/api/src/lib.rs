@@ -23,6 +23,7 @@ pub mod ingestion;
 pub mod live_positions;
 pub mod metrics;
 pub mod observability;
+pub mod optimization;
 pub mod public_attention;
 pub mod public_replay;
 pub mod replay;

@@ -46,7 +46,7 @@ Verification evidence:
 
 ## FT-502 — Build an offline recommendation experiment
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-502-offline-recommendations`
 Final commit: Pending
@@ -58,14 +58,30 @@ Dependencies: FT-501
 
 Acceptance checklist:
 
-- [ ] Experiment is reproducible from versioned data and configuration.
-- [ ] Every recommendation records inputs, constraints, model/rule version, and expected effect.
-- [ ] System can abstain when evidence or confidence is insufficient.
-- [ ] Results are compared to the documented baseline on held-out cases.
+- [x] Experiment is reproducible from versioned data and configuration.
+- [x] Every recommendation records inputs, constraints, model/rule version, and expected effect.
+- [x] System can abstain when evidence or confidence is insufficient.
+- [x] Results are compared to the documented baseline on held-out cases.
 - [ ] Domain expert review captures unsafe, impractical, or misleading outputs.
-- [ ] No live operational delivery path is enabled.
+- [x] No live operational delivery path is enabled.
 
-Verification evidence: Pending.
+Verification evidence:
+
+- `fixtures/optimization/ft502-cases-v1.json` contains 18 development and 12
+  sealed held-out project-authored cases with bounded route/hazard templates.
+- `apps/api/src/optimization.rs` is a pure offline policy module with no HTTP,
+  database, provider, message, or aircraft-control adapter. Results include
+  versioned inputs, every constraint outcome, the hazard-blind baseline,
+  expected geometric effect, and the mandatory human-review boundary.
+- Focused tests prove sealed disposition matching, hard-constraint cleanliness,
+  baseline improvement, mandatory abstention, deterministic byte-identical
+  output, and absence of delivery/provider payload fields.
+- `apps/api/examples/ft502_offline_experiment.rs` emits the reproducible held-out
+  comparison report. The captured report records 6 recommendations, 6 correct
+  abstentions, a 66.67 percentage-point hazard-clear improvement over baseline,
+  2.259% median added distance, zero hard-constraint violations, and
+  deterministic output. Independent domain review remains honestly pending in
+  [`../evidence/ft-502/DOMAIN_REVIEW.md`](../evidence/ft-502/DOMAIN_REVIEW.md).
 
 ## FT-503 — Add human-reviewed message drafting
 
