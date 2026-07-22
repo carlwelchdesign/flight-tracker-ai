@@ -4,6 +4,7 @@ Status: Complete
 
 Branch: `chore/ft-418-node-24-runtime`
 Implementation commit: `6a9adc9`
+Merge commit: `af3dbb6`
 Pull request: [#58](https://github.com/carlwelchdesign/flight-tracker-ai/pull/58)
 Owner: Frontend and platform engineering
 
@@ -69,3 +70,11 @@ Dependencies: FT-404
 - Authenticated preview probes returned HTTP 200 for the root tracker and its
   Open Graph image. The HTML retained the branded Open Graph title, and the
   image remained a valid 1200 by 630 PNG.
+- PR #58 merged to `main` as `af3dbb6`. Main-branch CI run
+  [29939552062](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29939552062)
+  passed Rust, Node 24 web, and API/PostGIS checks.
+- Main production deployment `dpl_H4D8NAar318egoMPZmb3brVZQ7Dk` completed
+  `Ready` without the deprecated-Node, engine-mismatch, or stale-setting
+  messages and is assigned to `flight-tracker-ai-one.vercel.app`. Anonymous
+  production probes returned HTTP 200 for the tracker HTML and 1200 by 630
+  social image.

@@ -7,7 +7,7 @@ Last updated: 2026-07-22
 - Current milestone: M5 — Optimization research and controlled recommendations
 - Active ticket: FT-403/FT-502 — independent validation gates
 - Branch: External evidence branches begin only when reviewer records exist
-- Pull request: FT-418 [#58](https://github.com/carlwelchdesign/flight-tracker-ai/pull/58) passed required checks and is ready to merge
+- Pull request: FT-418 [#58](https://github.com/carlwelchdesign/flight-tracker-ai/pull/58) is merged
 - Owner: Product research and independent aviation-domain review
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
@@ -73,8 +73,9 @@ Last updated: 2026-07-22
 
 ## Handoff notes
 
-- FT-418 is complete through implementation commit `6a9adc9` and PR
-  [#58](https://github.com/carlwelchdesign/flight-tracker-ai/pull/58). The web
+- FT-418 is complete through implementation commit `6a9adc9`, PR
+  [#58](https://github.com/carlwelchdesign/flight-tracker-ai/pull/58), and merge
+  commit `af3dbb6`. The web
   package, local pin, CI, Docker image, Node types, lockfile, and current
   runbooks now use Node.js 24. Vercel project settings also select `24.x`.
   CI run
@@ -83,6 +84,12 @@ Last updated: 2026-07-22
   `dpl_H1YnJnYCsfijHyEyqGS1KwFoksBS` completed `Ready` without the Node 20
   deprecation, Mapbox engine mismatch, or stale Vercel setting warning, and its
   authenticated tracker/image probes returned HTTP 200.
+  Main CI run
+  [29939552062](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29939552062)
+  also passed after merge. Production deployment
+  `dpl_H4D8NAar318egoMPZmb3brVZQ7Dk` from merged `main` is assigned to
+  `flight-tracker-ai-one.vercel.app`; its clean Node 24 log contains none of
+  the reported errors, and anonymous tracker/image probes return HTTP 200.
 
 - FT-417 is complete through implementation commit `8715401`, PR
   [#56](https://github.com/carlwelchdesign/flight-tracker-ai/pull/56), and merge
