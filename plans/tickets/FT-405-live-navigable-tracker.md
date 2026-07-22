@@ -6,6 +6,7 @@ Branch: `feat/ft-405-live-navigable-tracker`
 Closeout branch: `test/ft-405-live-map-verification`
 Latest implementation commit: `27bcec3`
 Verification implementation commit: `b6a5944`
+Closeout merge commit: `03487e1`
 Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
 Closeout pull request: [#54](https://github.com/carlwelchdesign/flight-tracker-ai/pull/54)
 Owner: Full-stack product engineering
@@ -150,4 +151,7 @@ authoritative routes, schedules, delays, or complete coverage.
   branch-only failure override was removed and Production was never changed.
 - GitHub Actions run
   [29935943916](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29935943916)
-  passed Rust, web, API/PostGIS, and Vercel checks for closeout PR #54.
+  passed Rust, web, API/PostGIS, and Vercel checks for the first closeout
+  evidence commit. Final run
+  [29936224809](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29936224809)
+  passed the same checks before PR #54 merged to `main` as `03487e1`.
