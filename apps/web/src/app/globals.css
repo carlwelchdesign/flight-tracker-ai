@@ -891,6 +891,11 @@ a:focus-visible {
 .audit-event-list .audit-risk-high { color: var(--red); }
 
 .operations-footer { min-height: 28px; justify-content: space-between; gap: 20px; padding: 5px 22px; border-top: 1px solid var(--line); color: var(--subtle); background: #060d11; font: 500 8px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .08em; }
+.portfolio-social-links { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.portfolio-social-links a { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); background: var(--surface); transition: border-color .16s ease, color .16s ease, background-color .16s ease; }
+.portfolio-social-links a:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.portfolio-social-links a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; color: var(--accent); }
+.portfolio-social-links svg { width: 16px; height: 16px; }
 
 .airport-intelligence-panel { position: absolute; z-index: 7; left: 12px; top: 12px; width: min(620px, calc(100% - 380px)); border: 1px solid rgba(86, 126, 142, .55); background: rgba(5, 14, 19, .96); box-shadow: 0 12px 36px rgba(0,0,0,.42); }
 .airport-intelligence-trigger { width: 100%; display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 0; color: var(--text); background: rgba(17, 39, 47, .92); text-align: left; }
@@ -963,6 +968,7 @@ a:focus-visible {
   .audit-event-list li > span { white-space: normal; }
   .attention-breakdown { grid-template-columns: repeat(2, 1fr); }
   .operations-footer { flex-wrap: wrap; justify-content: flex-start; }
+  .portfolio-social-links { margin-left: 0; }
   .status-banner { align-items: flex-start; flex-direction: column; gap: 4px; padding: 9px 14px; }
   .live-position-source { grid-template-columns: 1fr; padding: 12px 14px; }
   .live-position-metrics, .live-position-actions { grid-column: auto; }

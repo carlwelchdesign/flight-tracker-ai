@@ -34,6 +34,26 @@ describe("public flight tracker demo", () => {
     vi.unstubAllGlobals();
   });
 
+  it("links the public footer to Carl Welch's LinkedIn profile and the project repository", () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
+    render(<PublicFlightTrackerDemo />);
+
+    expect(screen.getByRole("link", { name: "Carl Welch on LinkedIn" })).toHaveAttribute(
+      "href",
+      "https://www.linkedin.com/in/carlwelch",
+    );
+    expect(screen.getByRole("link", { name: "Flight Tracker AI source code on GitHub" })).toHaveAttribute(
+      "href",
+      "https://github.com/carlwelchdesign/flight-tracker-ai",
+    );
+    for (const link of screen.getAllByRole("link").filter((item) => item.closest(".portfolio-social-links"))) {
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      expect(link.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    }
+    vi.unstubAllGlobals();
+  });
+
   it("refreshes live traffic on the bounded 75-second polling cadence", async () => {
     const intervals: Array<{ callback: () => void; delay: number }> = [];
     vi.spyOn(window, "setInterval").mockImplementation(((callback: TimerHandler, delay?: number) => {
