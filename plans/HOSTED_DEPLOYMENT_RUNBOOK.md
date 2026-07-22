@@ -142,6 +142,18 @@ The later public demo deployment `dpl_5CvqF2Dbg6LnwZkDc8ccRZnutS4e` preserves
 that app-owned production sign-in flow while exposing the flight tracker at
 the root.
 
+On 2026-07-22, the current closeout artifact
+`dpl_73QyiQoAFRkCJdMUm9weAoDEUoXZ` was promoted to the production alias after
+Clerk reported that its `/__clerk` proxy verified successfully. The remaining
+Vercel Clerk DNS requirement cannot apply to the provider-owned `vercel.app`
+hostname, so the exact tested artifact was force-promoted with that exception
+recorded. Render staging deploy `dep-d9g786brjlhs73brr7ig` and production
+deploy `dep-d9g79trtqb8s73b5ovn0` both run merge commit `f172b53`. Staging
+passed before production promotion, and both environments return the exact
+public health and readiness contracts. The sanitized public-boundary verifier
+passes all five checks against the production Vercel, Render, and unauthenticated
+API boundary without emitting an origin, response body, header, or secret.
+
 ## Vercel server-only configuration
 
 | Variable | Preview | Production | Secret |
@@ -196,7 +208,7 @@ into an isolated branch, verify PostGIS and migration state, and follow
 - [x] Response headers, TLS, bounded logs, and basic availability monitoring
       pass.
 - [ ] FT-403 independent neutral reviewer passes the unfacilitated protocol.
-- [ ] The candidate contains no certification, operational-authority,
+- [x] The candidate contains no certification, operational-authority,
       commercial-SLA, or real-operator claim.
 
 Before authenticated browser checks, run the sanitized public-boundary verifier:
