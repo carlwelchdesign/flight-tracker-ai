@@ -402,7 +402,7 @@ export function PublicFlightTrackerDemo() {
             {preferReplay
               ? "Viewing the deterministic portfolio scenario. Replay facts and rule results are separate from live ADS-B positions."
               : loading
-              ? "Connecting to ADSB.lol…"
+              ? "Connecting to live aircraft providers…"
               : sourceState === "disabled"
                 ? "Live traffic is disabled, so the map is showing a clearly labeled replay demonstration."
                 : mode === "replay"
@@ -516,13 +516,36 @@ export function PublicFlightTrackerDemo() {
       <PublicAiDraftPanel />
 
       <footer className="operations-footer live-footer">
-        <span>{mode === "replay" ? "Deterministic portfolio replay" : "Best-effort ADS-B positions from ADSB.lol"}</span>
+        <span>
+          {mode === "replay" ? "Deterministic portfolio replay" : (
+            <>
+              Best-effort ADS-B positions from{" "}
+              {snapshot?.status.attribution ? (
+                <>
+                  <a href={snapshot.status.attribution.source_url} target="_blank" rel="noreferrer">
+                    {snapshot.status.attribution.source_name}
+                  </a>{" "}
+                  ·{" "}
+                  <a href={snapshot.status.attribution.terms_url} target="_blank" rel="noreferrer">
+                    {snapshot.status.attribution.terms_label}
+                  </a>
+                </>
+              ) : publicProviderName(snapshot?.status.provider)}
+            </>
+          )}
+        </span>
         <span>Map © OpenFreeMap · OpenMapTiles · OpenStreetMap contributors</span>
         <span>UTC / WGS84 · Not for navigation</span>
         <PortfolioSocialLinks />
       </footer>
     </main>
   );
+}
+
+function publicProviderName(provider: string | null | undefined): string {
+  if (provider === "adsb.lol") return "ADSB.lol";
+  if (provider === "airplanes.live") return "Airplanes.live fallback";
+  return "the active provider";
 }
 
 function PortfolioSocialLinks() {

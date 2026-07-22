@@ -53,7 +53,7 @@ The product deliberately distinguishes its evidence:
 
 | Capability               | Source and behavior                                                                                                 |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Aircraft positions       | Optional, ephemeral ADSB.lol observations with visible ODbL attribution; never persisted or sent to an LLM          |
+| Aircraft positions       | Optional, ephemeral ADSB.lol observations with a rate-limited Airplanes.live portfolio fallback and provider-specific attribution; never persisted or sent to an LLM |
 | Replay                   | Project-authored, deterministic scenario that remains available when live positions fail                            |
 | Aviation weather         | NOAA Aviation Weather Center observations, forecasts, pilot reports, and hazards                                    |
 | Atmospheric context      | NOAA nowCOAST imagery plus a bounded Open-Meteo GFS/HRRR wind grid                                                  |
@@ -99,10 +99,10 @@ Rust health and readiness endpoints are available at
 [http://localhost:8080/health](http://localhost:8080/health) and
 [http://localhost:8080/readiness](http://localhost:8080/readiness).
 
-The default local stack uses deterministic replay. Live NOAA and ADSB.lol
-ingestion are opt-in and have bounded polling, attribution, freshness, and
+The default local stack uses deterministic replay. Live NOAA and the ADS-B
+provider chain are opt-in and have bounded polling, attribution, freshness, and
 failure behavior documented in [NOAA ingestion](plans/NOAA_INGESTION.md) and
-[the ADSB.lol integration decision](plans/ADSBLOL_INTEGRATION.md).
+[the live-position integration decision](plans/ADSBLOL_INTEGRATION.md).
 
 ```sh
 make verify  # Rust format, Clippy, tests; web lint, types, tests, build; Compose validation
@@ -133,7 +133,8 @@ health checks, promotion, and rollback procedures.
 ## Data attribution
 
 - Aircraft data: [ADSB.lol](https://adsb.lol/) under ODbL 1.0 when the live
-  layer is available
+  primary layer is available; [Airplanes.live](https://airplanes.live/api-guide/)
+  under its published non-commercial API terms only as the portfolio fallback
 - Aviation weather: [NOAA Aviation Weather Center](https://aviationweather.gov/)
 - Atmospheric imagery: [NOAA nowCOAST](https://nowcoast.noaa.gov/)
 - Model wind delivery: [Open-Meteo](https://open-meteo.com/) using NOAA

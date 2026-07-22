@@ -16,6 +16,9 @@ const DEFAULT_NOAA_USER_AGENT: &str =
 const DEFAULT_ADSB_LOL_BASE_URL: &str = "https://api.adsb.lol/";
 const DEFAULT_ADSB_LOL_USER_AGENT: &str =
     "flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)";
+const DEFAULT_AIRPLANES_LIVE_BASE_URL: &str = "https://api.airplanes.live/";
+const DEFAULT_AIRPLANES_LIVE_USER_AGENT: &str =
+    "flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppEnvironment {
@@ -47,6 +50,13 @@ pub struct AdsbLolConfig {
     pub base_url: Url,
     pub user_agent: String,
     pub poll_interval: Duration,
+    pub airplanes_live_fallback: Option<AirplanesLiveFallbackConfig>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AirplanesLiveFallbackConfig {
+    pub base_url: Url,
+    pub user_agent: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,6 +131,12 @@ pub enum ConfigError {
     InvalidAdsbLolBaseUrl,
     #[error("ADSB_LOL_USER_AGENT must identify the application")]
     MissingAdsbLolUserAgent,
+    #[error("ENABLE_AIRPLANES_LIVE_FALLBACK must be true or false")]
+    InvalidAirplanesLiveToggle,
+    #[error("AIRPLANES_LIVE_API_BASE_URL must be a valid HTTP or HTTPS URL")]
+    InvalidAirplanesLiveBaseUrl,
+    #[error("AIRPLANES_LIVE_USER_AGENT must identify the application")]
+    MissingAirplanesLiveUserAgent,
     #[error("AUTH_MODE must be development or clerk")]
     InvalidAuthMode,
     #[error("AUTH_MODE=development is forbidden unless APP_ENV=development")]
@@ -296,6 +312,33 @@ impl Config {
             if user_agent.trim().is_empty() {
                 return Err(ConfigError::MissingAdsbLolUserAgent);
             }
+            let airplanes_live_enabled = parse_bool(
+                lookup("ENABLE_AIRPLANES_LIVE_FALLBACK")
+                    .as_deref()
+                    .unwrap_or("false"),
+                ConfigError::InvalidAirplanesLiveToggle,
+            )?;
+            let airplanes_live_fallback = if airplanes_live_enabled {
+                let base_url = Url::parse(
+                    lookup("AIRPLANES_LIVE_API_BASE_URL")
+                        .as_deref()
+                        .unwrap_or(DEFAULT_AIRPLANES_LIVE_BASE_URL),
+                )
+                .ok()
+                .filter(|url| matches!(url.scheme(), "http" | "https"))
+                .ok_or(ConfigError::InvalidAirplanesLiveBaseUrl)?;
+                let user_agent = lookup("AIRPLANES_LIVE_USER_AGENT")
+                    .unwrap_or_else(|| DEFAULT_AIRPLANES_LIVE_USER_AGENT.into());
+                if user_agent.trim().is_empty() {
+                    return Err(ConfigError::MissingAirplanesLiveUserAgent);
+                }
+                Some(AirplanesLiveFallbackConfig {
+                    base_url,
+                    user_agent,
+                })
+            } else {
+                None
+            };
             Some(AdsbLolConfig {
                 operator_id,
                 region: LivePositionRegion {
@@ -306,6 +349,7 @@ impl Config {
                 base_url,
                 user_agent,
                 poll_interval: Duration::from_secs(poll_interval_seconds),
+                airplanes_live_fallback,
             })
         } else {
             None
@@ -575,6 +619,31 @@ mod tests {
         .unwrap();
         assert_eq!(configured.region.radius_nautical_miles, 25);
         assert_eq!(configured.poll_interval, Duration::from_secs(75));
+        assert!(configured.airplanes_live_fallback.is_none());
+    }
+
+    #[test]
+    fn airplanes_live_fallback_is_explicit_and_validated() {
+        let base = [
+            ("ENABLE_ADSB_LOL_POSITIONS", "true"),
+            (
+                "ADSB_LOL_OPERATOR_ID",
+                "00000000-0000-0000-0000-000000000001",
+            ),
+            ("ADSB_LOL_LATITUDE", "37.62"),
+            ("ADSB_LOL_LONGITUDE", "-122.38"),
+            ("ENABLE_AIRPLANES_LIVE_FALLBACK", "true"),
+        ];
+        let configured = config(&base).unwrap().adsb_lol.unwrap();
+        let fallback = configured.airplanes_live_fallback.unwrap();
+        assert_eq!(fallback.base_url.as_str(), "https://api.airplanes.live/");
+
+        let mut invalid = base.to_vec();
+        invalid.push(("AIRPLANES_LIVE_API_BASE_URL", "file:///tmp/provider"));
+        assert!(matches!(
+            config(&invalid),
+            Err(ConfigError::InvalidAirplanesLiveBaseUrl)
+        ));
     }
 
     #[test]

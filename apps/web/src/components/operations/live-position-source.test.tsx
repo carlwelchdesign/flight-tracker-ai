@@ -30,8 +30,10 @@ const current: LivePositionStatus = {
   },
   attribution: {
     text: "Contains information from ADSB.lol, available under the Open Database License (ODbL).",
+    source_name: "ADSB.lol",
     source_url: "https://adsb.lol/",
-    license_url: "https://opendatacommons.org/licenses/odbl/1-0/",
+    terms_label: "Open Database License (ODbL)",
+    terms_url: "https://opendatacommons.org/licenses/odbl/1-0/",
   },
 };
 
@@ -137,5 +139,40 @@ describe("live position source presentation", () => {
     );
     expect(screen.getByRole("heading", { name: /deterministic replay is the default/i })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "ADSB.lol" })).not.toBeInTheDocument();
+  });
+
+  it("identifies and attributes the active fallback provider", () => {
+    render(
+      <LivePositionSource
+        status={{
+          ...current,
+          provider: "airplanes.live",
+          attribution: {
+            text: "Airplanes.live fallback data is displayed under its published non-commercial API terms.",
+            source_name: "Airplanes.live",
+            source_url: "https://airplanes.live/",
+            terms_label: "non-commercial API terms",
+            terms_url: "https://airplanes.live/api-guide/",
+          },
+        }}
+        message={null}
+        liveFlightsVisible
+        replayAvailable
+        onUseReplay={() => undefined}
+        onRetry={() => undefined}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Airplanes.live fallback positions available" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Airplanes.live" })).toHaveAttribute(
+      "href",
+      "https://airplanes.live/",
+    );
+    expect(screen.getByRole("link", { name: "non-commercial API terms" })).toHaveAttribute(
+      "href",
+      "https://airplanes.live/api-guide/",
+    );
   });
 });
