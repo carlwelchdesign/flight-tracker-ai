@@ -70,7 +70,12 @@ fn main() {
     }
     let elapsed = started.elapsed();
     let evaluations = ITERATIONS * ROUTES.len();
-    println!("runtime=rust evaluations={evaluations} elapsed_ms={:.3} evaluations_per_second={:.0} checksum={:.3}", elapsed.as_secs_f64()*1000.0, evaluations as f64/elapsed.as_secs_f64(), checksum);
+    println!(
+        "runtime=rust evaluations={evaluations} elapsed_ms={:.3} evaluations_per_second={:.0} checksum={:.3}",
+        elapsed.as_secs_f64() * 1000.0,
+        evaluations as f64 / elapsed.as_secs_f64(),
+        checksum
+    );
 }
 
 fn haversine_nm(a: (f64, f64), b: (f64, f64)) -> f64 {
