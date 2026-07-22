@@ -46,7 +46,7 @@ Verification evidence:
 
 ## FT-502 — Build an offline recommendation experiment
 
-Status: Complete
+Status: In progress
 
 Branch: `feat/ft-502-offline-recommendations`
 Final commit: `49c8c85`
@@ -87,7 +87,7 @@ Verification evidence:
 
 ## FT-503 — Add human-reviewed message drafting
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-503-human-reviewed-drafts`
 Final implementation commit: `f7cb5c6`

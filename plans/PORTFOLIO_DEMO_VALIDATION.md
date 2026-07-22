@@ -13,6 +13,16 @@ historical expert simulation below remains useful design evidence, but it is
 not an independent human usability study and does not satisfy the participant
 gate.
 
+Candidate ready for neutral review: production commit `9811eb0`, audited on
+2026-07-22 at <https://flight-tracker-ai-one.vercel.app>. The final automated
+production audit passed the tracker HTML and security-header contracts, API
+health/readiness, protected-route denial, attention explanation, replay
+timeline, airport intelligence, live positions, NOAA weather, and model wind.
+See
+[`evidence/FINAL_PRODUCTION_AUDIT_2026-07-22.json`](evidence/FINAL_PRODUCTION_AUDIT_2026-07-22.json).
+This establishes candidate readiness only; the participant row remains pending
+until a person who did not build the product completes the protocol.
+
 ## Scope
 
 The evaluation covers the public tracker: regional live and replay flight
@@ -98,7 +108,7 @@ Complete one row per reviewer. Use role labels rather than names.
 
 | Date | Viewer | T1 time / concepts | T2 | T3 | T4 | T5 | T6 | T7 | Source score | Availability observed | Interventions | Key observations |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | --- |
-| Pending | Neutral reviewer | — | — | — | — | — | — | — | — | — | — | FT-413–416 candidate required |
+| Pending | Neutral reviewer | — | — | — | — | — | — | — | — | Production healthy on `9811eb0` | — | Candidate ready; independent session required |
 
 ## Publish gate
 
