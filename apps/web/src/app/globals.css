@@ -407,6 +407,7 @@ a:focus-visible {
 .live-source-pill.source-replay { color: #9aaeb4; }
 .live-map-stage { position: relative; flex: 1; min-height: 540px; overflow: hidden; background: #061117; }
 .maplibre-canvas { position: absolute; inset: 0; }
+.wind-particle-canvas { position: absolute; z-index: 1; inset: 0; pointer-events: none; }
 .map-loading,
 .map-error,
 .map-help { position: absolute; z-index: 2; border: 1px solid #28434d; background: rgb(5 17 23 / 88%); color: #a9c0c6; font: 500 9px/1.2 "Geist Mono", monospace; }
@@ -444,6 +445,18 @@ a:focus-visible {
 .public-weather-toggles label { display: flex; align-items: center; gap: 5px; min-width: 0; color: #a9bec2; cursor: pointer; }
 .public-weather-toggles input { accent-color: #1be0c1; }
 .public-weather-toggles strong { margin-left: auto; color: #dce8ea; }
+.atmospheric-controls { border-bottom: 1px solid #1b343d; }
+.atmospheric-toggles { border-bottom: 0; }
+.atmospheric-level-control { display: grid; gap: 5px; padding: 0 10px 8px; color: #6e8990; font-size: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.atmospheric-level-control select { width: 100%; border: 1px solid #34515c; background: #0a2028; color: #dce8ea; padding: 6px 7px; font: 500 9px/1.2 "Geist Mono", monospace; text-transform: none; letter-spacing: 0; }
+.atmospheric-source { display: grid; gap: 2px; margin: 0 10px 8px; padding: 7px 8px; border: 1px solid #294650; background: #0a2028; color: #87a0a6; }
+.atmospheric-source strong { color: #8ed9ca; font-size: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.atmospheric-source-loading strong { color: #8aa1a7; }
+.atmospheric-source-degraded strong { color: #f2a65a; }
+.atmospheric-source-unavailable strong { color: #f07870; }
+.atmospheric-attribution { display: grid; gap: 3px; padding: 0 10px 8px; }
+.atmospheric-attribution a { color: #79caba; font-size: 8px; }
+.atmospheric-attribution small { color: #6e8990; font-size: 7px; }
 .weather-evidence-picker { display: grid; gap: 5px; padding: 8px 10px; border-bottom: 1px solid #1b343d; color: #6e8990; font-size: 8px; text-transform: uppercase; letter-spacing: .06em; }
 .weather-evidence-picker select { width: 100%; border: 1px solid #34515c; background: #0a2028; color: #dce8ea; padding: 6px 7px; font: 500 9px/1.2 "Geist Mono", monospace; text-transform: none; letter-spacing: 0; }
 .public-weather-evidence { padding: 9px 10px; border-bottom: 1px solid #1b343d; }

@@ -96,6 +96,23 @@
 - Rate boundary: Poll each region every 75 seconds, stagger starts evenly across the interval, and retain independent ephemeral status/projection state. This cadence was selected after local live verification found a rolling rate limit at 60 seconds; the 75-second cycle completed with all seven regions current and zero consecutive failures.
 - Data boundary: Preserve ADR-011: provider records remain in memory only, are never persisted/exported/sent to an LLM, keep `no-store` and ODbL attribution, and fall back to a clearly simulated regional picture.
 
+### ADR-014 — Atmospheric layers combine fixed NOAA imagery with bounded model vectors
+
+- Date: 2026-07-21
+- Decision: Use fixed NOAA nowCOAST WMS products for transparent radar,
+  geostationary satellite cloud imagery, and surface-wind barbs. Use a Rust-owned
+  allowlisted Open-Meteo GFS/HRRR request only for a small regional grid of
+  surface and pressure-level wind vectors needed by the animated field.
+- Reason: NOAA's OGC imagery supplies current, visually rich national layers
+  without raster processing in the application. A small typed vector grid adds
+  directional upper-air motion while preserving an inspectable backend boundary.
+- Constraint: Do not expose an arbitrary WMS, coordinate, variable, or pressure
+  proxy. Keep all levels and regions server-owned, cache only briefly in memory,
+  show product/model time and attribution, and fail independently from aircraft
+  and aviation-weather evidence.
+- Product boundary: These layers are public portfolio context, not certified
+  weather, turbulence/icing analysis, route clearance, or a flight briefing.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |

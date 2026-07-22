@@ -5,6 +5,22 @@ import type {
   PublicWeatherState,
 } from "@/lib/public-weather";
 import { hazardLifecycle, selectedWeather, type WeatherSelection } from "./public-weather-map";
+import { WIND_LEVELS, type PublicWindField, type WindLevelCode } from "@/lib/public-atmosphere";
+
+export type AtmosphericLayerControlModel = {
+  showRadar: boolean;
+  showSatellite: boolean;
+  showSurfaceWind: boolean;
+  showModelWind: boolean;
+  windLevel: WindLevelCode;
+  windState: "idle" | "loading" | "current" | "degraded" | "unavailable";
+  windField: PublicWindField | null;
+  onShowRadar: (value: boolean) => void;
+  onShowSatellite: (value: boolean) => void;
+  onShowSurfaceWind: (value: boolean) => void;
+  onShowModelWind: (value: boolean) => void;
+  onWindLevel: (value: WindLevelCode) => void;
+};
 
 type Props = {
   snapshot: PublicWeatherSnapshot | null;
@@ -17,6 +33,7 @@ type Props = {
   onShowObservations: (value: boolean) => void;
   onSelect: (value: WeatherSelection | null) => void;
   onRetry: () => void;
+  atmosphere?: AtmosphericLayerControlModel;
 };
 
 export function PublicWeatherOverlay({
@@ -30,6 +47,7 @@ export function PublicWeatherOverlay({
   onShowObservations,
   onSelect,
   onRetry,
+  atmosphere,
 }: Props) {
   const selected = selectedWeather(snapshot, selection);
   const selectionValue = selection ? `${selection.kind}:${selection.id}` : "";
@@ -65,6 +83,8 @@ export function PublicWeatherOverlay({
         </label>
       </fieldset>
 
+      {atmosphere && <AtmosphericControls model={atmosphere} />}
+
       {(snapshot?.observations.length || snapshot?.hazards.length) ? (
         <label className="weather-evidence-picker">
           Inspect weather evidence
@@ -96,6 +116,75 @@ export function PublicWeatherOverlay({
       </a>
     </aside>
   );
+}
+
+function AtmosphericControls({ model }: { model: AtmosphericLayerControlModel }) {
+  return (
+    <section className="atmospheric-controls" aria-label="Atmospheric map layers">
+      <fieldset className="public-weather-toggles atmospheric-toggles">
+        <legend>Atmospheric layers</legend>
+        <label>
+          <input type="checkbox" checked={model.showRadar} onChange={(event) => model.onShowRadar(event.target.checked)} />
+          Radar
+        </label>
+        <label>
+          <input type="checkbox" checked={model.showSatellite} onChange={(event) => model.onShowSatellite(event.target.checked)} />
+          Satellite clouds
+        </label>
+        <label>
+          <input type="checkbox" checked={model.showSurfaceWind} onChange={(event) => model.onShowSurfaceWind(event.target.checked)} />
+          Surface wind barbs
+        </label>
+        <label>
+          <input type="checkbox" checked={model.showModelWind} onChange={(event) => model.onShowModelWind(event.target.checked)} />
+          Animated winds
+        </label>
+      </fieldset>
+      {model.showModelWind && (
+        <label className="atmospheric-level-control">
+          Model wind level
+          <select
+            aria-label="Model wind level"
+            value={model.windLevel}
+            onChange={(event) => model.onWindLevel(event.target.value as WindLevelCode)}
+          >
+            {WIND_LEVELS.map((level) => <option key={level.code} value={level.code}>{level.label}</option>)}
+          </select>
+        </label>
+      )}
+      <div className={`atmospheric-source atmospheric-source-${model.windState}`} role="status">
+        <strong>{windStateLabel(model)}</strong>
+        {model.windField && (
+          <span>
+            {formatTimestamp(model.windField.forecast_time)} · {meanWindSpeed(model.windField)} kt mean
+          </span>
+        )}
+      </div>
+      <div className="atmospheric-attribution">
+        <a href="https://nowcoast.noaa.gov/" target="_blank" rel="noreferrer">NOAA nowCOAST imagery</a>
+        {model.windField && (
+          <>
+            <a href={model.windField.attribution.source_url} target="_blank" rel="noreferrer">{model.windField.attribution.text}</a>
+            <a href={model.windField.attribution.license_url} target="_blank" rel="noreferrer">CC BY 4.0</a>
+          </>
+        )}
+        <small>Advisory portfolio context · not for navigation or flight briefing</small>
+      </div>
+    </section>
+  );
+}
+
+function windStateLabel(model: AtmosphericLayerControlModel) {
+  if (!model.showModelWind) return "Model wind hidden";
+  if (model.windState === "loading") return "Loading model wind";
+  if (model.windState === "unavailable") return "Model wind unavailable";
+  if (model.windState === "degraded") return "Last model wind field";
+  if (model.windState === "current") return model.windField?.level.label ?? "Current model wind";
+  return "Model wind idle";
+}
+
+function meanWindSpeed(field: PublicWindField) {
+  return Math.round(field.samples.reduce((sum, sample) => sum + sample.speed_knots, 0) / field.samples.length);
 }
 
 function ObservationEvidence({ observation, onClose }: { observation: PublicWeatherObservation; onClose: () => void }) {

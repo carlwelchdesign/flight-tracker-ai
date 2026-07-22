@@ -5,6 +5,23 @@ use crate::domain::OperatorId;
 use super::LivePositionRegion;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PublicLiveRegionDefinition {
+    pub code: &'static str,
+    pub name: &'static str,
+    pub region: LivePositionRegion,
+}
+
+const PUBLIC_LIVE_REGION_DEFINITIONS: [PublicLiveRegionDefinition; 7] = [
+    definition("sfo", "San Francisco", 37.6213, -122.379),
+    definition("lax", "Los Angeles", 33.9416, -118.4085),
+    definition("sea", "Seattle", 47.4502, -122.3088),
+    definition("den", "Denver", 39.8561, -104.6737),
+    definition("ord", "Chicago", 41.9742, -87.9073),
+    definition("atl", "Atlanta", 33.6407, -84.4277),
+    definition("jfk", "New York", 40.6413, -73.7781),
+];
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LivePositionRegionPreset {
     pub code: &'static str,
     pub name: &'static str,
@@ -86,6 +103,13 @@ pub fn find_public_live_region(
         .find(|preset| preset.code == code)
 }
 
+pub fn find_public_live_region_definition(code: &str) -> Option<PublicLiveRegionDefinition> {
+    PUBLIC_LIVE_REGION_DEFINITIONS
+        .iter()
+        .copied()
+        .find(|definition| definition.code == code)
+}
+
 fn derived_preset(
     primary_operator: OperatorId,
     code: &'static str,
@@ -107,6 +131,23 @@ fn derived_preset(
         },
         worker_name,
     )
+}
+
+const fn definition(
+    code: &'static str,
+    name: &'static str,
+    latitude_degrees: f64,
+    longitude_degrees: f64,
+) -> PublicLiveRegionDefinition {
+    PublicLiveRegionDefinition {
+        code,
+        name,
+        region: LivePositionRegion {
+            latitude_degrees,
+            longitude_degrees,
+            radius_nautical_miles: 50,
+        },
+    }
 }
 
 fn preset(
@@ -171,6 +212,13 @@ mod tests {
                 "anywhere",
             )
             .is_none()
+        );
+        assert!(find_public_live_region_definition("anywhere").is_none());
+        assert_eq!(
+            find_public_live_region_definition("lax")
+                .expect("LAX is allowlisted")
+                .name,
+            "Los Angeles"
         );
     }
 }

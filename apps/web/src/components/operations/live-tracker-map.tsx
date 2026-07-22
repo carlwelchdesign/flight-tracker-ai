@@ -7,9 +7,19 @@ import type { EstimatedTrajectory, TrajectoryPoint } from "@/lib/flight-trajecto
 import type { PublicAircraft, PublicLiveStatus } from "@/lib/public-live-positions";
 import type { PublicLiveRegion } from "@/lib/public-live-regions";
 import type { PublicWeatherSnapshot, PublicWeatherState } from "@/lib/public-weather";
+import {
+  parsePublicWindField,
+  type PublicWindField,
+  type WindLevelCode,
+} from "@/lib/public-atmosphere";
+import {
+  addAtmosphericRasterLayers,
+  setAtmosphericRasterVisibility,
+} from "./atmospheric-layers";
 import { liveMarkerRotationDegrees } from "./aircraft-marker-heading";
 import { PublicWeatherOverlay } from "./public-weather-overlay";
 import { weatherGeoJson, type WeatherSelection } from "./public-weather-map";
+import { WindParticleLayer } from "./wind-particle-layer";
 
 type Props = {
   aircraft: PublicAircraft[];
@@ -56,17 +66,30 @@ export function LiveTrackerMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef(new Map<string, MarkerEntry>());
+  const windFieldRef = useRef<PublicWindField | null>(null);
   const onSelectRef = useRef(onSelect);
+  const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [showHazards, setShowHazards] = useState(true);
   const [showObservations, setShowObservations] = useState(true);
+  const [showRadar, setShowRadar] = useState(true);
+  const [showSatellite, setShowSatellite] = useState(true);
+  const [showSurfaceWind, setShowSurfaceWind] = useState(false);
+  const [showModelWind, setShowModelWind] = useState(true);
+  const [windLevel, setWindLevel] = useState<WindLevelCode>("500");
+  const [windField, setWindField] = useState<PublicWindField | null>(null);
+  const [windState, setWindState] = useState<"idle" | "loading" | "current" | "degraded" | "unavailable">("idle");
   const [weatherSelection, setWeatherSelection] = useState<WeatherSelection | null>(null);
   const hasFitRef = useRef(false);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    windFieldRef.current = windField;
+  }, [windField]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -88,16 +111,22 @@ export function LiveTrackerMap({
         map.addControl(new maplibre.FullscreenControl(), "top-right");
         map.on("load", () => {
           if (disposed) return;
+          addAtmosphericRasterLayers(map);
           addWeatherLayers(map, setWeatherSelection);
           addTrajectoryLayers(map);
           setMapReady(true);
         });
         map.on("error", (event) => {
-          if (!disposed && event.error) setMapError("Basemap temporarily unavailable");
+          if (disposed || !event.error) return;
+          const sourceId = "sourceId" in event && typeof event.sourceId === "string" ? event.sourceId : "";
+          setMapError(sourceId.startsWith("noaa-nowcoast")
+            ? "A NOAA imagery layer is temporarily unavailable"
+            : "Basemap temporarily unavailable");
         });
         resizeObserver = new ResizeObserver(() => map.resize());
         resizeObserver.observe(containerRef.current);
         mapRef.current = map;
+        setMapInstance(map);
       } catch {
         if (!disposed) setMapError("This browser could not initialize the interactive map");
       }
@@ -182,6 +211,58 @@ export function LiveTrackerMap({
     source?.setData(weatherGeoJson(weather, showHazards, showObservations, weatherSelection));
   }, [mapReady, showHazards, showObservations, weather, weatherSelection]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    setAtmosphericRasterVisibility(map, "radar", showRadar);
+    setAtmosphericRasterVisibility(map, "satellite", showSatellite);
+    setAtmosphericRasterVisibility(map, "surfaceWind", showSurfaceWind);
+  }, [mapReady, showRadar, showSatellite, showSurfaceWind]);
+
+  useEffect(() => {
+    if (!showModelWind) return;
+    const controller = new AbortController();
+    let disposed = false;
+
+    async function loadWind() {
+      if (windFieldRef.current?.region_code !== region.code || windFieldRef.current.level.code !== windLevel) {
+        windFieldRef.current = null;
+        setWindField(null);
+      }
+      setWindState("loading");
+      try {
+        const response = await fetch(`/api/public/atmosphere/wind?region=${region.code}&level=${windLevel}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("Atmospheric wind is unavailable");
+        const next = parsePublicWindField(await response.json());
+        if (next.region_code !== region.code || next.level.code !== windLevel) {
+          throw new Error("Atmospheric wind returned the wrong selection");
+        }
+        if (!disposed) {
+          windFieldRef.current = next;
+          setWindField(next);
+          setWindState(next.state);
+        }
+      } catch {
+        if (disposed || controller.signal.aborted) return;
+        const retained = windFieldRef.current?.region_code === region.code
+          && windFieldRef.current.level.code === windLevel;
+        setWindState(retained ? "degraded" : "unavailable");
+        if (!retained) setWindField(null);
+      }
+    }
+
+    void loadWind();
+    const refresh = window.setInterval(loadWind, 15 * 60_000);
+    return () => {
+      disposed = true;
+      window.clearInterval(refresh);
+      controller.abort();
+    };
+  }, [region.code, showModelWind, windLevel]);
+
   function handleShowHazards(value: boolean) {
     setShowHazards(value);
     if (!value && weatherSelection?.kind === "hazard") setWeatherSelection(null);
@@ -218,6 +299,7 @@ export function LiveTrackerMap({
           className="maplibre-canvas"
           aria-label="Interactive aircraft map. Drag to pan, scroll to zoom, and use the controls to rotate or reset north."
         />
+        <WindParticleLayer map={mapReady ? mapInstance : null} field={windField} visible={showModelWind} />
         {!mapReady && <div className="map-loading">Loading navigable map…</div>}
         {mapError && <div className="map-error" role="status">{mapError}</div>}
         <div className="map-help">Drag to pan · Scroll to zoom · Right-drag to rotate</div>
@@ -232,6 +314,20 @@ export function LiveTrackerMap({
           onShowObservations={handleShowObservations}
           onSelect={setWeatherSelection}
           onRetry={onRetryWeather}
+          atmosphere={{
+            showRadar,
+            showSatellite,
+            showSurfaceWind,
+            showModelWind,
+            windLevel,
+            windState: showModelWind ? windState : "idle",
+            windField,
+            onShowRadar: setShowRadar,
+            onShowSatellite: setShowSatellite,
+            onShowSurfaceWind: setShowSurfaceWind,
+            onShowModelWind: setShowModelWind,
+            onWindLevel: setWindLevel,
+          }}
         />
         {mode !== "replay" && (
           <aside className="trajectory-legend" aria-label="Selected aircraft trajectory legend">

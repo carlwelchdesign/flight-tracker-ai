@@ -36,10 +36,10 @@ describe("browser security policy", () => {
       strict: true,
       directives: {
         "base-uri": ["self"],
-        "connect-src": ["self", "https://tiles.openfreemap.org"],
+        "connect-src": ["self", "https://tiles.openfreemap.org", "https://nowcoast.noaa.gov"],
         "font-src": ["self", "data:"],
         "frame-ancestors": ["none"],
-        "img-src": ["self", "blob:", "data:", "https://tiles.openfreemap.org"],
+        "img-src": ["self", "blob:", "data:", "https://tiles.openfreemap.org", "https://nowcoast.noaa.gov"],
         "media-src": ["none"],
         "object-src": ["none"],
         "worker-src": ["self", "blob:"],
