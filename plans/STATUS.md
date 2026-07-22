@@ -6,16 +6,17 @@ Last updated: 2026-07-22
 
 - Current milestone: M5 — Optimization research and controlled recommendations
 - Active ticket: FT-403/FT-502 — independent validation gates
-- Branch: `feat/ft-503-human-reviewed-drafts`
-- Pull request: [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52)
+- Branch: External evidence branches begin only when reviewer records exist
+- Pull request: FT-503 merged through [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52)
 - Owner: Product research and independent aviation-domain review
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 4/4 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Merge green FT-503 PR #52, then obtain and record the neutral
-  recruiter session required by FT-403 and the independent aviation-domain
-  review required by FT-502.
+- Next action: Give production commit `9811eb0` to one neutral recruiter or
+  hiring-manager reviewer and the existing FT-502 packet to one independent
+  aviation-domain reviewer; record their actual observations on isolated
+  ticket branches and close each ticket only if its gate passes.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.
@@ -73,7 +74,9 @@ Last updated: 2026-07-22
 
 ## Handoff notes
 
-- FT-503 is active on `feat/ft-503-human-reviewed-drafts` with explicit owner
+- FT-503 is complete and merged through PR
+  [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52) at merge
+  commit `9811eb0`. It proceeded with explicit owner
   authorization to proceed while FT-502's external domain review remains
   pending. Rust will keep source-fact minimization, draft validation,
   deterministic fallback, and review state separate from the optional OpenAI
@@ -85,12 +88,17 @@ Last updated: 2026-07-22
   evaluation cases matched their expected findings. A live OpenAI probe was
   rate-limited and safely degraded to a deterministic draft that still required
   explicit review; the local credential remains ignored and uncommitted.
-  Implementation commit `f7cb5c6` is published in PR
-  [#52](https://github.com/carlwelchdesign/flight-tracker-ai/pull/52). GitHub
-  Actions run
+  Implementation commit `f7cb5c6` passed GitHub Actions run
   [29934635940](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29934635940)
-  passed Rust, web, and API/PostGIS checks; Vercel preview also passed. FT-503
-  is complete pending the authorized merge of that green PR.
+  passed Rust, web, and API/PostGIS checks; Vercel preview also passed.
+
+- Final production engineering audit on commit `9811eb0` passed the public
+  tracker, security headers, API health/readiness, protected-route denial,
+  attention explanation, replay timeline, KSFO TAF/PIREP intelligence, SFO live
+  positions, NOAA weather, and surface wind. Evidence is captured in
+  [`evidence/FINAL_PRODUCTION_AUDIT_2026-07-22.json`](evidence/FINAL_PRODUCTION_AUDIT_2026-07-22.json).
+  This does not replace the FT-403 neutral-human session or FT-502 independent
+  aviation-domain judgment.
 
 - FT-404 hosted smoke resumed on
   `fix/ft-404-hosted-smoke-closeout`. Production `/health` is healthy, but the

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-07-22T15:48:34Z",
+  "candidate_commit": "9811eb0757e1917717b26ec1099f646f973e3e41",
+  "web_origin": "https://flight-tracker-ai-one.vercel.app",
+  "api_origin": "https://flight-tracker-api-cpxg.onrender.com",
+  "status": "passed",
+  "publication_ready_engineering_boundary": true,
+  "checks": [
+    { "name": "public tracker HTML contract", "status": "passed" },
+    { "name": "web security headers", "status": "passed" },
+    { "name": "API health", "status": "passed" },
+    { "name": "API readiness", "status": "passed" },
+    { "name": "protected API unauthenticated denial", "status": "passed" },
+    { "name": "public attention explanation", "status": "passed", "http_status": 200, "cache_control": "no-store" },
+    { "name": "public replay timeline", "status": "passed", "http_status": 200, "cache_control": "no-store" },
+    { "name": "public KSFO TAF and PIREP intelligence", "status": "passed", "http_status": 200, "cache_control": "public, max-age=30" },
+    { "name": "public SFO live positions", "status": "passed", "http_status": 200, "cache_control": "no-store" },
+    { "name": "public NOAA weather", "status": "passed", "http_status": 200, "cache_control": "no-store" },
+    { "name": "public SFO surface wind", "status": "passed", "http_status": 200, "cache_control": "no-store" }
+  ],
+  "remaining_external_evidence": [
+    "FT-403 neutral reviewer session",
+    "FT-502 independent aviation-domain review"
+  ],
+  "boundary": "Automated engineering verification does not replace either independent human review."
+}
