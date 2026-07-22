@@ -278,7 +278,7 @@ impl Config {
                 .ok_or(ConfigError::InvalidAdsbLolRadius)?;
             let poll_interval_seconds = lookup("ADSB_LOL_POLL_INTERVAL_SECONDS")
                 .as_deref()
-                .unwrap_or("30")
+                .unwrap_or("75")
                 .parse::<u64>()
                 .ok()
                 .filter(|value| *value >= 30)
@@ -574,7 +574,7 @@ mod tests {
         .adsb_lol
         .unwrap();
         assert_eq!(configured.region.radius_nautical_miles, 25);
-        assert_eq!(configured.poll_interval, Duration::from_secs(30));
+        assert_eq!(configured.poll_interval, Duration::from_secs(75));
     }
 
     #[test]

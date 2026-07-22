@@ -20,6 +20,8 @@ const status = {
 describe("parsePublicLiveSnapshot", () => {
   it("accepts the sanitized live aircraft contract", () => {
     const result = parsePublicLiveSnapshot({
+      region_code: "sfo",
+      region_name: "San Francisco",
       status,
       data: [{
         id: "flight-1",
@@ -38,11 +40,14 @@ describe("parsePublicLiveSnapshot", () => {
     });
 
     expect(result.data[0].callsign).toBe("UAL42");
+    expect(result.region_code).toBe("sfo");
     expect(result.status.state).toBe("current");
   });
 
   it("rejects invalid coordinates", () => {
     expect(() => parsePublicLiveSnapshot({
+      region_code: "sfo",
+      region_name: "San Francisco",
       status,
       data: [{
         id: "flight-1", callsign: null, aircraft_registration: null,

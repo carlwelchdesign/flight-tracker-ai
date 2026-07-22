@@ -1,6 +1,6 @@
 use axum::{
     Json, Router,
-    extract::{Extension, Request, State},
+    extract::{Extension, Query, Request, State},
     http::{HeaderValue, StatusCode, header},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -34,7 +34,7 @@ use auth::{
 use fleet::{FleetStore, FlightView, fleet_router, spawn_projection_worker};
 use health::{CriticalWorkerRegistry, WorkerSnapshot};
 use ingestion::IngestionSubscription;
-use live_positions::{LivePositionStatus, LivePositionStatusStore};
+use live_positions::{LivePositionStatus, LivePositionStatusStore, find_public_live_region};
 use metrics::{ApiMetrics, observe_request};
 use observability::correlate_request;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
@@ -64,8 +64,15 @@ const PUBLIC_LIVE_LIMIT: usize = 500;
 
 #[derive(Debug, Serialize)]
 struct PublicLivePositionSnapshot {
+    region_code: Option<&'static str>,
+    region_name: Option<&'static str>,
     status: LivePositionStatus,
     data: Vec<PublicAircraftPosition>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct PublicLivePositionQuery {
+    region: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -362,25 +369,63 @@ fn build_router_with_services_and_health(
         .layer(middleware::from_fn(secure_transport_headers))
 }
 
-async fn public_live_positions(State(state): State<ApiState>) -> impl IntoResponse {
+async fn public_live_positions(
+    State(state): State<ApiState>,
+    Query(query): Query<PublicLivePositionQuery>,
+) -> Response {
     let now = Utc::now();
     let Some(operator_id) = state.public_live_operator else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
             [(header::CACHE_CONTROL, "no-store")],
             Json(PublicLivePositionSnapshot {
+                region_code: None,
+                region_name: None,
                 status: LivePositionStatusStore::default().snapshot(OperatorId::new(), now),
                 data: Vec::new(),
             }),
-        );
+        )
+            .into_response();
     };
-    let status = state.live_positions.snapshot(operator_id, now);
+    let primary_status = state.live_positions.snapshot(operator_id, now);
+    let Some(primary_region) = primary_status.region else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            [(header::CACHE_CONTROL, "no-store")],
+            Json(PublicLivePositionSnapshot {
+                region_code: None,
+                region_name: None,
+                status: primary_status,
+                data: Vec::new(),
+            }),
+        )
+            .into_response();
+    };
+    let region_code = query
+        .region
+        .as_deref()
+        .unwrap_or("sfo")
+        .to_ascii_lowercase();
+    let Some(preset) = find_public_live_region(operator_id, primary_region, &region_code) else {
+        return (
+            StatusCode::NOT_FOUND,
+            [(header::CACHE_CONTROL, "no-store")],
+            Json(ApiErrorResponse {
+                error: ApiErrorBody {
+                    code: "live_region_not_found",
+                    message: "The requested live traffic region is not available",
+                },
+            }),
+        )
+            .into_response();
+    };
+    let status = state.live_positions.snapshot(preset.operator_id, now);
     let visible_window_seconds = status.stale_after_seconds.saturating_mul(4).max(120);
     let observed_after = now - chrono::Duration::seconds(visible_window_seconds as i64);
     let data = state
         .fleet
         .list_provider_positions(
-            operator_id,
+            preset.operator_id,
             PUBLIC_LIVE_PROVIDER,
             observed_after,
             PUBLIC_LIVE_LIMIT,
@@ -392,8 +437,14 @@ async fn public_live_positions(State(state): State<ApiState>) -> impl IntoRespon
     (
         StatusCode::OK,
         [(header::CACHE_CONTROL, "no-store")],
-        Json(PublicLivePositionSnapshot { status, data }),
+        Json(PublicLivePositionSnapshot {
+            region_code: Some(preset.code),
+            region_name: Some(preset.name),
+            status,
+            data,
+        }),
     )
+        .into_response()
 }
 
 async fn secure_transport_headers(request: Request, next: Next) -> Response {
@@ -847,6 +898,21 @@ mod tests {
             },
             test_auth(&database),
         );
+        let unknown_response = app
+            .clone()
+            .oneshot(
+                Request::get("/api/public/live-positions?region=anywhere")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(unknown_response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(
+            unknown_response.headers().get(header::CACHE_CONTROL),
+            Some(&HeaderValue::from_static("no-store"))
+        );
+
         let response = app
             .oneshot(
                 Request::get("/api/public/live-positions")
@@ -864,6 +930,8 @@ mod tests {
         let payload: Value =
             serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes())
                 .unwrap();
+        assert_eq!(payload["region_code"], "sfo");
+        assert_eq!(payload["region_name"], "San Francisco");
         assert_eq!(payload["data"].as_array().unwrap().len(), 1);
         assert_eq!(payload["data"][0]["provider"], PUBLIC_LIVE_PROVIDER);
         assert!(payload["data"][0].get("operator_id").is_none());

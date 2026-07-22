@@ -12,7 +12,7 @@ use flight_tracker_api::{
     ingestion::{IngestionHub, IngestionSubscription},
     live_positions::{
         AdsbLolClient, AdsbLolClientConfig, AdsbLolRuntimeConfig, LivePositionStatusStore,
-        RetryPolicy as AdsbLolRetryPolicy, spawn_adsb_lol_runtime,
+        RetryPolicy as AdsbLolRetryPolicy, public_live_region_catalog, spawn_adsb_lol_runtime,
     },
     replay::{ReplayHandle, ReplayScenario, spawn_replay_runtime},
     retention::{RetentionStore, spawn_retention_scheduler},
@@ -152,22 +152,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             request_timeout: Duration::from_secs(12),
             retry: AdsbLolRetryPolicy::default(),
         })?;
-        spawn_adsb_lol_runtime(
-            client,
-            ingestion,
-            live_position_statuses.clone(),
-            AdsbLolRuntimeConfig {
-                operator_id: adsb_lol_config.operator_id,
-                region: adsb_lol_config.region,
-                poll_interval: adsb_lol_config.poll_interval,
-                stale_after: Duration::from_secs(30),
-            },
-            workers.register("adsb_lol_positions"),
-        )?;
+        let regions =
+            public_live_region_catalog(adsb_lol_config.operator_id, adsb_lol_config.region);
+        for (index, preset) in regions.iter().enumerate() {
+            let initial_delay = adsb_lol_config
+                .poll_interval
+                .mul_f64(index as f64 / regions.len() as f64);
+            spawn_adsb_lol_runtime(
+                client.clone(),
+                ingestion.clone(),
+                live_position_statuses.clone(),
+                AdsbLolRuntimeConfig {
+                    operator_id: preset.operator_id,
+                    region: preset.region,
+                    initial_delay,
+                    poll_interval: adsb_lol_config.poll_interval,
+                    stale_after: Duration::from_secs(
+                        adsb_lol_config.poll_interval.as_secs().saturating_mul(2),
+                    ),
+                },
+                workers.register(preset.worker_name),
+            )?;
+        }
         tracing::info!(
             provider = "adsb.lol",
             feed = "point",
-            "best-effort live aircraft positions enabled"
+            region_count = regions.len(),
+            "best-effort regional live aircraft positions enabled"
         );
     }
 

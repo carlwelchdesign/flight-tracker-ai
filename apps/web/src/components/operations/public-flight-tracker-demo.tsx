@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   estimateTrajectory,
   type EstimatedTrajectory,
@@ -16,17 +16,21 @@ import {
   type PublicLiveSnapshot,
 } from "@/lib/public-live-positions";
 import {
+  DEFAULT_PUBLIC_LIVE_REGION,
+  PUBLIC_LIVE_REGIONS,
+  findPublicLiveRegion,
+} from "@/lib/public-live-regions";
+import {
   parsePublicWeatherSnapshot,
   type PublicWeatherSnapshot,
 } from "@/lib/public-weather";
 import { displayCallsign, LiveTrackerMap } from "./live-tracker-map";
 import { PortfolioOrientation } from "./portfolio-orientation";
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 75_000;
 const WEATHER_POLL_INTERVAL_MS = 60_000;
-const REPLAY_AIRCRAFT = replayAircraft();
-
 export function PublicFlightTrackerDemo() {
+  const [region, setRegion] = useState(DEFAULT_PUBLIC_LIVE_REGION);
   const [snapshot, setSnapshot] = useState<PublicLiveSnapshot | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,12 +39,14 @@ export function PublicFlightTrackerDemo() {
   const [weather, setWeather] = useState<PublicWeatherSnapshot | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherRefreshFailed, setWeatherRefreshFailed] = useState(false);
+  const replayAircraftForRegion = useMemo(() => replayAircraft(region.center), [region]);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch("/api/public/live-positions", { cache: "no-store", signal });
+      const response = await fetch(`/api/public/live-positions?region=${region.code}`, { cache: "no-store", signal });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const next = parsePublicLiveSnapshot(await response.json());
+      if (next.region_code !== region.code) throw new Error("Live tracker returned the wrong region");
       setSnapshot(next);
       setTrajectoryHistory((current) => updateTrajectoryHistory(current, next.data, Date.now()));
       setRefreshFailed(false);
@@ -55,7 +61,7 @@ export function PublicFlightTrackerDemo() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [region.code]);
 
   const refreshWeather = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -95,13 +101,24 @@ export function PublicFlightTrackerDemo() {
 
   const hasAcceptedLivePicture = (snapshot?.data.length ?? 0) > 0;
   const useReplay = !hasAcceptedLivePicture && !loading;
-  const aircraft = useReplay ? REPLAY_AIRCRAFT : snapshot?.data ?? [];
+  const aircraft = useReplay ? replayAircraftForRegion : snapshot?.data ?? [];
   const mode = useReplay ? "replay" : refreshFailed || snapshot?.status.state !== "current" ? "stale" : "live";
   const sourceState = loading ? "connecting" : snapshot?.status.state ?? (refreshFailed ? "unavailable" : "connecting");
   const selected = aircraft.find((item) => item.id === selectedId) ?? aircraft[0] ?? null;
   const selectedTrail = selected && !useReplay ? trajectoryHistory.get(selected.id) ?? [] : [];
   const selectedProjection = selected && !useReplay ? estimateTrajectory(selected) : null;
   const weatherState = weather?.state ?? (weatherLoading ? "loading" : "unavailable");
+
+  function handleRegionChange(code: string) {
+    const nextRegion = findPublicLiveRegion(code);
+    if (!nextRegion || nextRegion.code === region.code) return;
+    setRegion(nextRegion);
+    setSnapshot(null);
+    setSelectedId(null);
+    setTrajectoryHistory(new Map());
+    setLoading(true);
+    setRefreshFailed(false);
+  }
 
   return (
     <main className="operations-shell live-tracker-shell">
@@ -118,10 +135,24 @@ export function PublicFlightTrackerDemo() {
         <div className="operations-summary" aria-label="Traffic summary">
           <SummaryMetric label="Tracked" value={loading ? "—" : String(aircraft.length)} />
           <SummaryMetric label="Fresh" value={useReplay ? "Demo" : String(snapshot?.status.fresh_position_count ?? 0)} />
-          <SummaryMetric label="Region" value="SFO" />
-          <SummaryMetric label="Refresh" value="30s" />
+          <SummaryMetric label="Region" value={region.airport} />
+          <SummaryMetric label="Refresh" value="75s" />
         </div>
         <div className="operations-controls">
+          <label className="live-region-control">
+            <span>Traffic region</span>
+            <select
+              aria-label="Live traffic region"
+              value={region.code}
+              onChange={(event) => handleRegionChange(event.target.value)}
+            >
+              {PUBLIC_LIVE_REGIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.airport} · {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <span className={`phase ${mode === "live" ? "phase-active" : "phase-watch"}`}>
             {loading ? "Connecting to live traffic" : mode === "live" ? "Live best-effort positions" : mode === "stale" ? "Live source degraded" : "Deterministic replay fallback"}
           </span>
@@ -147,6 +178,7 @@ export function PublicFlightTrackerDemo() {
       <div className="live-tracker-grid">
         <LiveTrackerMap
           aircraft={aircraft}
+          region={region}
           selectedId={selected?.id ?? null}
           status={snapshot?.status ?? null}
           mode={mode}
@@ -257,13 +289,14 @@ function SummaryMetric({ label, value }: { label: string; value: string }) {
   return <div className="summary-metric"><span>{label}</span><strong>{value}</strong></div>;
 }
 
-function replayAircraft(): PublicAircraft[] {
-  return PUBLIC_DEMO_FLIGHTS.flatMap((view) => view.latest_position ? [{
+function replayAircraft(center: readonly [longitude: number, latitude: number]): PublicAircraft[] {
+  const offsets = [[-0.42, -0.24], [0.08, 0.31], [0.46, -0.18]] as const;
+  return PUBLIC_DEMO_FLIGHTS.flatMap((view, index) => view.latest_position ? [{
     id: view.flight.id,
     callsign: view.flight.callsign,
     aircraft_registration: view.flight.aircraft_registration,
-    longitude_degrees: view.latest_position.point.longitude_degrees,
-    latitude_degrees: view.latest_position.point.latitude_degrees,
+    longitude_degrees: center[0] + offsets[index][0],
+    latitude_degrees: center[1] + offsets[index][1],
     altitude: view.latest_position.altitude,
     heading_true_degrees: view.latest_position.heading_true_degrees,
     ground_speed: view.latest_position.ground_speed,

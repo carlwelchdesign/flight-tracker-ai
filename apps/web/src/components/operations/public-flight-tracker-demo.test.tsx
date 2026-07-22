@@ -9,7 +9,8 @@ describe("public flight tracker demo", () => {
     const user = userEvent.setup();
     render(<PublicFlightTrackerDemo />);
 
-    expect(screen.getByRole("heading", { name: "Bay Area traffic" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "San Francisco traffic" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Live traffic region" })).toHaveValue("sfo");
     expect(screen.getByRole("heading", { name: "Aircraft" })).toBeInTheDocument();
     expect(await screen.findByText(/replay demonstration/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "FT101" })).toBeInTheDocument();
@@ -30,6 +31,8 @@ describe("public flight tracker demo", () => {
 
   it("labels live source evidence and visual interpolation honestly", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      region_code: "sfo",
+      region_name: "San Francisco",
       status: {
         enabled: true,
         provider: "adsb.lol",
@@ -101,10 +104,42 @@ describe("public flight tracker demo", () => {
     expect(screen.queryByRole("heading", { name: "KSFO · VFR" })).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
+
+  it("switches to another bounded live region without reloading the page", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/weather")) {
+        return Promise.resolve(new Response(JSON.stringify(weatherPayload()), { status: 200 }));
+      }
+      const isLosAngeles = url.includes("region=lax");
+      return Promise.resolve(new Response(JSON.stringify(livePayload(
+        isLosAngeles ? "lax" : "sfo",
+        isLosAngeles ? "Los Angeles" : "San Francisco",
+        isLosAngeles ? "AAL410" : "UAL123",
+      )), { status: 200 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PublicFlightTrackerDemo />);
+
+    expect(await screen.findByRole("heading", { name: "UAL123" })).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole("combobox", { name: "Live traffic region" }), "lax");
+
+    expect(await screen.findByRole("heading", { name: "Los Angeles traffic" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "AAL410" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "UAL123" })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/public/live-positions?region=lax",
+      expect.objectContaining({ cache: "no-store" }),
+    );
+    vi.unstubAllGlobals();
+  });
 });
 
-function livePayload() {
+function livePayload(regionCode = "sfo", regionName = "San Francisco", callsign = "UAL123") {
   return {
+    region_code: regionCode,
+    region_name: regionName,
     status: {
       enabled: true, provider: "adsb.lol", state: "current", best_effort: true,
       observed_at: "2026-07-21T23:00:00Z", last_success_at: "2026-07-21T23:00:00Z",
@@ -114,7 +149,7 @@ function livePayload() {
       attribution: null,
     },
     data: [{
-      id: "aircraft-1", callsign: "UAL123", aircraft_registration: null,
+      id: `aircraft-${regionCode}`, callsign, aircraft_registration: null,
       longitude_degrees: -122.2, latitude_degrees: 37.6,
       altitude: { value: 12000, unit: "feet", reference: "ellipsoid" },
       heading_true_degrees: 270, ground_speed: { value: 310, unit: "knots" },
