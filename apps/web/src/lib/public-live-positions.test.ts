@@ -27,6 +27,7 @@ describe("parsePublicLiveSnapshot", () => {
         id: "flight-1",
         callsign: "UAL42",
         aircraft_registration: null,
+        icao_hex: "a1b2c3",
         longitude_degrees: -122.3,
         latitude_degrees: 37.7,
         altitude: { value: 12000, unit: "feet", reference: "mean_sea_level" },
@@ -40,6 +41,7 @@ describe("parsePublicLiveSnapshot", () => {
     });
 
     expect(result.data[0].callsign).toBe("UAL42");
+    expect(result.data[0].icao_hex).toBe("A1B2C3");
     expect(result.region_code).toBe("sfo");
     expect(result.status.state).toBe("current");
   });
@@ -54,6 +56,17 @@ describe("parsePublicLiveSnapshot", () => {
         longitude_degrees: 181, latitude_degrees: 37.7,
         observed_at: "2026-07-21T19:59:58Z", received_at: "2026-07-21T20:00:00Z",
         provider: "adsb.lol",
+      }],
+    })).toThrow("invalid aircraft");
+  });
+
+  it("rejects a non-ICAO aircraft identifier", () => {
+    expect(() => parsePublicLiveSnapshot({
+      region_code: "sfo", region_name: "San Francisco", status,
+      data: [{
+        id: "flight-1", callsign: "UAL42", aircraft_registration: null, icao_hex: "internal-record",
+        longitude_degrees: -122.3, latitude_degrees: 37.7,
+        observed_at: "2026-07-21T19:59:58Z", received_at: "2026-07-21T20:00:00Z", provider: "adsb.lol",
       }],
     })).toThrow("invalid aircraft");
   });

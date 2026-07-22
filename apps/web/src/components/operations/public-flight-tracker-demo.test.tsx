@@ -1,9 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PublicFlightTrackerDemo } from "./public-flight-tracker-demo";
 
 describe("public flight tracker demo", () => {
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
   it("shows the navigable map, replay fallback, and aircraft detail without an authentication prompt", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
     const user = userEvent.setup();
@@ -15,7 +18,7 @@ describe("public flight tracker demo", () => {
     expect(screen.getByText("Flight Tracker AI")).toBeInTheDocument();
     expect(screen.getByText("Connecting to live traffic")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "None selected" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "San Francisco traffic" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "San Francisco traffic" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Live traffic region" })).toHaveValue("sfo");
     expect(screen.getByRole("heading", { name: "Aircraft" })).toBeInTheDocument();
     expect(await screen.findByText(/replay demonstration/i)).toBeInTheDocument();
@@ -145,6 +148,83 @@ describe("public flight tracker demo", () => {
     vi.unstubAllGlobals();
   });
 
+  it("hydrates a bounded replay link with aircraft, time, map, and weather state", async () => {
+    window.history.replaceState({}, "", "/?mode=replay&scenario=m1-operations-v1&t=60000&aircraft=FT303&layers=metar%2Cradar%2Cmodel-wind&level=300&view=-121.6200%2C37.1800%2C8.25%2C-15.0%2C30.0");
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const payload = url.includes("/replay/attention")
+        ? attentionPayload()
+        : url.includes("/replay/timeline")
+          ? replayTimelinePayload()
+          : url.includes("/weather")
+            ? weatherPayload()
+            : url.includes("/atmosphere/")
+              ? windPayload()
+              : livePayload();
+      return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+    }));
+
+    render(<PublicFlightTrackerDemo />);
+
+    expect(await screen.findByRole("heading", { name: "FT303" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replay demo" })).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("slider", { name: "Replay scenario time" })).toHaveValue("60000");
+    expect(screen.getByRole("checkbox", { name: /Airports \/ METAR/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /SIGMET hazards/i })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Radar" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Satellite clouds" })).not.toBeChecked();
+    expect(screen.getByRole("combobox", { name: "Model wind level" })).toHaveValue("300");
+    expect(window.location.search).toContain("aircraft=FT303");
+    expect(window.location.search).toContain("view=-121.6200%2C37.1800%2C8.25%2C-15.0%2C30.0");
+    vi.unstubAllGlobals();
+  });
+
+  it("filters the current picture and recovers from a shared aircraft that has expired", async () => {
+    window.history.replaceState({}, "", "/?aircraft=UAL404");
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const payload = url.includes("/weather")
+        ? weatherPayload()
+        : url.includes("/atmosphere/")
+          ? windPayload()
+          : livePayload();
+      return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+    }));
+
+    render(<PublicFlightTrackerDemo />);
+
+    expect(await screen.findByText(/UAL404 is no longer in this snapshot/i)).toBeInTheDocument();
+    expect(screen.getByText(/shared region and map view are still available/i)).toBeInTheDocument();
+    const search = screen.getByRole("searchbox", { name: "Search this picture" });
+    await user.type(search, "no match");
+    expect(screen.getByText("0 of 1 aircraft")).toBeInTheDocument();
+    expect(screen.getByText(/No callsign, ICAO hex, or registration matches/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear aircraft selection" }));
+    expect(window.location.search).not.toContain("aircraft=");
+    vi.unstubAllGlobals();
+  });
+
+  it("restores a bounded region when browser history changes", async () => {
+    window.history.replaceState({}, "", "/?region=lax");
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/weather")) return Promise.resolve(new Response(JSON.stringify(weatherPayload()), { status: 200 }));
+      if (url.includes("/atmosphere/")) return Promise.resolve(new Response(JSON.stringify(windPayload()), { status: 200 }));
+      const lax = url.includes("region=lax");
+      return Promise.resolve(new Response(JSON.stringify(livePayload(lax ? "lax" : "sfo", lax ? "Los Angeles" : "San Francisco", lax ? "AAL410" : "UAL123")), { status: 200 }));
+    }));
+
+    render(<PublicFlightTrackerDemo />);
+    expect(await screen.findByRole("heading", { name: "Los Angeles traffic" })).toBeInTheDocument();
+
+    window.history.replaceState({}, "", "/?region=sfo");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(await screen.findByRole("heading", { name: "San Francisco traffic" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "UAL123" })).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it("switches from honest live non-evaluation to an explainable replay attention state", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
@@ -266,6 +346,7 @@ function livePayload(regionCode = "sfo", regionName = "San Francisco", callsign 
     },
     data: [{
       id: `aircraft-${regionCode}`, callsign, aircraft_registration: null,
+      icao_hex: "A1B2C3",
       longitude_degrees: -122.2, latitude_degrees: 37.6,
       altitude: { value: 12000, unit: "feet", reference: "ellipsoid" },
       heading_true_degrees: 270, ground_speed: { value: 310, unit: "knots" },

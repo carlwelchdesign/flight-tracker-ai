@@ -85,6 +85,7 @@ struct PublicAircraftPosition {
     id: FlightId,
     callsign: Option<String>,
     aircraft_registration: Option<String>,
+    icao_hex: Option<String>,
     longitude_degrees: f64,
     latitude_degrees: f64,
     altitude: Option<domain::Altitude>,
@@ -98,6 +99,12 @@ struct PublicAircraftPosition {
 
 impl From<FlightView> for PublicAircraftPosition {
     fn from(view: FlightView) -> Self {
+        let icao_hex = view
+            .flight
+            .source
+            .provider_record_id
+            .as_deref()
+            .and_then(normalize_public_icao_hex);
         let position = view
             .latest_position
             .expect("provider position query only returns positioned aircraft");
@@ -106,6 +113,7 @@ impl From<FlightView> for PublicAircraftPosition {
             id: view.flight.id,
             callsign: view.flight.callsign,
             aircraft_registration: view.flight.aircraft_registration,
+            icao_hex,
             longitude_degrees,
             latitude_degrees,
             altitude: position.altitude,
@@ -117,6 +125,12 @@ impl From<FlightView> for PublicAircraftPosition {
             provider: position.source.provider,
         }
     }
+}
+
+fn normalize_public_icao_hex(value: &str) -> Option<String> {
+    let value = value.trim().trim_start_matches('~');
+    (value.len() == 6 && value.chars().all(|character| character.is_ascii_hexdigit()))
+        .then(|| value.to_ascii_uppercase())
 }
 
 #[derive(Debug, Serialize)]
@@ -866,16 +880,19 @@ mod tests {
             let mut batch = scenario.batch_for(event).unwrap();
             batch.envelope.provider = PUBLIC_LIVE_PROVIDER.into();
             batch.envelope.feed = "point".into();
+            batch.envelope.provider_record_id = Some("a1b2c3".into());
             match &mut batch.events[0] {
                 CanonicalEvent::Flight(value) => {
                     value.source.provider = PUBLIC_LIVE_PROVIDER.into();
                     value.source.feed = "point".into();
                     value.times.event_time = Utc::now();
+                    value.source.provider_record_id = Some("a1b2c3".into());
                 }
                 CanonicalEvent::AircraftPosition(value) => {
                     value.source.provider = PUBLIC_LIVE_PROVIDER.into();
                     value.source.feed = "point".into();
                     value.times.event_time = Utc::now();
+                    value.source.provider_record_id = Some("a1b2c3".into());
                 }
                 _ => panic!("fixture event must project a flight position"),
             }
@@ -941,6 +958,8 @@ mod tests {
         assert_eq!(payload["region_name"], "San Francisco");
         assert_eq!(payload["data"].as_array().unwrap().len(), 1);
         assert_eq!(payload["data"][0]["provider"], PUBLIC_LIVE_PROVIDER);
+        assert_eq!(payload["data"][0]["icao_hex"], "A1B2C3");
+        assert!(payload["data"][0].get("provider_record_id").is_none());
         assert!(payload["data"][0].get("operator_id").is_none());
         assert!(payload["data"][0].get("source").is_none());
         assert!(payload["data"][0].get("origin_airport_code").is_none());

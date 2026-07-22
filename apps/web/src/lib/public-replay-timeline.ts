@@ -85,6 +85,7 @@ export function replayPictureAt(timeline: PublicReplayTimeline, elapsedMs: numbe
       id: `replay:${callsign}`,
       callsign,
       aircraft_registration: previous.aircraft_registration,
+      icao_hex: null,
       longitude_degrees: next ? interpolate(previous.longitude_degrees, next.longitude_degrees, fraction) : previous.longitude_degrees,
       latitude_degrees: next ? interpolate(previous.latitude_degrees, next.latitude_degrees, fraction) : previous.latitude_degrees,
       altitude: interpolateMeasurement(previous.altitude, next?.altitude ?? null, fraction),
