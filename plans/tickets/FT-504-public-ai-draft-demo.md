@@ -4,7 +4,7 @@ Status: Complete
 
 Branch: `feat/ft-504-public-ai-draft-demo`
 Final implementation commit: `063f2df`
-Documentation commit: pending closeout PR
+Documentation commit: `0e2b58a`
 Merge commit: `b88b9e3`
 Pull request: [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64) (merged)
 Owner: Backend, AI product, and frontend engineering
