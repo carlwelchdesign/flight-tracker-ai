@@ -497,6 +497,8 @@ a:focus-visible {
 .trajectory-legend span i { width: 25px; height: 0; border-top: 3px solid currentColor; }
 .trajectory-legend .trajectory-observed { color: #5ce1b9; }
 .trajectory-legend .trajectory-estimated { color: #f2a65a; }
+.trajectory-legend .trajectory-conflict { color: #ff9b76; }
+.trajectory-legend .trajectory-conflict i { width: 10px; height: 10px; margin-inline: 7px 8px; border: 2px solid #ffb14d; border-radius: 50%; background: #f07870; box-shadow: 0 0 8px rgb(240 120 112 / 70%); }
 .trajectory-legend .trajectory-estimated i { border-top-style: dashed; }
 .trajectory-legend small { margin: 0 0 3px 32px; color: #789198; font: 500 8px/1.25 "Geist Mono", monospace; }
 .live-aircraft-marker {
@@ -516,6 +518,9 @@ a:focus-visible {
 .live-aircraft-marker:hover,
 .live-aircraft-marker.is-selected { background: #fff; box-shadow: 0 0 0 4px rgb(27 224 193 / 40%), 0 4px 18px #000; z-index: 3; }
 .live-aircraft-marker.is-stale { background: #f0a45c; }
+.live-aircraft-marker.has-weather-conflict { border-color: #ffb14d; background: #f07870; box-shadow: 0 0 0 3px rgb(240 120 112 / 30%), 0 0 22px rgb(240 120 112 / 58%), 0 4px 18px #000; animation: weather-conflict-pulse 1.8s ease-in-out infinite; z-index: 2; }
+.live-aircraft-marker.has-weather-conflict.is-selected { background: #fff; box-shadow: 0 0 0 4px rgb(240 120 112 / 48%), 0 0 26px rgb(240 120 112 / 65%), 0 4px 18px #000; z-index: 3; }
+@keyframes weather-conflict-pulse { 50% { box-shadow: 0 0 0 6px rgb(240 120 112 / 10%), 0 0 28px rgb(240 120 112 / 70%), 0 4px 18px #000; } }
 .live-state-banner { min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 7px 14px; border-bottom: 1px solid #493923; background: #201810; color: #e4c99d; font: 500 10px/1.35 "Geist Mono", monospace; }
 .live-state-banner.state-replay { border-color: #34464c; background: #101c21; color: #b2c1c5; }
 .replay-time-machine {
@@ -562,6 +567,8 @@ a:focus-visible {
 .live-flight-row span,
 .live-flight-row time { color: #89a1a7; font: 500 9px/1.25 "Geist Mono", monospace; }
 .live-flight-row time { grid-column: 2; grid-row: 1; }
+.live-flight-row.has-weather-conflict { background: linear-gradient(90deg, rgb(240 120 112 / 12%), transparent 72%); box-shadow: inset 2px 0 #f07870; }
+.live-flight-row .weather-conflict-badge { justify-self: end; align-self: center; border: 1px solid #805044; border-radius: 999px; background: #351d1c; color: #ffab8c; padding: 4px 7px; font: 650 7px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .05em; }
 .live-inspector { min-height: 0; align-self: stretch; max-height: none; display: flex; flex-direction: column; overflow: auto; }
 .aircraft-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
 .aircraft-facts div { padding: 12px 13px; border-right: 1px solid #193039; border-bottom: 1px solid #193039; }

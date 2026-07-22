@@ -271,6 +271,17 @@ export function PublicFlightTrackerDemo() {
   const selectedAttention = preferReplay && replayElapsedMs >= attentionEffectiveMs && selected
     ? attentionPicture?.aircraft.find((item) => item.callsign === selected.callsign) ?? null
     : null;
+  const conflictAircraftIds = useMemo(() => {
+    if (!preferReplay || replayElapsedMs < attentionEffectiveMs) return new Set<string>();
+    const conflictCallsigns = new Set(
+      attentionPicture?.aircraft
+        .filter((item) => item.state === "requires_attention")
+        .map((item) => item.callsign) ?? [],
+    );
+    return new Set(aircraft
+      .filter((item) => item.callsign !== null && conflictCallsigns.has(item.callsign))
+      .map((item) => item.id));
+  }, [aircraft, attentionEffectiveMs, attentionPicture?.aircraft, preferReplay, replayElapsedMs]);
   const selectedTrail = selected && preferReplay && replayTimeline
     ? replayTrailAt(replayTimeline, selected.callsign ?? "", replayElapsedMs, selected)
     : selected && !useReplay
@@ -437,6 +448,7 @@ export function PublicFlightTrackerDemo() {
         {urlReady ? (
           <LiveTrackerMap
             aircraft={visibleAircraft}
+            conflictAircraftIds={conflictAircraftIds}
             region={displayedRegion}
             selectedId={selected?.id ?? null}
             status={snapshot?.status ?? null}
@@ -492,11 +504,12 @@ export function PublicFlightTrackerDemo() {
                 <button
                   key={item.id}
                   type="button"
-                  className={item.id === selected?.id ? "live-flight-row is-selected" : "live-flight-row"}
+                  className={`live-flight-row${item.id === selected?.id ? " is-selected" : ""}${conflictAircraftIds.has(item.id) ? " has-weather-conflict" : ""}`}
                   onClick={() => handleAircraftSelect(item.id)}
                 >
                   <strong>{displayCallsign(item)}</strong>
                   <span>{formatAltitude(item)} · {formatSpeed(item)}{item.icao_hex ? ` · ICAO ${item.icao_hex}` : ""}</span>
+                  {conflictAircraftIds.has(item.id) && <span className="weather-conflict-badge">Weather conflict</span>}
                   <time dateTime={item.observed_at}>
                     {useReplay
                       ? `Replay · ${formatScenarioTime(item.observed_at)}`

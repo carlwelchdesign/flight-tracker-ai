@@ -182,6 +182,22 @@ describe("LiveTrackerMap lifecycle and motion", () => {
     expect(frames).toHaveLength(0);
   });
 
+  it("marks deterministic weather conflicts on the map and in the accessible label", async () => {
+    const item = aircraft();
+    const { rerender } = render(component([item], vi.fn(), new Set([item.id])));
+    await waitFor(() => expect(maplibre.Map.instances).toHaveLength(1));
+    act(() => maplibre.Map.instances[0].trigger("load"));
+    await waitFor(() => expect(maplibre.Marker.instances).toHaveLength(1));
+
+    const marker = maplibre.Marker.instances[0].element;
+    expect(marker).toHaveClass("has-weather-conflict");
+    expect(marker).toHaveAttribute("aria-label", expect.stringContaining("weather conflict"));
+
+    rerender(component([item], vi.fn(), new Set()));
+    await waitFor(() => expect(marker).not.toHaveClass("has-weather-conflict"));
+    expect(marker).not.toHaveAttribute("aria-label", expect.stringContaining("weather conflict"));
+  });
+
   it("surfaces map failures without removing the accessible map boundary", async () => {
     renderMap([]);
     await waitFor(() => expect(maplibre.Map.instances).toHaveLength(1));
@@ -219,10 +235,11 @@ function renderMap(items: PublicAircraft[], onSelect = vi.fn()) {
   return render(component(items, onSelect));
 }
 
-function component(items: PublicAircraft[], onSelect = vi.fn()) {
+function component(items: PublicAircraft[], onSelect = vi.fn(), conflictAircraftIds: ReadonlySet<string> = new Set()) {
   return (
     <LiveTrackerMap
       aircraft={items}
+      conflictAircraftIds={conflictAircraftIds}
       region={DEFAULT_PUBLIC_LIVE_REGION}
       selectedId={items[0]?.id ?? null}
       status={null}

@@ -78,6 +78,7 @@ describe("public flight tracker demo", () => {
 
     render(<PublicFlightTrackerDemo />);
     expect(await screen.findByRole("heading", { name: "UAL123" })).toBeInTheDocument();
+    expect(screen.queryByText("Weather conflict")).not.toBeInTheDocument();
     const liveRequestsBefore = fetchMock.mock.calls.filter(([input]) => String(input).includes("/live-positions")).length;
     const trafficPoll = intervals.find(({ delay }) => delay === 75_000);
     expect(trafficPoll).toBeDefined();
@@ -325,6 +326,8 @@ describe("public flight tracker demo", () => {
 
     expect(await screen.findByRole("heading", { name: "FT303" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "critical priority" })).toBeInTheDocument();
+    expect(screen.getAllByText("Weather conflict")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /FT303.*Weather conflict/i })).toHaveClass("has-weather-conflict");
     expect(screen.getByLabelText("Attention score 85 out of 100")).toBeInTheDocument();
     expect(screen.getAllByText("27,000 ft").length).toBeGreaterThan(0);
     expect(screen.getByText("Hazard severity")).toBeInTheDocument();
@@ -339,10 +342,12 @@ describe("public flight tracker demo", () => {
     fireEvent.change(screen.getByRole("slider", { name: "Replay scenario time" }), { target: { value: "0" } });
     expect(screen.getByRole("heading", { name: "None selected" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "critical priority" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Weather conflict")).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByRole("slider", { name: "Replay scenario time" }), { target: { value: "60000" } });
     expect(screen.getByRole("heading", { name: "FT303" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "critical priority" })).toBeInTheDocument();
+    expect(screen.getAllByText("Weather conflict")).toHaveLength(2);
 
     await user.click(screen.getByRole("button", { name: /FT101/i }));
     expect(screen.getByRole("heading", { name: "Route risk unavailable" })).toBeVisible();
