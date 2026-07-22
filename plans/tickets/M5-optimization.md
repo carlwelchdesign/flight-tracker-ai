@@ -4,7 +4,7 @@ Default owner: Data/optimization lead, with aviation-domain and trust review.
 
 ## FT-501 — Define optimization feasibility and validation protocol
 
-Status: Not started
+Status: Complete
 
 Branch: `docs/ft-501-optimization-feasibility`
 Final commit: Pending
@@ -16,14 +16,33 @@ Dependencies: FT-403
 
 Acceptance checklist:
 
-- [ ] Initial problem is limited to one recommendation class.
-- [ ] Required weather, route, aircraft, cost, and outcome data are available lawfully.
-- [ ] Safety and operational constraints are represented explicitly.
-- [ ] Baseline and held-out evaluation set are documented.
-- [ ] Success, failure, and abstention criteria are measurable.
-- [ ] Rust-only versus separate Python numerical service is benchmarked and OD-005 is resolved.
+- [x] Initial problem is limited to one recommendation class.
+- [x] Required weather, route, aircraft, cost, and outcome data are available lawfully.
+- [x] Safety and operational constraints are represented explicitly.
+- [x] Baseline and held-out evaluation set are documented.
+- [x] Success, failure, and abstention criteria are measurable.
+- [x] Rust-only versus separate Python numerical service is benchmarked and OD-005 is resolved.
 
-Verification evidence: Pending.
+Verification evidence:
+
+- The approved scope, exclusions, repository-owned inputs, hard constraints,
+  baseline, 18-case development set, 12-case held-out set, measurable pass/fail
+  thresholds, and abstention contract are recorded in
+  [`../OPTIMIZATION_FEASIBILITY.md`](../OPTIMIZATION_FEASIBILITY.md).
+- Equivalent dependency-free Rust and Python kernels evaluated 800,000 fixed
+  candidate paths with the same `73791440.510` checksum. Two July 22, 2026
+  development-machine runs measured optimized Rust at 43.971–52.927 ms and
+  Python at 1,605.756–2,771.787 ms, a conservative approximately 30x advantage
+  when comparing the slower Rust result with the faster Python result. The
+  benchmark is reproducible from
+  [`../../apps/api/examples/ft501_candidate_benchmark.rs`](../../apps/api/examples/ft501_candidate_benchmark.rs)
+  and
+  [`../../scripts/ft501_candidate_benchmark.py`](../../scripts/ft501_candidate_benchmark.py).
+- ADR-017 selects the existing Rust backend for the bounded FT-502 experiment
+  and resolves OD-005. The decision must be revisited before introducing a
+  separate numerical service or expanding beyond offline fixture evaluation.
+- Final commit and pull-request references will be recorded in a closeout
+  update after CI and merge verification.
 
 ## FT-502 — Build an offline recommendation experiment
 

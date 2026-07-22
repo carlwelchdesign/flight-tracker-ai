@@ -158,11 +158,28 @@
   evidence. FT-403 becomes a final neutral review of the completed FT-413–416
   public experience instead of a prerequisite that blocks building it.
 
+### ADR-017 — Keep the first offline recommendation experiment in Rust
+
+- Date: 2026-07-22
+- Decision: FT-502 ranks at most 12 pre-authored replay route candidates for
+  human review using deterministic hard constraints and lexicographic scoring
+  in the existing Rust backend.
+- Reason: The approved problem is bounded enumeration over the route/hazard
+  geometry already owned by Rust, not continuous or mixed-integer optimization.
+  The cross-runtime benchmark shows no performance need for a Python service,
+  and no Python-only numerical library is required.
+- Constraint: The experiment uses project-authored fixtures only, can abstain,
+  remains offline, and cannot generate routes, consume live ADS-B/provider data,
+  deliver a recommendation, or trigger an operational action.
+- Revisit: Re-open only if a later approved experiment demonstrates a required
+  Python-only optimization or model library and separately justifies its data,
+  deployment, security, observability, and validation boundaries.
+- Resolution: OD-005 is resolved in favor of Rust for the bounded FT-502 scope.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |
 | --- | --- | --- | --- |
 | OD-001 | Monorepo package manager and local orchestration approach | FT-001 | Working local setup and contributor ergonomics |
 | OD-003 | SSE versus WebSockets at production scale | M3 | Measured interaction and fan-out requirements |
-| OD-005 | Whether numerical optimization warrants Python | FT-501 | Benchmark against Rust implementation and library needs |
 | OD-006 | FAA NMS API or successor path for production NOTAM distribution | Before any post-MVP NOTAM integration | Granted API access, current transition status, schema/coverage validation, service terms, lead time, and permitted operator-facing use |
