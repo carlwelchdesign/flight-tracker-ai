@@ -44,7 +44,7 @@ use public_attention::public_attention_router;
 use public_replay::public_replay_router;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
 use retention::{RetentionStore, retention_router};
-use weather::{public_weather_router, weather_router};
+use weather::{airport_intelligence_router, public_weather_router, weather_router};
 
 pub const SERVICE_NAME: &str = "flight-tracker-api";
 
@@ -384,6 +384,7 @@ fn build_router_with_services_and_health(
         .merge(public)
         .merge(public_attention_router())
         .merge(public_replay_router())
+        .merge(airport_intelligence_router())
         .merge(public_weather_routes)
         .layer(middleware::from_fn_with_state(metrics, observe_request))
         .layer(middleware::from_fn(correlate_request))

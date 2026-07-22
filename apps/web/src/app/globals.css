@@ -892,6 +892,22 @@ a:focus-visible {
 
 .operations-footer { min-height: 28px; justify-content: space-between; gap: 20px; padding: 5px 22px; border-top: 1px solid var(--line); color: var(--subtle); background: #060d11; font: 500 8px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .08em; }
 
+.airport-intelligence-panel { position: absolute; z-index: 7; left: 12px; top: 12px; width: min(620px, calc(100% - 380px)); border: 1px solid rgba(86, 126, 142, .55); background: rgba(5, 14, 19, .96); box-shadow: 0 12px 36px rgba(0,0,0,.42); }
+.airport-intelligence-trigger { width: 100%; display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 0; color: var(--text); background: rgba(17, 39, 47, .92); text-align: left; }
+.airport-intelligence-trigger strong { color: var(--accent); font-family: "Geist Mono", monospace; }
+.airport-intelligence-body { max-height: min(520px, 68vh); overflow: auto; padding: 14px; }
+.airport-intelligence-body > header, .airport-section-heading, .taf-timeline article > div, .pirep-list article > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.airport-intelligence-body h3 { margin: 5px 0 0; font-size: 15px; }
+.airport-intelligence-body h4 { margin: 0; font-size: 12px; }
+.airport-intelligence-body section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.airport-section-heading span, .airport-source-time, .airport-coverage-note, .airport-intelligence-body small, .taf-timeline time, .pirep-list time { color: var(--muted); font: 500 10px/1.5 "Geist Mono", monospace; }
+.taf-timeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin-top: 10px; }
+.taf-timeline article, .pirep-list article { padding: 10px; border: 1px solid var(--line); background: rgba(10, 27, 34, .78); }
+.taf-timeline article p, .pirep-list article p { margin: 6px 0 2px; font-size: 11px; line-height: 1.45; }
+.pirep-list { display: grid; gap: 8px; margin-top: 10px; }
+.pirep-list article > div span { color: var(--accent); font: 600 10px/1 "Geist Mono", monospace; }
+.airport-coverage-note { margin-top: 10px; }
+
 .operations-loading .operations-grid { min-height: calc(100vh - 102px); }
 .loading-header { grid-template-columns: 240px 1fr 240px; }
 .loading-block, .loading-row { display: block; border-radius: 4px; background: linear-gradient(90deg, #0b171d, #13272f, #0b171d); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
@@ -951,6 +967,7 @@ a:focus-visible {
   .live-position-source { grid-template-columns: 1fr; padding: 12px 14px; }
   .live-position-metrics, .live-position-actions { grid-column: auto; }
   .live-position-attribution { grid-column: auto; margin-left: 18px; }
+  .airport-intelligence-panel { position: relative; left: auto; top: auto; bottom: auto; width: auto; margin: 8px; }
 }
 
 @media (max-width: 520px) {
