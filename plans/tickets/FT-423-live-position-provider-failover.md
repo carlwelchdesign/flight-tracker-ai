@@ -3,8 +3,8 @@
 Status: In progress
 
 Branch: `fix/ft-423-aircraft-provider-failover`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `af0f4a0`
+Pull request: [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66)
 Owner: Backend and frontend engineering
 
 Keep the public tracker useful during an ADSB.lol outage by attempting the
@@ -70,5 +70,6 @@ permission where necessary.
 - Direct SFO compatibility probe on 2026-07-22 returned HTTP 200 from both
   ADSB.lol (145 aircraft) and Airplanes.live (146 aircraft). Production will
   therefore continue using the primary until a request fails.
-- Hosted deployment, browser smoke, CI, commit, and pull request evidence are
-  pending.
+- Implementation commit `af0f4a0` is pushed and PR
+  [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66) is open.
+  Hosted deployment, browser smoke, and required-check evidence are pending.
