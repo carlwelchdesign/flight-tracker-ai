@@ -152,6 +152,26 @@ mod tests {
     }
 
     #[test]
+    fn attention_flight_positions_follow_the_recorded_heading() {
+        let timeline = build_public_replay_timeline().unwrap();
+        let observations: Vec<_> = timeline
+            .observations
+            .iter()
+            .filter(|observation| observation.callsign == "FT303")
+            .collect();
+
+        for pair in observations.windows(2) {
+            let supplied_heading = pair[0].heading_true_degrees.unwrap();
+            let segment_bearing = initial_bearing_degrees(pair[0], pair[1]);
+            let difference = angular_difference_degrees(supplied_heading, segment_bearing);
+            assert!(
+                difference <= 5.0,
+                "FT303 segment bearing {segment_bearing:.2} differs from supplied heading {supplied_heading:.2}",
+            );
+        }
+    }
+
+    #[test]
     fn serialized_timeline_excludes_internal_and_protected_fields() {
         let serialized = serde_json::to_string(&build_public_replay_timeline().unwrap()).unwrap();
         for forbidden in [
@@ -184,5 +204,22 @@ mod tests {
         let value: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(value["schema_version"], 1);
         assert_eq!(value["duration_ms"], 180_000);
+    }
+
+    fn initial_bearing_degrees(
+        start: &PublicReplayObservation,
+        end: &PublicReplayObservation,
+    ) -> f64 {
+        let start_latitude = start.latitude_degrees.to_radians();
+        let end_latitude = end.latitude_degrees.to_radians();
+        let longitude_delta = (end.longitude_degrees - start.longitude_degrees).to_radians();
+        let y = longitude_delta.sin() * end_latitude.cos();
+        let x = start_latitude.cos() * end_latitude.sin()
+            - start_latitude.sin() * end_latitude.cos() * longitude_delta.cos();
+        (y.atan2(x).to_degrees() + 360.0) % 360.0
+    }
+
+    fn angular_difference_degrees(first: f64, second: f64) -> f64 {
+        ((first - second + 540.0) % 360.0 - 180.0).abs()
     }
 }

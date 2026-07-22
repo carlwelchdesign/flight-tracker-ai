@@ -7,7 +7,7 @@ Last updated: 2026-07-22
 - Current milestone: M5 — Optimization research and controlled recommendations
 - Active ticket: FT-403/FT-502 — independent validation gates
 - Branch: External evidence branches begin only when reviewer records exist
-- Pull request: FT-420 [#61](https://github.com/carlwelchdesign/flight-tracker-ai/pull/61) passes required checks
+- Pull request: FT-421 [#62](https://github.com/carlwelchdesign/flight-tracker-ai/pull/62) passes required checks
 - Owner: Product research and independent aviation-domain review
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
@@ -72,6 +72,18 @@ Last updated: 2026-07-22
 | M5 | 2 | 3 |
 
 ## Handoff notes
+
+- FT-421 is complete through implementation commit `2bd1349` and PR
+  [#62](https://github.com/carlwelchdesign/flight-tracker-ai/pull/62). FT303's
+  replay positions now follow its supplied northwest heading, eliminating the
+  contradictory northeast trail that made the glyph appear rotated. A new
+  great-circle-bearing regression protects both segments while the live marker
+  transform and operational policy remain unchanged. Strict Clippy, Rust
+  formatting, the complete Rust and web test suites, ESLint, TypeScript,
+  production build, diff hygiene, and corrected-timeline browser verification
+  pass. GitHub Actions run
+  [29942050285](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29942050285)
+  passed all required checks, and the Vercel preview completed successfully.
 
 - FT-420 is complete through implementation commit `5cba771` and PR
   [#61](https://github.com/carlwelchdesign/flight-tracker-ai/pull/61). The public

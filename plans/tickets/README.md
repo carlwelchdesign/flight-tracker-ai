@@ -25,4 +25,5 @@ Every ticket section has delivery fields. `Branch`, `Final commit`, and `Pull re
 - [FT-418 — Node.js 24 web runtime](FT-418-node-24-runtime.md)
 - [FT-419 — Product README and screenshots](FT-419-product-readme.md)
 - [FT-420 — Public footer social links](FT-420-social-footer-links.md)
+- [FT-421 — Replay aircraft heading alignment](FT-421-replay-heading-alignment.md)
 - [M5 — Optimization research](M5-optimization.md): FT-501–FT-503

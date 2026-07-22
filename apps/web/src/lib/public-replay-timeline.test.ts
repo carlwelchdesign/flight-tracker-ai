@@ -13,7 +13,7 @@ describe("public replay timeline", () => {
     const aircraft = picture.aircraft[0];
 
     expect(aircraft.callsign).toBe("FT303");
-    expect(aircraft.longitude_degrees).toBeCloseTo(-121.67, 2);
+    expect(aircraft.longitude_degrees).toBeCloseTo(-121.51, 2);
     expect(aircraft.altitude?.value).toBeCloseTo(27_500, 0);
     expect(aircraft.ground_speed?.value).toBeCloseTo(441.5, 1);
     expect(aircraft.quality).toBe("estimated");
@@ -51,7 +51,7 @@ export function timelinePayload(): PublicReplayTimeline {
     playback_speeds: [0.5, 1, 2],
     source: "portfolio deterministic replay",
     observations: [
-      observation(1_000, -121.72, 37, 28_000, 315, 445),
+      observation(1_000, -121.4, 37, 28_000, 315, 445),
       observation(60_000, -121.62, 37.18, 27_000, 315, 438),
     ],
   };
