@@ -122,14 +122,15 @@ neutral reviewer on the candidate preview produced by FT-404.
 
 ## FT-404 — Deploy the public portfolio and preview environments
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-404-production-deployment`
 Hosted closeout branch: `fix/ft-404-hosted-smoke-closeout`
 Latest implementation commit: `7f529e3`
-Final commit: Pending
+Final commit: `0083cc6`
 Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
 Hosted closeout pull request: [#36](https://github.com/carlwelchdesign/flight-tracker-ai/pull/36)
+Public-first scope pull request: [#38](https://github.com/carlwelchdesign/flight-tracker-ai/pull/38)
 Owner: Platform, backend, security, and full-stack engineering
 
 Deploy the public Next.js interface on Vercel while placing the Rust API, optional continuous ingestion, and PostgreSQL/PostGIS on infrastructure suited to those persistent workloads.
@@ -144,8 +145,8 @@ Acceptance checklist:
 - [x] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
 - [x] Secrets and environment variables are separated across development, preview, and production.
 - [x] Public domain, TLS, security headers, bounded logging, and basic availability monitoring are verified.
-- [ ] Deployment, migration, rollback, and incident runbooks are tested.
-- [ ] End-to-end smoke checks prove browser, API, database, replay fallback, source labeling, and degraded-state behavior.
+- [x] Deployment, migration, rollback, and incident runbooks are tested.
+- [x] End-to-end public smoke checks prove browser, API, database, replay fallback, source labeling, and degraded-state behavior.
 - [x] The public deployment contains no claim of certification, operational authority, commercial SLA, or real-operator endorsement.
 
 Verification evidence: The Vercel project `flight-tracker-ai` is Git-connected
@@ -278,6 +279,16 @@ rendered current regional ADS-B traffic, the navigable map, selected-aircraft
 evidence, NOAA weather layers, atmospheric overlays, source labels, and the
 protected-console sign-in link. Authenticated session and hosted FT-401 drill
 evidence remain open and are not represented as complete.
+
+Scope closeout (2026-07-22): ADR-016 removes Clerk user/session exercises and
+the protected console from the recruiter launch gate. The public tracker is the
+portfolio product and no longer links to sign-in; direct sign-in and sign-up
+routes return to the tracker. Protected API denial remains part of the public
+verifier, so this scope correction does not expose operational data or weaken
+authorization. FT-404 is complete on the recorded public browser, Vercel,
+Render, Neon, readiness, failure/fallback, backup/restore, security-header, and
+unauthenticated-denial evidence. FT-403 will validate the finished FT-413–416
+experience rather than block its implementation.
 
 On 2026-07-21, Neon retained the manual production snapshot
 `main at 2026-07-21 20:46:51 UTC (manual)` with no expiry. A temporary isolated

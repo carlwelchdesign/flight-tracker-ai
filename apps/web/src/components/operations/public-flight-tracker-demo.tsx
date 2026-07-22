@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   estimateTrajectory,
@@ -154,7 +153,6 @@ export function PublicFlightTrackerDemo() {
           <span className={`phase ${mode === "live" ? "phase-active" : "phase-watch"}`}>
             {loading ? "Connecting to live traffic" : mode === "live" ? "Live best-effort positions" : mode === "stale" ? "Live source degraded" : "Deterministic replay fallback"}
           </span>
-          <Link href="/sign-in">Protected operations console</Link>
         </div>
       </header>
 

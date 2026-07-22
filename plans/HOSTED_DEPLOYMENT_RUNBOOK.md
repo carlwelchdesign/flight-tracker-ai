@@ -200,18 +200,20 @@ into an isolated branch, verify PostGIS and migration state, and follow
       are recorded without exposing its connection string.
 - [x] Vercel and Render use matching active key IDs and distinct preview versus
       production secret references.
-- [ ] Clerk sign-in, organization selection, membership, session expiry, and
-      revoked-session behavior pass.
-- [ ] Browser smoke covers replay, flight evidence, alert action, cold-start or
-      degraded state, source labels, and optional positions disabled.
-- [ ] Hosted FT-401 verifier passes with sanitized output.
+- [x] The public tracker does not invite authentication; direct sign-in and
+      sign-up routes return to the tracker under ADR-016.
+- [x] Browser smoke covers replay fallback, selected-aircraft evidence,
+      cold-start or degraded state, source labels, and optional live positions.
+- [x] Protected API routes retain exact unauthenticated denial; the hosted
+      FT-401 user/session drill is archived with the non-public operations
+      console rather than represented as recruiter-facing evidence.
 - [x] Response headers, TLS, bounded logs, and basic availability monitoring
       pass.
 - [ ] FT-403 independent neutral reviewer passes the unfacilitated protocol.
 - [x] The candidate contains no certification, operational-authority,
       commercial-SLA, or real-operator claim.
 
-Before authenticated browser checks, run the sanitized public-boundary verifier:
+Before public browser checks, run the sanitized public-boundary verifier:
 
 ```sh
 python3 scripts/verify_ft404_public_surface.py \
@@ -223,7 +225,7 @@ python3 scripts/verify_ft404_public_surface.py \
 
 A protected preview may pass with `publication_ready: false`. Before promotion,
 run it again against the candidate without `--allow-deployment-protection`; the
-root must use the Clerk sign-in boundary, all browser security headers must
-match, public health/readiness must be exact, and the detailed API must return
-the exact unauthenticated denial. The emitted evidence does not include origins,
-redirect URLs, headers, bodies, credentials, cookies, or tokens.
+root must expose the tracker without a sign-in invitation, all browser security
+headers must match, public health/readiness must be exact, and the detailed API
+must return the exact unauthenticated denial. The emitted evidence does not
+include origins, redirect URLs, headers, bodies, credentials, cookies, or tokens.

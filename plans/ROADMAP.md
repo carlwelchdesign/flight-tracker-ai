@@ -38,7 +38,9 @@ Tickets: FT-301–FT-304.
 
 Outcome: recruiters and hiring managers can use a reliable hosted demonstration without mistaking it for an operational aviation system.
 
-Gate: public-demo security review, failure/fallback checks, recruiter-oriented usability validation, deployment runbooks, and end-to-end hosted smoke checks are complete.
+Gate: public-demo security review, failure/fallback checks, deployment runbooks,
+and end-to-end public hosted smoke checks are complete. Authentication remains
+an internal operations-console concern and is not part of the recruiter path.
 
 Tickets: FT-401–FT-404.
 
@@ -49,11 +51,11 @@ attention, lets a viewer replay and inspect its motion, supports direct search
 and shareable views, and adds source-attributed airport forecast and pilot-report
 context.
 
-Gate: FT-403 and FT-404 are complete first; then a neutral reviewer can use the
+Gate: FT-404 is complete first; after FT-413–FT-416 ship, a neutral reviewer can use the
 attention explanation, deterministic time machine, telemetry charts, direct
 links, TAF timeline, and nearby PIREPs without facilitator help. Public data
 remains sanitized and read-only, live ADS-B history remains ephemeral, and
-protected operational controls remain behind authentication.
+protected operational data remains unavailable to the public tracker.
 
 Tickets: FT-413–FT-416. See
 [`tickets/M4.1-public-decision-intelligence.md`](tickets/M4.1-public-decision-intelligence.md).

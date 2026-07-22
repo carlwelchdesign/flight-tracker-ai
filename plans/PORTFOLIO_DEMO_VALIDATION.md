@@ -2,23 +2,24 @@
 
 ## Decision and evidence boundary
 
-Current decision: **Revise before public review**.
+Current decision: **Build the complete public flow, then validate**.
 
-The repository is ready for a self-guided neutral-review session after the
-FT-403 orientation changes are deployed. It is not yet approved for public
-publication. The review recorded below is a sequential expert simulation by
-one development session, supported by automated component tests; it is not an
-independent human usability study and does not satisfy the participant gate.
-FT-404 may create the private preview needed to run that study, but production
-promotion remains blocked until the observations table contains at least one
-recruiter, hiring manager, or neutral reviewer who is not the implementer.
+The public tracker is deployed and FT-404 is complete. Under ADR-016, the
+recruiter journey does not include authentication or the protected operations
+console. The next neutral session runs after FT-413 through FT-416 so the
+reviewer evaluates the actual selected-flight explanation, replay time machine,
+telemetry charts, search/share state, and airport weather intelligence. The
+historical expert simulation below remains useful design evidence, but it is
+not an independent human usability study and does not satisfy the participant
+gate.
 
 ## Scope
 
-The evaluation covers the recruiter-facing operations console: portfolio
-orientation, replay flight picture, flight selection, source and freshness
-evidence, ranked alert explanation, human-controlled alert action, and recovery
-from an optional position-source failure. It does not evaluate airline
+The evaluation covers the public tracker: regional live and replay flight
+pictures, flight selection, source and freshness evidence, deterministic
+attention explanation, replay/telemetry comprehension, search/share behavior,
+airport weather intelligence, and recovery from an optional position-source
+failure. It does not evaluate authentication, protected alert actions, airline
 operations, dispatch correctness, certification, commercial provider service
 levels, or real-world flight safety.
 
@@ -53,13 +54,15 @@ task. A reviewer may use the on-page walkthrough and labels.
 | T1 | Explain what the product does, which data is repeatable versus live, and who takes action | Mentions flight attention, replay, live supporting context, and a human decision | 90 seconds; all four concepts |
 | T2 | Find a flight needing attention and state why | Selects a watch flight and cites visible route, timing, or weather evidence | 90 seconds |
 | T3 | Identify source and freshness limits | Locates source/freshness evidence without treating optional positions as complete truth | 120 seconds |
-| T4 | Review the highest-priority alert and take one reversible human action | Opens alert evidence and completes acknowledgement or assignment deliberately | 120 seconds |
-| T5 | Continue when live positions are degraded or unavailable | Recognizes degradation and selects replay without facilitator help | 60 seconds |
+| T4 | Find when the selected replay aircraft's attention state changed | Uses the time machine and telemetry without facilitator help | 120 seconds |
+| T5 | Restore a shared aircraft or scenario view | Opens a supplied URL and identifies its region, selection, time, and layers | 60 seconds |
+| T6 | Explain airport observation, forecast, and nearby pilot-report evidence | Distinguishes METAR, TAF, and PIREP source/time limits | 120 seconds |
+| T7 | Continue when live positions are degraded or unavailable | Recognizes degradation and uses replay without facilitator help | 60 seconds |
 
 ### Measures
 
 - **Time to understand:** elapsed time and concepts correctly stated for T1.
-- **Task completion:** pass, partial, or fail for T2–T5; note wrong turns and
+- **Task completion:** pass, partial, or fail for T2–T7; note wrong turns and
   facilitator interventions (any intervention means the task failed).
 - **Source-mode comprehension:** score one point each for replay, NOAA weather,
   optional position-only context, degraded availability, and human action.
@@ -83,19 +86,19 @@ session, not by independent agents or representative participants.
 | Accessibility | The page lacked an H1 and the alert destination had no stable fragment target | Must fix | Added a labeled semantic section, H1, nav, ordered steps, definition list, and `#alert-review` target |
 | Demo reliability | Optional positions could distract from the deterministic path | Important | Orientation and runbook name replay as the reliable demo and optional live data as supporting context |
 
-Automated tests confirm that the orientation exposes its heading, source modes,
-human-action boundary, and working fragment targets. Existing interaction tests
-cover replay availability during failure, visible degraded states, alert review,
-and explicit human actions. These tests support the session; they do not measure
-human comprehension or replace the participant record.
+The historical orientation and protected-action tests remain regression evidence
+for the internal console. FT-413 through FT-416 must add public interaction tests
+for explanation, replay, telemetry, direct links, and airport intelligence.
+Automated tests support the final session; they do not measure human
+comprehension or replace the participant record.
 
 ## Participant observations
 
 Complete one row per reviewer. Use role labels rather than names.
 
-| Date | Viewer | T1 time / concepts | T2 | T3 | T4 | T5 | Source score | Availability observed | Interventions | Key observations |
-| --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | --- |
-| Pending | Neutral reviewer | — | — | — | — | — | — | — | — | Private preview required |
+| Date | Viewer | T1 time / concepts | T2 | T3 | T4 | T5 | T6 | T7 | Source score | Availability observed | Interventions | Key observations |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | ---: | --- |
+| Pending | Neutral reviewer | — | — | — | — | — | — | — | — | — | — | FT-413–416 candidate required |
 
 ## Publish gate
 
@@ -103,11 +106,11 @@ Change the decision to **Publish** only when:
 
 - at least one independent representative or neutral reviewer completes the
   protocol on the same candidate build;
-- T1 meets its time/concept threshold, T2–T5 pass without intervention, and
+- T1 meets its time/concept threshold, T2–T7 pass without intervention, and
   source comprehension is at least 4/5;
 - no unresolved must-fix issue misstates source authority, freshness,
   availability, operational suitability, or the human decision boundary; and
-- FT-404 hosted security, recovery, and browser checks pass.
+- FT-404 public hosted security, recovery, and browser checks pass.
 
 Choose **Revise** when a fix can reasonably meet the gate, or **Stop** when a
 trust/safety defect cannot be corrected before the portfolio deadline. Record
