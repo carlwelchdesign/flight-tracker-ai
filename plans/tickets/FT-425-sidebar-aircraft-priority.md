@@ -3,8 +3,8 @@
 Status: In progress
 
 Branch: `fix/ft-425-sidebar-priority`
-Final implementation commit: Pending
-Pull request: Pending
+Final implementation commit: `ba478c3`
+Pull request: [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70)
 Owner: Frontend engineering and product design
 
 Rebalance the desktop tracker sidebar so the aircraft list is immediately
@@ -57,3 +57,5 @@ Dependencies: FT-415, FT-422
   viewport confirmed correct order, responsive stacking, keyboard-operable
   disclosure, visible secondary evidence after expansion, and no browser
   errors.
+- Implementation commit: `ba478c3`; delivery PR:
+  [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70).

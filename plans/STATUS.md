@@ -8,7 +8,8 @@ Last updated: 2026-07-22
 - Active tickets: FT-425 sidebar aircraft priority, FT-403 neutral recruiter
   validation, and FT-502 independent aviation-domain review
 - Branch: `fix/ft-425-sidebar-priority`
-- Pull request: FT-425 pending; FT-424
+- Pull request: FT-425 [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70)
+  is open; FT-424
   [#68](https://github.com/carlwelchdesign/flight-tracker-ai/pull/68) is merged
 - Owner: Project owner and external reviewers
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
@@ -79,6 +80,9 @@ Last updated: 2026-07-22
 - FT-425 is in progress on `fix/ft-425-sidebar-priority`. It keeps selected
   aircraft above the list while reversing the current 70/30 sidebar height
   bias and moving secondary aircraft evidence behind progressive disclosure.
+  Implementation commit `ba478c3` is in
+  [PR #70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70);
+  required checks and hosted evidence remain before closeout.
 
 - FT-424 is complete through implementation commit `a2c06f6`, PR
   [#68](https://github.com/carlwelchdesign/flight-tracker-ai/pull/68), merge commit
