@@ -1,6 +1,6 @@
 # FT-425 — Prioritize the aircraft list in the tracker sidebar
 
-Status: In progress
+Status: Complete
 
 Branch: `fix/ft-425-sidebar-priority`
 Final implementation commit: `ba478c3`
@@ -32,7 +32,7 @@ Dependencies: FT-415, FT-422
       remain coherent.
 - [x] Focused tests, full web tests, lint, typecheck, production build,
       responsive browser verification, and diff hygiene pass.
-- [ ] Branch, commits, pull request, required checks, and hosted evidence are
+- [x] Branch, commits, pull request, required checks, and hosted evidence are
       recorded before completion.
 
 ## Non-goals
@@ -59,3 +59,11 @@ Dependencies: FT-415, FT-422
   errors.
 - Implementation commit: `ba478c3`; delivery PR:
   [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70).
+- GitHub checks passed: API and PostGIS smoke test, Rust checks, Web checks,
+  Vercel, and Vercel Preview Comments. PR #70 merged as `bb294ed`.
+- Production deployment `dpl_4D5NeyPECy9xhQ8YyEDcjCB6T3Ur` is ready and
+  assigned to [flight-tracker-ai-one.vercel.app](https://flight-tracker-ai-one.vercel.app/).
+  Hosted verification with 179 aircraft measured a 220px inspector and 352px
+  aircraft-list panel before and after expanding secondary details. The
+  disclosure exposed provider evidence, the list position remained stable,
+  browser errors were empty, and the Vercel error-log scan was clean.
