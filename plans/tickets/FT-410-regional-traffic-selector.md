@@ -3,9 +3,9 @@
 Status: In progress
 
 Branch: `feat/ft-410-regional-traffic-selector`
-Latest implementation commit: Pending
+Latest implementation commit: `330d0d4`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30)
 Owner: Backend and full-stack product engineering
 
 ## Outcome
@@ -76,4 +76,5 @@ authoritative coverage.
 - `cargo fmt --all -- --check`, Clippy with warnings denied, all Rust tests,
   all 95 web tests, TypeScript, ESLint, `next build`, and `git diff --check` pass.
 - CI's independent API/PostGIS job, branch commit, PR, and PR checks remain the
-  final completion evidence.
+  final completion evidence. Implementation commit `330d0d4` is published in
+  draft PR [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30).

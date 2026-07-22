@@ -7,7 +7,7 @@ Last updated: 2026-07-21
 - Current milestone: M4 — Portfolio launch and demonstration hardening
 - Active ticket: FT-410 — Regional live-traffic selector
 - Branch: `feat/ft-410-regional-traffic-selector`
-- Pull request: Pending
+- Pull request: [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30)
 - Owner: Backend and full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
 - Next action: Deliver a curated, bounded Rust-owned live-region catalog and a
@@ -70,7 +70,9 @@ Last updated: 2026-07-21
   polling. A production-built browser run switched from 132 current SFO
   aircraft to 173 current LAX aircraft without reload, rendered 173 markers,
   preserved the selected-aircraft-first layout, and had zero mobile horizontal
-  overflow. PR and CI evidence remain pending.
+  overflow. Implementation commit `330d0d4` is published in draft PR
+  [#30](https://github.com/carlwelchdesign/flight-tracker-ai/pull/30); required
+  CI evidence remains pending.
 
 - FT-409 is complete and merged into FT-405 through PR [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
   at `a99c47f`. The selected-aircraft evidence panel now precedes the current
