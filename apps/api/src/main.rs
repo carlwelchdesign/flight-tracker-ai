@@ -2,11 +2,12 @@ mod config;
 
 use std::time::Duration;
 
-use config::Config;
+use config::{Config, ReplayConfig};
 use flight_tracker_api::{
+    PublicPortfolioOperators,
     alerting::spawn_alert_worker,
     auth::{AuthService, AuthStore, InternalAssertionVerifier},
-    build_router_with_runtime_and_live_positions,
+    build_router_with_runtime_and_public_live_positions,
     health::CriticalWorkerRegistry,
     ingestion::{IngestionHub, IngestionSubscription},
     live_positions::{
@@ -55,7 +56,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ingestion_subscriptions = Vec::<IngestionSubscription>::new();
     let live_position_statuses = LivePositionStatusStore::default();
     let replay = if let Some(replay_config) = config.replay {
-        let scenario = ReplayScenario::load(&replay_config.scenario_path)?;
+        let (scenario, mode) = match replay_config {
+            ReplayConfig::Development { scenario_path } => {
+                (ReplayScenario::load(&scenario_path)?, "development")
+            }
+            ReplayConfig::Portfolio => (
+                ReplayScenario::from_json(include_str!(
+                    "../../../fixtures/replay/m1-operations-v1.json"
+                ))?,
+                "portfolio",
+            ),
+        };
         let scenario_id = scenario.id.clone();
         let handle = ReplayHandle::new(scenario, 256);
         spawn_replay_runtime(
@@ -66,13 +77,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!(
             correlation_id = %scenario_id,
             scenario = %scenario_id,
-            "development replay controls enabled"
+            replay_mode = mode,
+            "replay controls enabled"
         );
         Some(handle)
     } else {
         None
     };
 
+    let public_weather_operator = config.public_weather_operator;
     if let Some(noaa_config) = config.noaa {
         let operator_exists =
             sqlx::query_scalar::<_, bool>("SELECT EXISTS (SELECT 1 FROM operators WHERE id = $1)")
@@ -116,6 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("NOAA aviation weather ingestion enabled");
     }
 
+    let public_live_operator = config.adsb_lol.as_ref().map(|value| value.operator_id);
     if let Some(adsb_lol_config) = config.adsb_lol {
         let operator_exists =
             sqlx::query_scalar::<_, bool>("SELECT EXISTS (SELECT 1 FROM operators WHERE id = $1)")
@@ -135,7 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             base_url: adsb_lol_config.base_url,
             user_agent: adsb_lol_config.user_agent,
             connect_timeout: Duration::from_secs(3),
-            request_timeout: Duration::from_secs(5),
+            request_timeout: Duration::from_secs(12),
             retry: AdsbLolRetryPolicy::default(),
         })?;
         spawn_adsb_lol_runtime(
@@ -167,12 +181,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(address = %config.bind_address, "API listening");
     axum::serve(
         listener,
-        build_router_with_runtime_and_live_positions(
+        build_router_with_runtime_and_public_live_positions(
             database,
             replay,
             workers,
             ingestion_subscriptions,
             live_position_statuses,
+            PublicPortfolioOperators {
+                live_positions: public_live_operator,
+                weather: public_weather_operator,
+            },
             auth,
         ),
     )

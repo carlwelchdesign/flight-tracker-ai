@@ -5,14 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-403 — Validate the recruiter and hiring-manager demo
-- Branch: `docs/ft-403-portfolio-demo-validation`
-- Pull request: [#23](https://github.com/carlwelchdesign/flight-tracker-ai/pull/23)
-- Owner: Product design, user research, and engineering
+- Active ticket: FT-405 — Live navigable flight tracker release closeout
+- Branch: `feat/ft-405-live-navigable-tracker`
+- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
+- Owner: Full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Verify and merge the FT-403 orientation and neutral-review
-  protocol, then use the FT-404 private preview to collect the remaining
-  independent participant evidence before public promotion.
+- Next action: Close the remaining FT-405 direct motion/lifecycle coverage and
+  forced hosted fallback checks before merging the parent release PR.
 
 ## Milestone checklist
 
@@ -22,6 +21,29 @@ Last updated: 2026-07-21
 - [x] M3 — Portfolio live data and operational workflow
 - [ ] M4 — Portfolio launch and demonstration hardening
 - [ ] M5 — Optimization research and controlled recommendations
+
+## Current product correction
+
+- FT-408 is complete and merged through stacked PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28).
+  It ports NOAA METAR and SIGMET capability to the public navigable map through
+  a fixed-operator sanitized Rust read boundary and is live in production. See
+  [`FT-408-public-weather-map-layers.md`](tickets/FT-408-public-weather-map-layers.md).
+- FT-407 is complete and merged through stacked PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27). It corrects
+  the public live-map glyph axis without changing ADS-B headings, trajectory
+  math, or the protected console's separate north-facing SVG marker. See
+  [`FT-407-aircraft-marker-heading.md`](tickets/FT-407-aircraft-marker-heading.md).
+- FT-406 is complete and merged through stacked PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26). It adds a selected live
+  aircraft's ten-minute observed trail and a separately labeled estimated
+  five-minute motion projection without persisting provider positions or
+  claiming a filed route, destination, ETA, or authoritative prediction. See
+  [`FT-406-flight-trajectories.md`](tickets/FT-406-flight-trajectories.md).
+- FT-405 is active on `feat/ft-405-live-navigable-tracker`. The existing public
+  SVG/replay surface has been replaced in production by a sanitized public
+  no-store ADSB.lol read model, a navigable MapLibre/OpenFreeMap view, animated
+  aircraft updates, truthful evidence fields, and an explicit replay fallback.
+  It is a working live core, not the final map: airport and NOAA hazard/weather
+  overlays plus forced hosted failure-state verification remain. See
+  [`FT-405-live-navigable-tracker.md`](tickets/FT-405-live-navigable-tracker.md).
 
 ## Ticket progress
 
@@ -36,6 +58,43 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
+- FT-409 is complete and merged into FT-405 through PR [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
+  at `a99c47f`. The selected-aircraft evidence panel now precedes the current
+  aircraft list in visual and document order, while the list retains its own
+  scrolling region. All five checks pass. Vercel production deployment
+  `dpl_GL7BncuJF6ptg8aeBmDXpSvLxLK1` is live, and the public browser check
+  confirms the intended order with no application errors or overflow.
+- FT-408 is merged into the FT-405 feature branch through PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28)
+  at merge commit `d222094`; hosted-enablement commit `1ed490c` passes all five
+  checks. Render staging and production return a sanitized no-store NOAA
+  snapshot with three Bay Area METAR observations and 19 current provider
+  hazards. Vercel production deployment
+  `dpl_Cv3Z6XafLmTTh7and9SzBcx3fpzi` is live at
+  `https://flight-tracker-ai-one.vercel.app`; production browser verification
+  proves visible stale/current source truth, independent METAR/SIGMET controls,
+  selection evidence, attribution, live aircraft continuity, and no application
+  errors. The separate Clerk Marketplace DNS advisory remains unchanged.
+- FT-407 is merged into the FT-405 feature branch through PR [#27](https://github.com/carlwelchdesign/flight-tracker-ai/pull/27)
+  at merge commit `965a779`. Final CI run
+  [29875782640](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875782640)
+  passes all five checks. Production deployment
+  `dpl_9CXK2vvtPbdcNiaBnX9ZK52FgPfN` is live at
+  `https://flight-tracker-ai-one.vercel.app`. The public live MapLibre marker now applies an
+  explicit negative 90-degree glyph-axis correction; browser verification
+  proved supplied headings render with the exact correction in local and public
+  production without changing source evidence or trajectory math.
+- FT-406 is merged into the FT-405 feature branch through PR [#26](https://github.com/carlwelchdesign/flight-tracker-ai/pull/26)
+  at merge commit `2df6deb`. Final CI run
+  [29875004160](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29875004160)
+  passes all five checks. Production deployment
+  `dpl_6NHNmJBCJPiaFHrtURRJ8zv8832E` is live at
+  `https://flight-tracker-ai-one.vercel.app`. Selected live aircraft now show a bounded ten-minute
+  page-memory trail and a separately styled deterministic five-minute motion
+  estimate; neither is persisted or represented as a route, destination, ETA,
+  or new observation. Live desktop/mobile browser verification captured two
+  accepted source points and a 9.6 NM projection after one provider refresh on
+  the public production site. Mobile verification confirms a bounded 560-pixel
+  aircraft panel and zero horizontal overflow at `390x844`.
 - GitHub repository: `carlwelchdesign/flight-tracker-ai`.
 - `main` and `origin` are established; planning baseline commit: `8feb57d`.
 - FT-001 is merged through PR #1 at `c8e0bb4`.
@@ -65,6 +124,13 @@ Last updated: 2026-07-21
 - FT-401 is delivered through PR [#18](https://github.com/carlwelchdesign/flight-tracker-ai/pull/18) at portfolio closeout commit `e28ffa1`. CI run [29851083689](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29851083689) passes Rust, web, and API/PostGIS checks. The review documents and enforces trust boundaries, threat modeling, lifecycle/backup/incident controls, and ten owned findings; repository approval remains separate from FT-404 public-deployment approval.
 - FT-402 is delivered through PR [#22](https://github.com/carlwelchdesign/flight-tracker-ai/pull/22) at final implementation commit `73e7157`. CI run [29856364366](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29856364366) passes Rust, web, and API/PostGIS checks. It proves visible source timeout/outage fallback, adversarial-input rejection, durable alert history across worker replacement, measured bounded/overflow backlog behavior, and an isolated logical PostGIS restore while preserving the honest FT-404 hosted-recovery boundary.
 - FT-403 preparation is under review in PR [#23](https://github.com/carlwelchdesign/flight-tracker-ai/pull/23) at implementation commit `15227e4`. It adds a self-guided recruiter orientation, clarifies the outage control, and records the neutral-review protocol and current **Revise** decision without claiming independent participant evidence.
+- FT-404 is active in draft PR [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24) at implementation commit `e33a21c`. Vercel project `flight-tracker-ai` is connected to this repository with `apps/web` as the Next.js root. CI run [29862882559](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29862882559) passes Rust, web, and API/PostGIS checks for the explicit free staging/production topology. The exact commit was also built as protected preview deployment `dpl_5jVqrumWgwHJiUBc4i4fHZkdo6LL` and production deployment `dpl_2hfw56Se2W9oSDx7fCQ4F3hHd2cb`.
+- Vercel Marketplace resources `neon-bronze-curtain`, `neon-bistre-lantern`, and `clerk-celeste-door` are available. Production and staging use separate Neon Free projects in AWS `us-east-1`; PostGIS `3.5.0` is enabled. Clerk uses production keys for Production and test keys for Preview, its production domain is `flight-tracker-ai-one.vercel.app`, Organizations with required membership are enabled, and organization `Flight Tracker Portfolio` exists. Reviewer enrollment and authenticated hosted smoke remain pending.
+- Vercel has `AUTH_MODE`, `OPERATIONS_MODE`, `INTERNAL_AUTH_KEY_ID`, `AUTH_ASSERTION_ISSUER`, and `AUTH_ASSERTION_AUDIENCE` configured for Development, Preview, and Production. Preview and Production now use distinct Render `API_BASE_URL` and `INTERNAL_AUTH_SECRET` values.
+- The first public-alias observation showed the original deployment still defaulting to development auth and revealed that noninteractive Vercel input had stored the five non-secret runtime settings as `[SENSITIVE]` in Production and Preview. The settings are corrected and verified. Commit `790e022` fixes the later blank Clerk form under strict CSP; commit `63e3bbd` keeps sign-up on the application domain. CI runs [29867545134](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29867545134) and [29868085207](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29868085207) pass all jobs. Commit `bcf49cc` replaces the root sign-in wall with the read-only public flight tracker and passes CI run [29868610558](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29868610558). Production deployment `dpl_5CvqF2Dbg6LnwZkDc8ccRZnutS4e` now shows the fleet map, three-flight board, NOAA weather context, and selectable details immediately, while `/sign-in`, `/sign-up`, operational actions, and backend routes preserve their intended protection. The live sanitized verifier passes this production web/API boundary and rejects the former sign-in-only landing.
+- Render Blueprint `exs-d9ft018okrbs738q5r60` created free production service `srv-d9ft2gn7f7vs739ass40` and staging service `srv-d9ft2gn7f7vs739ass3g` in Virginia. Each uses its own Neon project and assertion secret. A sanitized hosted probe found the otherwise-idle alert projection becoming stale; commits `a665494` and `6a4929e` add a periodic supervised heartbeat and API HSTS. CI run [29865574640](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29865574640) passes all jobs. The final promotion commit will switch both services to `main` after hosted smoke.
+- Render deploys `dep-d9ftbi61a83c7396hbsg` (production) and `dep-d9ftf2naqgkc738okfig` (staging) run commit `6a4929e`. Both pass health, readiness, PostGIS/migration, HSTS, distinct assertion-secret, and four-worker checks. The sanitized public verifier passes against protected preview `dpl_FNbngNWmbKNSafY5rvNypHjPaPzS` and publication-ready production `dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE`; temporary verifier identities were removed afterward.
+- Neon retained the manual production snapshot `main at 2026-07-21 20:46:51 UTC (manual)`. A separate 13:45 PDT point-in-time restore matched production with PostGIS `3.5.0`, 14 successful migrations, one operator, and zero identity, membership, alert, and action rows. An earlier pre-migration restore correctly failed closed. Both temporary restore branches were deleted after verification, leaving production `main` unchanged.
 - F401-004 is closed at implementation commit `e9e5f76`: operator-scoped membership foreign keys now protect both current alert assignments and assignment audit rows. CI run [29833385671](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833385671) proves direct-database and authenticated-API cross-tenant rejection plus valid same-tenant assignment.
 - Browser policy implementation commit `dc08690` adds strict nonce-aware Clerk CSP and production response hardening. CI run [29833848250](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29833848250), the standalone header smoke, and all 30 web tests pass; F401-005 is controlled by FT-404's pre-publication hosted-Clerk smoke.
 - F401-010 is closed at implementation commit `38cf7b7`: public health/readiness probes now expose one status field, while detailed worker/database/PostGIS diagnostics require authorization. CI run [29834083229](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29834083229) verifies the public, unauthorized, authenticated, PostGIS, BFF, and console contracts.

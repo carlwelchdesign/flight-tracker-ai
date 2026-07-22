@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 import { OperationsTrustBanner } from "@/components/operations/operations-trust-banner";
 import { authMode } from "@/lib/auth-server";
 import { getOperationalContext } from "@/lib/operational-context";
+import { HOSTED_CLERK_PROVIDER_OPTIONS } from "@/lib/security-policy";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,5 +42,7 @@ export default async function RootLayout({
   );
   if (authMode() === "development") return document;
   const { ClerkProvider } = await import("@clerk/nextjs");
-  return <ClerkProvider>{document}</ClerkProvider>;
+  return (
+    <ClerkProvider {...HOSTED_CLERK_PROVIDER_OPTIONS}>{document}</ClerkProvider>
+  );
 }

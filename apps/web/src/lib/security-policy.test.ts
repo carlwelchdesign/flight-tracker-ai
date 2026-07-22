@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
-import { BROWSER_SECURITY_HEADERS, HOSTED_IDENTITY_CSP } from "./security-policy";
+import {
+  BROWSER_SECURITY_HEADERS,
+  HOSTED_CLERK_PROVIDER_OPTIONS,
+  HOSTED_IDENTITY_CSP,
+} from "./security-policy";
 
 describe("browser security policy", () => {
   it("applies the approved response headers to every application route", async () => {
@@ -32,12 +36,22 @@ describe("browser security policy", () => {
       strict: true,
       directives: {
         "base-uri": ["self"],
+        "connect-src": ["self", "https://tiles.openfreemap.org"],
         "font-src": ["self", "data:"],
         "frame-ancestors": ["none"],
-        "img-src": ["self", "blob:", "data:"],
+        "img-src": ["self", "blob:", "data:", "https://tiles.openfreemap.org"],
         "media-src": ["none"],
         "object-src": ["none"],
+        "worker-src": ["self", "blob:"],
       },
+    });
+  });
+
+  it("opts Clerk into dynamic rendering so its browser script receives the CSP nonce", () => {
+    expect(HOSTED_CLERK_PROVIDER_OPTIONS).toEqual({
+      dynamic: true,
+      signInUrl: "/sign-in",
+      signUpUrl: "/sign-up",
     });
   });
 });

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use serde_json::json;
 use sqlx::{PgPool, Postgres, Transaction};
@@ -32,29 +32,35 @@ pub fn spawn_alert_worker(
         let store = AlertStore::new(database.clone());
         let rule = RouteHazardRule::default();
         let mut state = CorrelationState::default();
-        probe.heartbeat();
+        let mut heartbeat = tokio::time::interval(Duration::from_secs(1));
+        heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
-            let batch = match receiver.recv().await {
-                Ok(batch) => batch,
-                Err(broadcast::error::RecvError::Lagged(skipped)) => {
-                    tracing::warn!(worker = "alert_projection", skipped, "alert input lagged");
-                    continue;
-                }
-                Err(broadcast::error::RecvError::Closed) => break,
-            };
+            tokio::select! {
+                _ = heartbeat.tick() => probe.heartbeat(),
+                received = receiver.recv() => {
+                    let batch = match received {
+                        Ok(batch) => batch,
+                        Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                            tracing::warn!(worker = "alert_projection", skipped, "alert input lagged");
+                            continue;
+                        }
+                        Err(broadcast::error::RecvError::Closed) => break,
+                    };
 
-            if let Err(error) = persist_simulation_batch(&database, &batch).await {
-                tracing::error!(worker = "alert_projection", error = %error, "canonical replay persistence failed");
-                probe.fail("canonical replay persistence failed");
-                break;
+                    if let Err(error) = persist_simulation_batch(&database, &batch).await {
+                        tracing::error!(worker = "alert_projection", error = %error, "canonical replay persistence failed");
+                        probe.fail("canonical replay persistence failed");
+                        break;
+                    }
+                    absorb(&mut state, &batch);
+                    if let Err(error) = evaluate(&state, &store, &rule, &batch).await {
+                        tracing::error!(worker = "alert_projection", error = %error, "alert evaluation failed");
+                        probe.fail("alert evaluation failed");
+                        break;
+                    }
+                    probe.heartbeat();
+                }
             }
-            absorb(&mut state, &batch);
-            if let Err(error) = evaluate(&state, &store, &rule, &batch).await {
-                tracing::error!(worker = "alert_projection", error = %error, "alert evaluation failed");
-                probe.fail("alert evaluation failed");
-                break;
-            }
-            probe.heartbeat();
         }
     })
 }
@@ -376,5 +382,30 @@ fn source_quality(value: SourceQuality) -> &'static str {
         SourceQuality::Fused => "fused",
         SourceQuality::Estimated => "estimated",
         SourceQuality::Unknown => "unknown",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use sqlx::postgres::PgPoolOptions;
+    use tokio::{sync::broadcast, time::sleep};
+
+    use super::*;
+    use crate::health::CriticalWorkerRegistry;
+
+    #[tokio::test]
+    async fn idle_alert_worker_keeps_its_health_heartbeat_current() {
+        let database = PgPoolOptions::new()
+            .connect_lazy("postgresql://postgres:postgres@127.0.0.1:1/test")
+            .unwrap();
+        let (sender, receiver) = broadcast::channel(2);
+        let workers = CriticalWorkerRegistry::default();
+        let handle = spawn_alert_worker(database, receiver, workers.register("alert_projection"));
+
+        sleep(Duration::from_millis(3_200)).await;
+
+        assert!(workers.is_ready());
+        handle.abort();
+        drop(sender);
     }
 }

@@ -12,6 +12,7 @@ use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::auth::{AuthContext, Permission, require};
+use crate::domain::OperatorId;
 
 const MAX_HAZARDS: i64 = 500;
 const MAX_OBSERVATIONS: i64 = 200;
@@ -21,10 +22,82 @@ struct WeatherHttpState {
     database: PgPool,
 }
 
+#[derive(Clone)]
+struct PublicWeatherHttpState {
+    database: PgPool,
+    operator_id: Option<OperatorId>,
+}
+
 #[derive(Debug, Serialize)]
 struct WeatherPage<T> {
     data: Vec<T>,
     generated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+struct PublicWeatherSnapshot {
+    state: &'static str,
+    generated_at: DateTime<Utc>,
+    attribution: PublicWeatherAttribution,
+    sources: Vec<PublicWeatherSourceView>,
+    hazards: Vec<PublicHazardView>,
+    observations: Vec<PublicObservationView>,
+}
+
+#[derive(Debug, Serialize)]
+struct PublicWeatherAttribution {
+    text: &'static str,
+    source_url: &'static str,
+}
+
+#[derive(Debug, Serialize, FromRow)]
+struct PublicWeatherSourceView {
+    provider: String,
+    feed: String,
+    state: String,
+    observed_at: DateTime<Utc>,
+    last_success_at: Option<DateTime<Utc>>,
+    newest_event_at: Option<DateTime<Utc>>,
+    stale_after_seconds: i64,
+    last_error_code: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct PublicSourceView {
+    provider: String,
+    feed: String,
+}
+
+#[derive(Debug, Serialize)]
+struct PublicHazardView {
+    id: Uuid,
+    source: PublicSourceView,
+    status: String,
+    issued_at: DateTime<Utc>,
+    hazard_type: String,
+    severity: String,
+    valid_from: DateTime<Utc>,
+    valid_to: DateTime<Utc>,
+    altitude_band: Option<AltitudeBandView>,
+    footprint: PolygonView,
+}
+
+#[derive(Debug, Serialize)]
+struct PublicObservationView {
+    id: Uuid,
+    source: PublicSourceView,
+    observed_at: DateTime<Utc>,
+    received_at: DateTime<Utc>,
+    station_code: String,
+    report_type: String,
+    point: PointView,
+    wind_direction_true_degrees: Option<f64>,
+    wind_speed: Option<SpeedView>,
+    wind_gust: Option<SpeedView>,
+    visibility_statute_miles: Option<f64>,
+    visibility_greater_than: bool,
+    ceiling: Option<AltitudeView>,
+    flight_category: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -245,12 +318,117 @@ pub fn weather_router(database: PgPool) -> Router {
         .with_state(WeatherHttpState { database })
 }
 
+pub fn public_weather_router(database: PgPool, operator_id: Option<OperatorId>) -> Router {
+    Router::new()
+        .route("/api/public/weather", get(public_weather))
+        .with_state(PublicWeatherHttpState {
+            database,
+            operator_id,
+        })
+}
+
+async fn public_weather(State(state): State<PublicWeatherHttpState>) -> Response {
+    let generated_at = Utc::now();
+    let Some(operator_id) = state.operator_id else {
+        return public_weather_unavailable(generated_at);
+    };
+    let (hazard_rows, observation_rows, sources) = match tokio::try_join!(
+        fetch_hazard_rows(&state.database, operator_id, Some("noaa-awc")),
+        fetch_observation_rows(&state.database, operator_id, Some("noaa-awc")),
+        fetch_public_weather_sources(&state.database, operator_id),
+    ) {
+        Ok(result) => result,
+        Err(_) => return public_weather_unavailable(generated_at),
+    };
+    let hazards = match hazard_rows
+        .into_iter()
+        .map(HazardView::try_from)
+        .map(|result| result.map(PublicHazardView::from))
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(hazards) => hazards,
+        Err(_) => return public_weather_unavailable(generated_at),
+    };
+    let observations = observation_rows
+        .into_iter()
+        .map(ObservationView::from)
+        .map(PublicObservationView::from)
+        .collect();
+    let snapshot = PublicWeatherSnapshot {
+        state: public_weather_state(&sources),
+        generated_at,
+        attribution: PublicWeatherAttribution {
+            text: "Weather data from NOAA Aviation Weather Center",
+            source_url: "https://aviationweather.gov/",
+        },
+        sources,
+        hazards,
+        observations,
+    };
+    (
+        StatusCode::OK,
+        [(axum::http::header::CACHE_CONTROL, "no-store")],
+        Json(snapshot),
+    )
+        .into_response()
+}
+
+fn public_weather_unavailable(generated_at: DateTime<Utc>) -> Response {
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        [(axum::http::header::CACHE_CONTROL, "no-store")],
+        Json(PublicWeatherSnapshot {
+            state: "unavailable",
+            generated_at,
+            attribution: PublicWeatherAttribution {
+                text: "Weather data from NOAA Aviation Weather Center",
+                source_url: "https://aviationweather.gov/",
+            },
+            sources: Vec::new(),
+            hazards: Vec::new(),
+            observations: Vec::new(),
+        }),
+    )
+        .into_response()
+}
+
+fn public_weather_state(sources: &[PublicWeatherSourceView]) -> &'static str {
+    if sources.is_empty() || sources.iter().all(|source| source.state == "unavailable") {
+        "unavailable"
+    } else if sources.iter().any(|source| source.state == "stale") {
+        "stale"
+    } else if sources.iter().all(|source| source.state == "healthy") {
+        "current"
+    } else {
+        "degraded"
+    }
+}
+
 async fn list_hazards(
     State(state): State<WeatherHttpState>,
     Extension(context): Extension<AuthContext>,
 ) -> Result<Json<WeatherPage<HazardView>>, Response> {
     require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
-    let rows = sqlx::query_as::<_, HazardRow>(
+    let rows = fetch_hazard_rows(&state.database, context.operator_id, None)
+        .await
+        .map_err(IntoResponse::into_response)?;
+    let data = rows
+        .into_iter()
+        .map(HazardView::try_from)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(IntoResponse::into_response)?;
+    Ok(Json(WeatherPage {
+        data,
+        generated_at: Utc::now(),
+    }))
+}
+
+async fn fetch_hazard_rows(
+    database: &PgPool,
+    operator_id: OperatorId,
+    provider: Option<&str>,
+) -> Result<Vec<HazardRow>, WeatherApiError> {
+    sqlx::query_as::<_, HazardRow>(
         r#"
         WITH latest AS (
             SELECT wh.*,
@@ -278,27 +456,20 @@ async fn list_hazards(
          AND envelope.id = latest.source_envelope_id
         WHERE latest.series_rank = 1
           AND latest.valid_to >= NOW() - INTERVAL '6 hours'
+          AND ($2::text IS NULL OR envelope.provider = $2)
         ORDER BY latest.valid_to DESC, latest.issued_at DESC
-        LIMIT $2
+        LIMIT $3
         "#,
     )
-    .bind(context.operator_id.as_uuid())
+    .bind(operator_id.as_uuid())
+    .bind(provider)
     .bind(MAX_HAZARDS)
-    .fetch_all(&state.database)
+    .fetch_all(database)
     .await
     .map_err(|error| {
         tracing::warn!(error = %error, "weather hazard read failed");
-        WeatherApiError::Unavailable.into_response()
-    })?;
-    let data = rows
-        .into_iter()
-        .map(HazardView::try_from)
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(IntoResponse::into_response)?;
-    Ok(Json(WeatherPage {
-        data,
-        generated_at: Utc::now(),
-    }))
+        WeatherApiError::Unavailable
+    })
 }
 
 async fn list_observations(
@@ -306,7 +477,21 @@ async fn list_observations(
     Extension(context): Extension<AuthContext>,
 ) -> Result<Json<WeatherPage<ObservationView>>, Response> {
     require(&context, Permission::ReadOperations).map_err(IntoResponse::into_response)?;
-    let rows = sqlx::query_as::<_, ObservationRow>(
+    let rows = fetch_observation_rows(&state.database, context.operator_id, None)
+        .await
+        .map_err(IntoResponse::into_response)?;
+    Ok(Json(WeatherPage {
+        data: rows.into_iter().map(ObservationView::from).collect(),
+        generated_at: Utc::now(),
+    }))
+}
+
+async fn fetch_observation_rows(
+    database: &PgPool,
+    operator_id: OperatorId,
+    provider: Option<&str>,
+) -> Result<Vec<ObservationRow>, WeatherApiError> {
+    sqlx::query_as::<_, ObservationRow>(
         r#"
         SELECT * FROM (
             SELECT DISTINCT ON (observation.operator_id, observation.station_code)
@@ -330,25 +515,45 @@ async fn list_observations(
              AND envelope.id = observation.source_envelope_id
             WHERE observation.operator_id = $1
               AND observation.event_time >= NOW() - INTERVAL '2 hours'
+              AND ($2::text IS NULL OR envelope.provider = $2)
             ORDER BY observation.operator_id, observation.station_code,
                      observation.event_time DESC, observation.id DESC
         ) latest
         ORDER BY event_time DESC
-        LIMIT $2
+        LIMIT $3
         "#,
     )
-    .bind(context.operator_id.as_uuid())
+    .bind(operator_id.as_uuid())
+    .bind(provider)
     .bind(MAX_OBSERVATIONS)
-    .fetch_all(&state.database)
+    .fetch_all(database)
     .await
     .map_err(|error| {
         tracing::warn!(error = %error, "airport observation read failed");
-        WeatherApiError::Unavailable.into_response()
-    })?;
-    Ok(Json(WeatherPage {
-        data: rows.into_iter().map(ObservationView::from).collect(),
-        generated_at: Utc::now(),
-    }))
+        WeatherApiError::Unavailable
+    })
+}
+
+async fn fetch_public_weather_sources(
+    database: &PgPool,
+    operator_id: OperatorId,
+) -> Result<Vec<PublicWeatherSourceView>, WeatherApiError> {
+    sqlx::query_as::<_, PublicWeatherSourceView>(
+        r#"
+        SELECT provider, feed, state, observed_at, last_success_at,
+               newest_event_at, stale_after_seconds, last_error_code
+        FROM source_health
+        WHERE operator_id = $1 AND provider = 'noaa-awc'
+        ORDER BY feed
+        "#,
+    )
+    .bind(operator_id.as_uuid())
+    .fetch_all(database)
+    .await
+    .map_err(|error| {
+        tracing::warn!(error = %error, "public weather source-health read failed");
+        WeatherApiError::Unavailable
+    })
 }
 
 async fn source_record(
@@ -489,6 +694,50 @@ impl From<ObservationRow> for ObservationView {
     }
 }
 
+impl From<HazardView> for PublicHazardView {
+    fn from(value: HazardView) -> Self {
+        Self {
+            id: value.id,
+            source: PublicSourceView {
+                provider: value.source.provider,
+                feed: value.source.feed,
+            },
+            status: value.status,
+            issued_at: value.issued_at,
+            hazard_type: value.hazard_type,
+            severity: value.severity,
+            valid_from: value.valid_from,
+            valid_to: value.valid_to,
+            altitude_band: value.altitude_band,
+            footprint: value.footprint,
+        }
+    }
+}
+
+impl From<ObservationView> for PublicObservationView {
+    fn from(value: ObservationView) -> Self {
+        Self {
+            id: value.id,
+            source: PublicSourceView {
+                provider: value.source.provider,
+                feed: value.source.feed,
+            },
+            observed_at: value.times.event_time,
+            received_at: value.times.received_at,
+            station_code: value.station_code,
+            report_type: value.report_type,
+            point: value.point,
+            wind_direction_true_degrees: value.wind_direction_true_degrees,
+            wind_speed: value.wind_speed,
+            wind_gust: value.wind_gust,
+            visibility_statute_miles: value.visibility_statute_miles,
+            visibility_greater_than: value.visibility_greater_than,
+            ceiling: value.ceiling,
+            flight_category: value.flight_category,
+        }
+    }
+}
+
 fn altitude(
     value: Option<i32>,
     unit: Option<String>,
@@ -499,4 +748,40 @@ fn altitude(
         unit: unit?,
         reference: reference?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn public_weather_state_preserves_partial_and_stale_source_truth() {
+        assert_eq!(public_weather_state(&[]), "unavailable");
+        assert_eq!(public_weather_state(&[source("healthy")]), "current");
+        assert_eq!(
+            public_weather_state(&[source("healthy"), source("degraded")]),
+            "degraded"
+        );
+        assert_eq!(
+            public_weather_state(&[source("healthy"), source("stale")]),
+            "stale"
+        );
+        assert_eq!(
+            public_weather_state(&[source("unavailable"), source("unavailable")]),
+            "unavailable"
+        );
+    }
+
+    fn source(state: &str) -> PublicWeatherSourceView {
+        PublicWeatherSourceView {
+            provider: "noaa-awc".into(),
+            feed: "metar".into(),
+            state: state.into(),
+            observed_at: Utc::now(),
+            last_success_at: None,
+            newest_event_at: None,
+            stale_after_seconds: 900,
+            last_error_code: None,
+        }
+    }
 }

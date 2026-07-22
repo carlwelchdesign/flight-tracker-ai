@@ -44,4 +44,15 @@ The scenario starts paused. Status reports phase, speed, event cursor, emitted a
 
 ## Production safety boundary
 
-Replay is disabled by default, so no control routes are mounted. Enabling it requires all three development settings above. Startup fails before connecting to the database when replay is requested with `APP_ENV=production`, an unknown environment, an invalid toggle, or no scenario path. Production deployments must omit replay variables or explicitly set `ENABLE_REPLAY_CONTROLS=false`.
+Replay is disabled by default, so no control routes are mounted. Enabling the
+development loader requires all three development settings above. Startup
+fails before connecting to the database when development replay is requested
+with `APP_ENV=production`, an unknown environment, an invalid toggle, or no
+scenario path. Production deployments must set `ENABLE_REPLAY_CONTROLS=false`.
+
+The recruiter portfolio has a separate `ENABLE_PORTFOLIO_REPLAY=true` mode.
+It is accepted only with `APP_ENV=production`, uses the compile-time reviewed
+M1 fixture rather than a host path, and remains protected by Clerk plus the
+existing operator/administrator replay permission. Development and portfolio
+replay cannot be enabled together. This exception does not enable development
+authentication or arbitrary hosted scenario files.

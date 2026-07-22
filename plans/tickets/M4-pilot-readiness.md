@@ -122,11 +122,13 @@ neutral reviewer on the candidate preview produced by FT-404.
 
 ## FT-404 — Deploy the public portfolio and preview environments
 
-Status: Not started
+Status: In progress
 
 Branch: `feat/ft-404-production-deployment`
+Latest implementation commit: `6a4929e`
 Final commit: Pending
-Pull request: Pending
+Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
+Owner: Platform, backend, security, and full-stack engineering
 
 Deploy the public Next.js interface on Vercel while placing the Rust API, optional continuous ingestion, and PostgreSQL/PostGIS on infrastructure suited to those persistent workloads.
 
@@ -134,14 +136,118 @@ Dependencies: FT-401, FT-402
 
 Acceptance checklist:
 
-- [ ] Vercel project is connected to GitHub and creates isolated preview deployments for pull requests.
-- [ ] Production Next.js environment calls the Rust API through a server-only configured URL.
-- [ ] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
-- [ ] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
-- [ ] Secrets and environment variables are separated across development, preview, and production.
-- [ ] Public domain, TLS, security headers, bounded logging, and basic availability monitoring are verified.
+- [x] Vercel project is connected to GitHub and creates isolated preview deployments for pull requests.
+- [x] Production Next.js environment calls the Rust API through a server-only configured URL.
+- [x] Rust API and continuous ingestion workers run on persistent container infrastructure with health checks and controlled releases.
+- [x] Managed PostgreSQL supports the required PostGIS extensions, backups, connection pooling, and region alignment.
+- [x] Secrets and environment variables are separated across development, preview, and production.
+- [x] Public domain, TLS, security headers, bounded logging, and basic availability monitoring are verified.
 - [ ] Deployment, migration, rollback, and incident runbooks are tested.
 - [ ] End-to-end smoke checks prove browser, API, database, replay fallback, source labeling, and degraded-state behavior.
-- [ ] The public deployment contains no claim of certification, operational authority, commercial SLA, or real-operator endorsement.
+- [x] The public deployment contains no claim of certification, operational authority, commercial SLA, or real-operator endorsement.
 
-Verification evidence: Pending.
+Verification evidence: The Vercel project `flight-tracker-ai` is Git-connected
+to this repository with `apps/web` as its Next.js root and Node.js 20.x. The
+first protected candidate deployment `dpl_BhRvwF9Bi5y67XW7w7qiQREaPrpj`
+successfully built commit `03cbd31` and is not public: unauthenticated requests
+are redirected to Vercel deployment protection. Preview deployment
+`dpl_CHpF3CQacHMBJTnGhnpgsJtYLFfJ` independently built PR #24 commit `a2da158`
+with the preview target and branch alias. CI run
+[29858652637](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29858652637)
+passes Rust, web, PostGIS, hosted-bootstrap, and sanitized FT-404 verifier tests.
+[`HOSTED_DEPLOYMENT_RUNBOOK.md`](../HOSTED_DEPLOYMENT_RUNBOOK.md)
+and [`render.yaml`](../../render.yaml) define the remaining Render, Neon, Clerk,
+secret, restore, browser, and promotion gates. Hosted smoke evidence is pending.
+On 2026-07-21, Vercel provisioned and attached available Neon resource
+`neon-bronze-curtain` and Clerk resource `clerk-celeste-door` to
+`flight-tracker-ai`. The expected encrypted environment-variable names are
+present across Development, Preview, and Production. The Neon pooled and direct
+TLS paths target AWS `us-east-1`, and the direct path successfully enabled and
+reported PostGIS `3.5.0`. The auth mode, operations mode, assertion key ID,
+issuer, and audience are configured across all three Vercel environments; the
+API URL and internal assertion secret wait for Render. Render remains
+unprovisioned, so its Blueprint region is aligned to Virginia before service
+creation. Clerk organization/user
+bootstrap, Neon snapshot/isolated restore, Render deployment, cross-service
+secrets, and hosted smoke remain pending.
+Provisioning and region-alignment evidence is recorded in commit `f897532` and
+draft PR [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24).
+
+The first public-alias observation exposed two controlled setup defects rather
+than a usable candidate: the original deployment predated the Clerk variables,
+and the five non-secret production/preview runtime settings had been stored as
+the literal placeholder `[SENSITIVE]` by noninteractive CLI input. The Vercel
+values are corrected and verified by an environment pull. Hosted 500-level
+configuration errors are replaced with bounded evaluation copy instead of
+disclosing variable names. The portfolio root now presents a read-only flight
+tracker while protected operational actions and backend routes stay behind
+Clerk.
+The Clerk production domain is now `flight-tracker-ai-one.vercel.app`.
+Production uses Clerk live keys while Preview retains test keys. Organizations
+with required membership are enabled and `Flight Tracker Portfolio` exists;
+reviewer enrollment remains a manual identity step. Exact commit `e33a21c` was
+built as protected preview deployment `dpl_5jVqrumWgwHJiUBc4i4fHZkdo6LL` and
+production deployment `dpl_2hfw56Se2W9oSDx7fCQ4F3hHd2cb`. That temporary
+sign-in boundary proved the production Clerk flow, removal of the
+`DEV_AUTH_SUBJECT` failure, and expected security headers before it was
+superseded by the public flight-tracker deployment recorded below.
+
+The 2026-07-21 Render specification audit found that managed preview
+environments require a Pro workspace and omit `sync: false` secrets. To retain
+the zero-base-cost and environment-isolation requirements, `render.yaml` now
+defines explicit free staging and production services. Staging follows passing
+feature-branch checks during FT-404 verification; production is promoted
+manually after staging and browser smoke. The final promotion commit switches
+both services to `main`. Render Free rejects a configurable maximum shutdown
+delay, so the Blueprint uses the platform default.
+Each service requires a distinct Neon database URL and internal assertion secret.
+The Blueprint passes Render's official JSON Schema, the Rust release build
+passes locally, and CI run
+[29862882559](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29862882559)
+passes all repository jobs at commit `e33a21c`.
+
+Render Blueprint `exs-d9ft018okrbs738q5r60` created production service
+`srv-d9ft2gn7f7vs739ass40` and staging service
+`srv-d9ft2gn7f7vs739ass3g`. Production uses `neon-bronze-curtain`; staging uses
+the separately provisioned `neon-bistre-lantern` Free database attached only to
+Preview under namespaced variables. Preview and Production have distinct API
+origins and internal assertion secrets. The first staging launch failed closed
+when a sensitive Vercel pull yielded the literal placeholder `[SENSITIVE]`;
+the authenticated provider value was applied directly without exposing it.
+Production health and migrations then exposed an idle alert-worker heartbeat
+defect through the protected diagnostics route. Commit `a665494` adds the
+periodic heartbeat and API HSTS; commit
+`6a4929e` passes CI run
+[29865574640](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29865574640).
+
+Render production deploy `dep-d9ftbi61a83c7396hbsg` and staging deploy
+`dep-d9ftf2naqgkc738okfig` run commit `6a4929e`. Both return exact health and
+readiness responses with HSTS, PostGIS and migrations ready, and
+`alert_projection`, `fleet_projection`, `replay_runtime`, and
+`retention_scheduler` running. Distinct short-lived internal assertions passed
+in both environments; their temporary verifier identities were removed.
+Vercel preview `dpl_FNbngNWmbKNSafY5rvNypHjPaPzS` passes the sanitized protected
+preview contract, and refreshed production deployment
+`dpl_FXv3uAUVCKCRTTfTm5xRj7rn1pWE` passes the publication-ready public-boundary
+verifier. Commit `790e022` then corrects a strict-CSP regression by opting
+Clerk's provider into dynamic rendering so the browser script receives the
+request nonce. CI run
+[`29867545134`](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29867545134)
+passes all jobs. Commit `63e3bbd` keeps sign-up on the application domain and
+passes CI run `29868085207`. Commit `bcf49cc` makes the existing map, flight
+board, NOAA weather layer, and selectable replay details visible at the public
+root without an account; CI run `29868610558` passes all jobs. Preview
+deployment `dpl_5fHf7r1oPq83s9m2Y1p9pRuZnEvD` was inspected before production
+deployment `dpl_5CvqF2Dbg6LnwZkDc8ccRZnutS4e` was promoted to the public alias.
+The sanitized live verifier now requires this flight-tracker surface, rejects
+the former sign-in wall, and passes the production web/API boundary. Reviewer
+enrollment and authenticated browser/FT-401 smoke remain open.
+
+On 2026-07-21, Neon retained the manual production snapshot
+`main at 2026-07-21 20:46:51 UTC (manual)` with no expiry. A temporary isolated
+branch restored `main` from 13:45 PDT and matched production with PostGIS
+`3.5.0`, 14 successful SQLx migrations, one operator, and zero identities,
+memberships, alerts, or alert actions. An earlier 13:05 PDT restore candidate
+predated the application schema and therefore failed the migration release
+gate as designed. Both temporary branches were deleted after verification;
+production `main` was not modified and no connection string was recorded.
