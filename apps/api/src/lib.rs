@@ -24,6 +24,7 @@ pub mod live_positions;
 pub mod metrics;
 pub mod observability;
 pub mod public_attention;
+pub mod public_replay;
 pub mod replay;
 pub mod retention;
 pub mod weather;
@@ -40,6 +41,7 @@ use live_positions::{LivePositionStatus, LivePositionStatusStore, find_public_li
 use metrics::{ApiMetrics, observe_request};
 use observability::correlate_request;
 use public_attention::public_attention_router;
+use public_replay::public_replay_router;
 use replay::{ReplayHandle, ReplaySpeed, ReplayStatus};
 use retention::{RetentionStore, retention_router};
 use weather::{public_weather_router, weather_router};
@@ -367,6 +369,7 @@ fn build_router_with_services_and_health(
         .layer(middleware::from_fn_with_state(auth, authenticate_request))
         .merge(public)
         .merge(public_attention_router())
+        .merge(public_replay_router())
         .merge(public_weather_routes)
         .layer(middleware::from_fn_with_state(metrics, observe_request))
         .layer(middleware::from_fn(correlate_request))

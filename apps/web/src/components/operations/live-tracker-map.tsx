@@ -201,7 +201,7 @@ export function LiveTrackerMap({
     const map = mapRef.current;
     if (!map || !mapReady) return;
     const source = map.getSource(TRAJECTORY_SOURCE_ID) as GeoJSONSource | undefined;
-    source?.setData(trajectoryGeoJson(mode === "replay" ? [] : trail, mode === "replay" ? null : projection));
+    source?.setData(trajectoryGeoJson(trail, mode === "replay" ? null : projection));
   }, [mapReady, mode, projection, trail]);
 
   useEffect(() => {
@@ -329,14 +329,18 @@ export function LiveTrackerMap({
             onWindLevel: setWindLevel,
           }}
         />
-        {mode !== "replay" && (
-          <aside className="trajectory-legend" aria-label="Selected aircraft trajectory legend">
-            <span className="trajectory-observed"><i aria-hidden="true" />Observed trail</span>
-            <small>{trail.length < 2 ? "Starts after next refresh" : `${trail.length} source points`}</small>
-            <span className="trajectory-estimated"><i aria-hidden="true" />Estimated 5-min projection</span>
-            <small>{projection ? `${projection.distance_nautical_miles.toFixed(1)} NM at current motion` : "Heading or speed unavailable"}</small>
-          </aside>
-        )}
+        <aside className="trajectory-legend" aria-label="Selected aircraft trajectory legend">
+          <span className="trajectory-observed"><i aria-hidden="true" />{mode === "replay" ? "Replay trail" : "Observed trail"}</span>
+          <small>{mode === "replay"
+            ? trail.length < 2 ? "Waiting for a second scenario point" : `${trail.length} scenario points · current marker may be interpolated`
+            : trail.length < 2 ? "Starts after next refresh" : `${trail.length} source points`}</small>
+          {mode !== "replay" && (
+            <>
+              <span className="trajectory-estimated"><i aria-hidden="true" />Estimated 5-min projection</span>
+              <small>{projection ? `${projection.distance_nautical_miles.toFixed(1)} NM at current motion` : "Heading or speed unavailable"}</small>
+            </>
+          )}
+        </aside>
       </div>
     </section>
   );

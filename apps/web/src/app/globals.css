@@ -474,6 +474,39 @@ a:focus-visible {
 .live-aircraft-marker.is-stale { background: #f0a45c; }
 .live-state-banner { min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 7px 14px; border-bottom: 1px solid #493923; background: #201810; color: #e4c99d; font: 500 10px/1.35 "Geist Mono", monospace; }
 .live-state-banner.state-replay { border-color: #34464c; background: #101c21; color: #b2c1c5; }
+.replay-time-machine {
+  display: grid;
+  grid-template-columns: minmax(300px, .8fr) minmax(0, 2fr);
+  gap: 1px;
+  margin: 8px 8px 0;
+  border: 1px solid #28434d;
+  background: #28434d;
+}
+.replay-time-machine-state { min-height: 78px; grid-template-columns: 1fr auto; align-items: center; padding: 14px; background: #0b1b21; color: #a9bdc1; font-size: 10px; }
+.replay-time-machine-state button,
+.replay-transport button,
+.replay-transport select { border: 1px solid #34515c; border-radius: 3px; background: #10252d; color: #d7e9ed; font: 600 9px/1 "Geist Mono", monospace; }
+.replay-time-machine-state button { padding: 8px 10px; cursor: pointer; }
+.replay-control-row { min-width: 0; display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-content: center; padding: 12px 14px; background: #0a171d; }
+.replay-control-row h2 { margin: 3px 0 0; color: #e4efef; font: 650 16px/1 "Geist Mono", monospace; }
+.replay-transport { display: flex; align-items: center; gap: 5px; }
+.replay-transport button { min-height: 29px; padding: 0 9px; cursor: pointer; }
+.replay-transport button:disabled { opacity: .55; cursor: default; }
+.replay-transport label { display: grid; gap: 3px; color: #6e8990; font: 600 7px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .06em; }
+.replay-transport select { min-height: 29px; padding: 0 22px 0 7px; }
+.replay-scrubber { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; color: #91a8ad; font: 550 8px/1 "Geist Mono", monospace; }
+.replay-scrubber input { width: 100%; accent-color: #1be0c1; cursor: pointer; }
+.replay-clock-state { grid-column: 1 / -1; color: #789198; font: 550 8px/1.3 "Geist Mono", monospace; }
+.telemetry-charts { min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #28434d; }
+.telemetry-chart { min-width: 0; margin: 0; padding: 10px 11px 8px; background: #08161b; }
+.telemetry-chart figcaption { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: #789198; font: 600 8px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .06em; }
+.telemetry-chart figcaption strong { color: #d7e8e7; font-size: 10px; text-transform: none; letter-spacing: 0; }
+.telemetry-chart svg { width: 100%; min-height: 54px; margin-top: 3px; outline: none; }
+.telemetry-chart svg:focus-visible { outline: 2px solid #78e3d2; outline-offset: 1px; }
+.telemetry-axis { fill: none; stroke: #28434d; stroke-width: 1; }
+.telemetry-line { fill: none; stroke: #1be0c1; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.telemetry-point { fill: #f2c273; stroke: #071217; stroke-width: 1; }
+.telemetry-chart p { min-height: 24px; margin: 1px 0 0; color: #6f888e; font: 500 7px/1.35 "Geist Mono", monospace; }
 .live-traffic-panel { display: flex; min-height: 0; flex: 1; flex-direction: column; }
 .traffic-count,
 .source-badge { border: 1px solid #34515c; border-radius: 999px; padding: 4px 7px; color: #83d8c7; font: 600 9px/1 "Geist Mono", monospace; text-transform: uppercase; }
@@ -526,16 +559,24 @@ a:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .live-aircraft-marker,
-  .live-aircraft-marker span { transition: none; }
+  .live-aircraft-marker span,
+  .telemetry-line { transition: none; animation: none; }
 }
 
 @media (max-width: 980px) {
+  .replay-time-machine { grid-template-columns: 1fr; }
   .live-tracker-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
   .live-map-panel { grid-row: auto; }
   .live-map-stage { min-height: 540px; }
 }
 
 @media (max-width: 620px) {
+  .replay-time-machine { margin: 5px 5px 0; }
+  .replay-control-row { grid-template-columns: 1fr; }
+  .replay-transport { flex-wrap: wrap; }
+  .replay-scrubber,
+  .replay-clock-state { grid-column: 1; }
+  .telemetry-charts { grid-template-columns: 1fr; }
   .live-tracker-grid { padding: 5px; gap: 5px; }
   .live-map-stage { min-height: 460px; }
   .live-map-actions { align-items: flex-end; flex-direction: column; }

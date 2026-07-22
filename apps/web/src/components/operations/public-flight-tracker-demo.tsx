@@ -20,6 +20,12 @@ import {
   type PublicLiveSnapshot,
 } from "@/lib/public-live-positions";
 import {
+  parsePublicReplayTimeline,
+  replayPictureAt,
+  replayTrailAt,
+  type PublicReplayTimeline,
+} from "@/lib/public-replay-timeline";
+import {
   DEFAULT_PUBLIC_LIVE_REGION,
   PUBLIC_LIVE_REGIONS,
   findPublicLiveRegion,
@@ -29,6 +35,7 @@ import {
   type PublicWeatherSnapshot,
 } from "@/lib/public-weather";
 import { displayCallsign, LiveTrackerMap } from "./live-tracker-map";
+import { ReplayTimeMachine } from "./replay-time-machine";
 
 const POLL_INTERVAL_MS = 75_000;
 const WEATHER_POLL_INTERVAL_MS = 60_000;
@@ -49,8 +56,21 @@ export function PublicFlightTrackerDemo() {
   const [attentionLoading, setAttentionLoading] = useState(true);
   const [attentionFailed, setAttentionFailed] = useState(false);
   const [preferReplay, setPreferReplay] = useState(false);
+  const [replayTimeline, setReplayTimeline] = useState<PublicReplayTimeline | null>(null);
+  const [replayTimelineLoading, setReplayTimelineLoading] = useState(true);
+  const [replayTimelineFailed, setReplayTimelineFailed] = useState(false);
+  const [replayElapsedMs, setReplayElapsedMs] = useState(60_000);
+  const [replayPlaying, setReplayPlaying] = useState(false);
+  const [replaySpeed, setReplaySpeed] = useState(1);
   const fallbackAircraftForRegion = useMemo(() => replayAircraft(region.center), [region]);
-  const portfolioReplayAircraft = useMemo(() => replayAircraft().filter((item) => item.callsign !== "FT202"), []);
+  const replayPicture = useMemo(
+    () => replayTimeline ? replayPictureAt(replayTimeline, replayElapsedMs) : null,
+    [replayElapsedMs, replayTimeline],
+  );
+  const portfolioReplayAircraft = useMemo(
+    () => (replayPicture?.aircraft ?? replayAircraft()).filter((item) => item.callsign !== "FT202"),
+    [replayPicture],
+  );
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -102,6 +122,20 @@ export function PublicFlightTrackerDemo() {
     }
   }, []);
 
+  const refreshReplayTimeline = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch("/api/public/replay/timeline", { cache: "no-store", signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setReplayTimeline(parsePublicReplayTimeline(await response.json()));
+      setReplayTimelineFailed(false);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setReplayTimelineFailed(true);
+    } finally {
+      setReplayTimelineLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     const initial = window.setTimeout(() => void refresh(controller.signal), 0);
@@ -133,6 +167,28 @@ export function PublicFlightTrackerDemo() {
     };
   }, [refreshAttention]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const initial = window.setTimeout(() => void refreshReplayTimeline(controller.signal), 0);
+    return () => {
+      controller.abort();
+      window.clearTimeout(initial);
+    };
+  }, [refreshReplayTimeline]);
+
+  useEffect(() => {
+    if (!preferReplay || !replayPlaying || !replayTimeline) return;
+    const tickMs = 100;
+    const timer = window.setInterval(() => {
+      setReplayElapsedMs((current) => {
+        const next = Math.min(replayTimeline.duration_ms, current + tickMs * replaySpeed);
+        if (next >= replayTimeline.duration_ms) setReplayPlaying(false);
+        return next;
+      });
+    }, tickMs);
+    return () => window.clearInterval(timer);
+  }, [preferReplay, replayPlaying, replaySpeed, replayTimeline]);
+
   const hasAcceptedLivePicture = (snapshot?.data.length ?? 0) > 0;
   const fallbackReplay = !hasAcceptedLivePicture && !loading;
   const useReplay = preferReplay || fallbackReplay;
@@ -144,11 +200,21 @@ export function PublicFlightTrackerDemo() {
   const displayedRegion = preferReplay ? PORTFOLIO_REPLAY_REGION : region;
   const mode: TrackerMode = useReplay ? "replay" : refreshFailed || snapshot?.status.state !== "current" ? "stale" : "live";
   const sourceState = loading ? "connecting" : snapshot?.status.state ?? (refreshFailed ? "unavailable" : "connecting");
-  const selected = aircraft.find((item) => item.id === selectedId) ?? aircraft[0] ?? null;
-  const selectedAttention = useReplay && selected
+  const selected = aircraft.find((item) => item.id === selectedId)
+    ?? (preferReplay ? aircraft.find((item) => item.callsign === "FT303") : null)
+    ?? aircraft[0]
+    ?? null;
+  const attentionEffectiveMs = replayTimeline && attentionPicture
+    ? Date.parse(attentionPicture.scenario_time) - Date.parse(replayTimeline.start_time)
+    : 60_000;
+  const selectedAttention = preferReplay && replayElapsedMs >= attentionEffectiveMs && selected
     ? attentionPicture?.aircraft.find((item) => item.callsign === selected.callsign) ?? null
     : null;
-  const selectedTrail = selected && !useReplay ? trajectoryHistory.get(selected.id) ?? [] : [];
+  const selectedTrail = selected && preferReplay && replayTimeline
+    ? replayTrailAt(replayTimeline, selected.callsign ?? "", replayElapsedMs, selected)
+    : selected && !useReplay
+      ? trajectoryHistory.get(selected.id) ?? []
+      : [];
   const selectedProjection = selected && !useReplay ? estimateTrajectory(selected) : null;
   const weatherState = weather?.state ?? (weatherLoading ? "loading" : "unavailable");
 
@@ -166,9 +232,16 @@ export function PublicFlightTrackerDemo() {
   function handlePictureMode(nextMode: "live" | "replay") {
     const replay = nextMode === "replay";
     setPreferReplay(replay);
+    setReplayPlaying(false);
+    if (replay) setReplayElapsedMs(Math.max(0, Math.min(replayTimeline?.duration_ms ?? 60_000, attentionEffectiveMs)));
     setSelectedId(replay
       ? portfolioReplayAircraft.find((item) => item.callsign === "FT303")?.id ?? null
       : snapshot?.data[0]?.id ?? null);
+  }
+
+  function handleReplayElapsedChange(value: number) {
+    setReplayPlaying(false);
+    setReplayElapsedMs(Math.max(0, Math.min(replayTimeline?.duration_ms ?? value, value)));
   }
 
   return (
@@ -229,6 +302,26 @@ export function PublicFlightTrackerDemo() {
           </span>
           {!loading && !preferReplay && <button type="button" onClick={() => void refresh()}>Try live again</button>}
         </div>
+      )}
+
+      {preferReplay && (
+        <ReplayTimeMachine
+          timeline={replayTimeline}
+          loading={replayTimelineLoading}
+          failed={replayTimelineFailed}
+          elapsedMs={replayElapsedMs}
+          playing={replayPlaying}
+          speed={replaySpeed}
+          selectedAircraft={selected}
+          onElapsedChange={handleReplayElapsedChange}
+          onPlayingChange={setReplayPlaying}
+          onRestart={() => {
+            setReplayPlaying(false);
+            setReplayElapsedMs(0);
+          }}
+          onSpeedChange={setReplaySpeed}
+          onRetry={() => void refreshReplayTimeline()}
+        />
       )}
 
       <div className="live-tracker-grid">
@@ -336,18 +429,18 @@ function AircraftInspector({
           <Fact label="Ground speed" value={formatSpeed(aircraft)} />
           <Fact label="Heading" value={aircraft.heading_true_degrees == null ? "Not supplied" : `${Math.round(aircraft.heading_true_degrees)}° true`} />
           <Fact label="Position" value={`${aircraft.latitude_degrees.toFixed(4)}, ${aircraft.longitude_degrees.toFixed(4)}`} />
-          <Fact label="Observed" value={formatTimestamp(aircraft.observed_at)} />
-          <Fact label="Received" value={formatTimestamp(aircraft.received_at)} />
+          <Fact label={mode === "replay" ? "Position time" : "Observed"} value={formatTimestamp(aircraft.observed_at)} />
+          <Fact label={mode === "replay" ? "Last source fact" : "Received"} value={formatTimestamp(aircraft.received_at)} />
           <Fact
             label={mode === "replay" ? "Scenario time" : "Snapshot age"}
             value={mode === "replay" ? formatTimestamp(aircraft.observed_at) : formatAge(aircraft.observed_at)}
           />
           <Fact label="Freshness" value={mode === "replay" ? "Simulated" : isAircraftStale(aircraft, status) ? "Stale" : "Fresh"} />
           <Fact label="Provider state" value={mode === "replay" ? "Deterministic replay" : status?.state ?? "Connecting"} />
-          <Fact label="Source quality" value={mode === "replay" ? "Simulated" : aircraft.quality} />
+          <Fact label="Source quality" value={mode === "replay" ? aircraft.quality === "estimated" ? "Visual interpolation" : "Observed replay point" : aircraft.quality} />
           <Fact
             label="Observed trail"
-            value={mode === "replay" ? "Single scenario frame" : trail.length < 2 ? "Starts after next refresh" : `${trail.length} source points`}
+            value={mode === "replay" ? trail.length === 0 ? "No history yet" : `${trail.length} replay points` : trail.length < 2 ? "Starts after next refresh" : `${trail.length} source points`}
           />
           <Fact
             label="Estimated projection"
@@ -357,7 +450,7 @@ function AircraftInspector({
       ) : <p className="empty-traffic">Choose an aircraft to inspect its supplied position and motion facts.</p>}
       <p className="truth-note">
         {mode === "replay"
-          ? "This position is a deterministic scenario fact. This frame does not claim a live trail, filed route, destination prediction, or ETA."
+          ? "Replay points are deterministic scenario facts. Between source points, marker motion and telemetry are labeled visual interpolation—not a new observation, filed route, destination prediction, or ETA."
           : "The solid trail contains accepted observations. The dashed projection is a geometric estimate from current heading and speed—not a filed route, destination, ETA, or new source observation."}
       </p>
     </section>
