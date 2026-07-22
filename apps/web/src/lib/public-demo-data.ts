@@ -4,9 +4,9 @@ import type { AirportObservation, Hazard } from "./weather-api";
 const OPERATOR_ID = "00000000-0000-0000-0000-000000000999";
 
 export const PUBLIC_DEMO_FLIGHTS: FlightView[] = [
-  flight("101", "FT101", "SFO", "LAX", "active", -121.95, 37.25, "2026-07-21T16:01:00Z"),
-  flight("202", "FT202", "SEA", "SFO", "scheduled", -122.3088, 47.4502, "2026-07-21T16:02:00Z"),
-  flight("303", "FT303", "LAS", "SFO", "active", -121.62, 37.18, "2026-07-21T16:03:00Z"),
+  flight("101", "FT101", "SFO", "LAX", "active", -121.95, 37.25, 24_000, 142, 435, "2026-07-20T16:01:00Z"),
+  flight("202", "FT202", "SEA", "SFO", "scheduled", -122.3088, 47.4502, 433, 160, 0, "2026-07-20T16:00:01Z"),
+  flight("303", "FT303", "LAS", "SFO", "active", -121.62, 37.18, 27_000, 315, 438, "2026-07-20T16:01:00Z"),
 ];
 
 export const PUBLIC_DEMO_HAZARDS: Hazard[] = [
@@ -82,6 +82,9 @@ function flight(
   status: FlightView["flight"]["status"],
   longitude: number,
   latitude: number,
+  altitudeFeet: number,
+  headingTrueDegrees: number,
+  groundSpeedKnots: number,
   eventTime: string,
 ): FlightView {
   const source = {
@@ -115,9 +118,9 @@ function flight(
       source,
       times,
       point: { longitude_degrees: longitude, latitude_degrees: latitude },
-      altitude: { value: 24_000, unit: "feet", reference: "mean_sea_level" },
-      heading_true_degrees: 310,
-      ground_speed: { value: 430, unit: "knots" },
+      altitude: { value: altitudeFeet, unit: "feet", reference: "mean_sea_level" },
+      heading_true_degrees: headingTrueDegrees,
+      ground_speed: { value: groundSpeedKnots, unit: "knots" },
       quality: "observed",
     },
   };
