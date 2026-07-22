@@ -60,3 +60,10 @@ Build a portfolio demonstration inspired by Flight Science: fleet monitoring, av
 Use a TypeScript/Next.js frontend and a Rust backend. Rust is a strong fit for continuously running ingestion, geospatial alert evaluation, predictable resource usage, and typed event processing. Keep optimization behind a later research gate; Python can be introduced as a separate numerical service only if its ecosystem materially accelerates validated trajectory modeling.
 
 Ship the portfolio release with deterministic replay, live NOAA weather, and an optional free best-effort aircraft-position feed whose official terms permit this exact public, non-commercial use. The interface must identify simulated and live sources, expose freshness, and retain replay as the reliable demonstration fallback. Commercial provider procurement, contractual SLAs, and real-operations certification are optional future work and do not block the portfolio release.
+
+After the M4 launch gate, follow the recorded M4.1 sequence in
+[`tickets/M4.1-public-decision-intelligence.md`](tickets/M4.1-public-decision-intelligence.md):
+public attention explanation, deterministic time machine and telemetry, search
+and shareable URLs, then airport TAF/PIREP intelligence. Complete that public
+evidence experience before beginning the existing M5 optimization and
+human-reviewed drafting tickets.

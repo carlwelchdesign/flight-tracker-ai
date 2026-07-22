@@ -42,13 +42,30 @@ Gate: public-demo security review, failure/fallback checks, recruiter-oriented u
 
 Tickets: FT-401–FT-404.
 
+## M4.1 — Public decision intelligence and exploration
+
+Outcome: the public tracker explains why a demonstration flight needs
+attention, lets a viewer replay and inspect its motion, supports direct search
+and shareable views, and adds source-attributed airport forecast and pilot-report
+context.
+
+Gate: FT-403 and FT-404 are complete first; then a neutral reviewer can use the
+attention explanation, deterministic time machine, telemetry charts, direct
+links, TAF timeline, and nearby PIREPs without facilitator help. Public data
+remains sanitized and read-only, live ADS-B history remains ephemeral, and
+protected operational controls remain behind authentication.
+
+Tickets: FT-413–FT-416. See
+[`tickets/M4.1-public-decision-intelligence.md`](tickets/M4.1-public-decision-intelligence.md).
+
 ## M5 — Optimization research and controlled recommendations
 
 Outcome: determine whether route, altitude, or message recommendations can be validated safely and economically.
 
 Gate: offline recommendations beat a documented baseline on held-out historical cases, expose evidence, and remain human-approved. This gate does not itself authorize operational use.
 
-Tickets: FT-501–FT-503.
+Tickets: FT-501–FT-503. M5 begins after the M4.1 public product sequence so
+recommendations build on an already understandable evidence and replay model.
 
 ## Optional future production track
 

@@ -113,6 +113,31 @@
 - Product boundary: These layers are public portfolio context, not certified
   weather, turbulence/icing analysis, route clearance, or a flight briefing.
 
+### ADR-015 — Explainable public exploration precedes recommendation work
+
+- Date: 2026-07-22
+- Decision: After FT-403 and FT-404 close the launch gate, deliver four public
+  product tickets in order: selected-flight attention explanation, deterministic
+  time machine and telemetry, aircraft search and shareable URLs, then airport
+  TAF/PIREP intelligence. Continue the existing M5 recommendation and
+  human-reviewed drafting work only after this M4.1 sequence.
+- Reason: The public tracker already proves live mapping and atmospheric-layer
+  engineering, but its differentiating deterministic decision logic is mostly
+  visible only after sign-in. The next portfolio work should make evidence,
+  time, and source reasoning understandable before adding another model or
+  optimization surface.
+- Delivery: FT-413 through FT-416 each use one dedicated feature branch,
+  ticket-scoped commits, one pull request targeting `main`, required CI, hosted
+  browser evidence, and an updated checklist before completion.
+- Constraint: Keep the public experience sanitized and read-only. Do not expose
+  protected alerts, tenant data, raw evidence, dispatcher actions, or audit
+  history. Do not persist or send ADSB.lol observations to an LLM, and do not
+  portray replay, projections, TAFs, or PIREPs as current conditions for a live
+  aircraft unless the evidence actually supports that statement.
+- M5 boundary: Deterministic code continues to own alert eligibility and
+  severity. Optimization remains offline until validated, LLM output remains a
+  reviewable draft, and no automatic message or operational action is enabled.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |
