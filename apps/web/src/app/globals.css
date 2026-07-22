@@ -624,6 +624,7 @@ a:focus-visible {
 .public-ai-wording small { color: #859da2; font: 500 8px/1.5 "Geist Mono", monospace; }
 .public-ai-citations { border-top: 1px solid #29454e; }
 .public-ai-citations summary { padding: 11px 20px; color: #83bdb3; font: 620 8px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .05em; cursor: pointer; }
+.public-ai-citations > p { margin: 0; padding: 10px 20px; border-top: 1px solid #29454e; background: #0c1d24; color: #829ba0; font: 500 8px/1.5 "Geist Mono", monospace; }
 .public-ai-citations ul { display: grid; gap: 1px; margin: 0; padding: 1px 0 0; background: #24414a; list-style: none; }
 .public-ai-citations li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 20px; background: #0c1d24; color: #829ba0; font: 500 8px/1.4 "Geist Mono", monospace; }
 .public-ai-citations strong { color: #bcd1d3; }
