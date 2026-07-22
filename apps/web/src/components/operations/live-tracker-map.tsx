@@ -19,8 +19,9 @@ import {
 } from "./atmospheric-layers";
 import { liveMarkerRotationDegrees } from "./aircraft-marker-heading";
 import { PublicWeatherOverlay } from "./public-weather-overlay";
-import { weatherGeoJson, type WeatherSelection } from "./public-weather-map";
+import { selectedWeather, weatherGeoJson, type WeatherSelection } from "./public-weather-map";
 import { WindParticleLayer } from "./wind-particle-layer";
+import { AirportIntelligencePanel } from "./airport-intelligence-panel";
 
 type Props = {
   aircraft: PublicAircraft[];
@@ -86,6 +87,11 @@ export function LiveTrackerMap({
   const [windState, setWindState] = useState<"idle" | "loading" | "current" | "degraded" | "unavailable">("idle");
   const [weatherSelection, setWeatherSelection] = useState<WeatherSelection | null>(null);
   const hasFitRef = useRef(false);
+  const regionalAirport = region.airport === "DEMO" ? "SFO" : region.airport;
+  const selectedAirportWeather = selectedWeather(weather, weatherSelection);
+  const airportSelected = weatherSelection?.kind === "observation" &&
+    selectedAirportWeather !== null && "station_code" in selectedAirportWeather &&
+    selectedAirportWeather.station_code === `K${regionalAirport}`;
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -354,6 +360,7 @@ export function LiveTrackerMap({
             onWindLevel: (value: WindLevelCode) => onLayersChange({ ...layers, windLevel: value }),
           }}
         />
+        <AirportIntelligencePanel key={region.airport} airport={regionalAirport} forceOpen={airportSelected} />
         <aside className="trajectory-legend" aria-label="Selected aircraft trajectory legend">
           <span className="trajectory-observed"><i aria-hidden="true" />{mode === "replay" ? "Replay trail" : "Observed trail"}</span>
           <small>{mode === "replay"

@@ -7,6 +7,9 @@ use thiserror::Error;
 
 const METAR_PATH: &str = "api/data/metar";
 const AIRSIGMET_PATH: &str = "api/data/airsigmet";
+const TAF_PATH: &str = "api/data/taf";
+const PIREP_PATH: &str = "api/data/pirep";
+const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoaaFeed {
@@ -74,6 +77,8 @@ pub enum NoaaClientError {
     Http { status: StatusCode, body: String },
     #[error("NOAA returned malformed JSON: {0}")]
     MalformedJson(serde_json::Error),
+    #[error("NOAA response exceeded the bounded response size")]
+    OversizedResponse,
     #[error("NOAA client configuration is invalid: {0}")]
     Configuration(String),
 }
@@ -87,6 +92,7 @@ impl NoaaClientError {
             Self::Http { status, .. } if status.is_server_error() => "provider_unavailable",
             Self::Http { .. } => "invalid_request",
             Self::MalformedJson(_) => "malformed_json",
+            Self::OversizedResponse => "oversized_response",
             Self::Configuration(_) => "configuration",
         }
     }
@@ -153,12 +159,38 @@ impl NoaaClient {
             .await
     }
 
+    pub async fn fetch_tafs(&self, stations: &[&str]) -> Result<Option<Value>, NoaaClientError> {
+        let station_list = stations.join(",");
+        self.fetch_value(
+            TAF_PATH,
+            &[("ids", station_list.as_str()), ("format", "json")],
+        )
+        .await
+    }
+
+    pub async fn fetch_pireps(&self) -> Result<Option<Value>, NoaaClientError> {
+        self.fetch_value(
+            PIREP_PATH,
+            &[("bbox", "33,-123,48,-73"), ("age", "3"), ("format", "json")],
+        )
+        .await
+    }
+
     async fn fetch(
         &self,
         feed: NoaaFeed,
         path: &str,
         query: &[(&str, &str)],
     ) -> Result<NoaaPayload, NoaaClientError> {
+        let value = self.fetch_value(path, query).await?;
+        Ok(NoaaPayload { feed, value })
+    }
+
+    async fn fetch_value(
+        &self,
+        path: &str,
+        query: &[(&str, &str)],
+    ) -> Result<Option<Value>, NoaaClientError> {
         let url = self
             .base_url
             .join(path)
@@ -168,16 +200,25 @@ impl NoaaClient {
             let result = self.client.get(url.clone()).query(query).send().await;
             match result {
                 Ok(response) if response.status() == StatusCode::NO_CONTENT => {
-                    return Ok(NoaaPayload { feed, value: None });
+                    return Ok(None);
                 }
-                Ok(response) if response.status().is_success() => {
-                    let bytes = response.bytes().await?;
-                    let value =
-                        serde_json::from_slice(&bytes).map_err(NoaaClientError::MalformedJson)?;
-                    return Ok(NoaaPayload {
-                        feed,
-                        value: Some(value),
-                    });
+                Ok(mut response) if response.status().is_success() => {
+                    if response
+                        .content_length()
+                        .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
+                    {
+                        return Err(NoaaClientError::OversizedResponse);
+                    }
+                    let mut bytes = Vec::new();
+                    while let Some(chunk) = response.chunk().await? {
+                        if bytes.len().saturating_add(chunk.len()) > MAX_RESPONSE_BYTES {
+                            return Err(NoaaClientError::OversizedResponse);
+                        }
+                        bytes.extend_from_slice(&chunk);
+                    }
+                    return serde_json::from_slice(&bytes)
+                        .map(Some)
+                        .map_err(NoaaClientError::MalformedJson);
                 }
                 Ok(response) => {
                     let status = response.status();
@@ -347,5 +388,26 @@ mod tests {
         .unwrap();
         let error = client.fetch_air_sigmets().await.unwrap_err();
         assert_eq!(error.code(), "timeout");
+    }
+
+    #[tokio::test]
+    async fn oversized_response_is_rejected_before_its_body_is_retained() {
+        let router = Router::new().route(
+            "/api/data/taf",
+            get(|| async { vec![b' '; MAX_RESPONSE_BYTES + 1] }),
+        );
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let client = NoaaClient::new(NoaaClientConfig {
+            base_url: Url::parse(&format!("http://{address}/")).unwrap(),
+            user_agent: "flight-tracker-ai-test/1.0".into(),
+            connect_timeout: Duration::from_secs(1),
+            request_timeout: Duration::from_secs(1),
+            retry: RetryPolicy::default(),
+        })
+        .unwrap();
+        let error = client.fetch_tafs(&["KSFO"]).await.unwrap_err();
+        assert_eq!(error.code(), "oversized_response");
     }
 }
