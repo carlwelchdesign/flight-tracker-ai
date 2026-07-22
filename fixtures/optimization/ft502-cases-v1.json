@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "dataset_version": "ft502-cases-v1",
+  "config": {
+    "rule_version": 1,
+    "proximity_margin_nm": 25.0,
+    "geometry_resolution_nm": 1.0,
+    "max_added_distance_percent": 25.0,
+    "endpoint_tolerance_nm": 1.0,
+    "max_candidates": 12
+  },
+  "route_templates": {
+    "direct": { "coordinates": [
+      { "longitude_degrees": -125.0, "latitude_degrees": 37.0 },
+      { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }
+    ] },
+    "north_clear": { "coordinates": [
+      { "longitude_degrees": -125.0, "latitude_degrees": 37.0 },
+      { "longitude_degrees": -122.0, "latitude_degrees": 37.55 },
+      { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }
+    ] },
+    "south_clear": { "coordinates": [
+      { "longitude_degrees": -125.0, "latitude_degrees": 37.0 },
+      { "longitude_degrees": -122.0, "latitude_degrees": 36.45 },
+      { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }
+    ] },
+    "wrong_endpoint": { "coordinates": [
+      { "longitude_degrees": -124.5, "latitude_degrees": 37.0 },
+      { "longitude_degrees": -122.0, "latitude_degrees": 37.7 },
+      { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }
+    ] }
+  },
+  "hazard_templates": {
+    "central": {
+      "lower_feet_msl": 10000,
+      "upper_feet_msl": 35000,
+      "exterior": [
+        { "longitude_degrees": -122.05, "latitude_degrees": 36.95 },
+        { "longitude_degrees": -121.95, "latitude_degrees": 36.95 },
+        { "longitude_degrees": -121.95, "latitude_degrees": 37.05 },
+        { "longitude_degrees": -122.05, "latitude_degrees": 37.05 },
+        { "longitude_degrees": -122.05, "latitude_degrees": 36.95 }
+      ]
+    },
+    "far_north": {
+      "lower_feet_msl": 10000,
+      "upper_feet_msl": 35000,
+      "exterior": [
+        { "longitude_degrees": -122.1, "latitude_degrees": 39.9 },
+        { "longitude_degrees": -121.9, "latitude_degrees": 39.9 },
+        { "longitude_degrees": -121.9, "latitude_degrees": 40.1 },
+        { "longitude_degrees": -122.1, "latitude_degrees": 40.1 },
+        { "longitude_degrees": -122.1, "latitude_degrees": 39.9 }
+      ]
+    }
+  },
+  "cases": [
+    { "id": "dev-multi-01", "split": "development", "category": "multi_candidate", "evaluated_at": "2026-07-20T16:00:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 28000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["direct", "north_clear", "south_clear"], "expected_disposition": "recommend" },
+    { "id": "dev-multi-02", "split": "development", "category": "multi_candidate", "evaluated_at": "2026-07-20T16:01:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 27000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["south_clear", "direct", "north_clear"], "expected_disposition": "recommend" },
+    { "id": "dev-multi-03", "split": "development", "category": "multi_candidate", "evaluated_at": "2026-07-20T16:02:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 26000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["direct", "north_clear"], "expected_disposition": "recommend" },
+    { "id": "dev-multi-04", "split": "development", "category": "multi_candidate", "evaluated_at": "2026-07-20T16:03:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 25000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["direct", "south_clear"], "expected_disposition": "recommend" },
+    { "id": "dev-multi-05", "split": "development", "category": "multi_candidate", "evaluated_at": "2026-07-20T16:04:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 24000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["wrong_endpoint", "direct", "north_clear"], "expected_disposition": "recommend" },
+    { "id": "dev-multi-06", "split": "development", "category": "multi_candidate", "evaluated_at": "2026-07-20T16:05:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 23000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["north_clear", "south_clear"], "expected_disposition": "recommend" },
+    { "id": "dev-multi-07", "split": "development", "category": "multi_candidate", "evaluated_at": "2026-07-20T16:06:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 22000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["direct", "south_clear", "north_clear"], "expected_disposition": "recommend" },
+    { "id": "dev-multi-08", "split": "development", "category": "multi_candidate", "evaluated_at": "2026-07-20T16:07:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 21000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["north_clear", "direct"], "expected_disposition": "recommend" },
+    { "id": "dev-safe-01", "split": "development", "category": "baseline_safe", "evaluated_at": "2026-07-20T16:08:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 28000, "evidence_complete": true, "hazard_template": "far_north", "candidate_templates": ["direct", "north_clear"], "expected_disposition": "recommend" },
+    { "id": "dev-safe-02", "split": "development", "category": "baseline_safe", "evaluated_at": "2026-07-20T16:09:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 27000, "evidence_complete": true, "hazard_template": "far_north", "candidate_templates": ["direct"], "expected_disposition": "recommend" },
+    { "id": "dev-safe-03", "split": "development", "category": "baseline_safe", "evaluated_at": "2026-07-20T16:10:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 26000, "evidence_complete": true, "hazard_template": "far_north", "candidate_templates": ["south_clear", "direct"], "expected_disposition": "recommend" },
+    { "id": "dev-safe-04", "split": "development", "category": "baseline_safe", "evaluated_at": "2026-07-20T16:11:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 25000, "evidence_complete": true, "hazard_template": "far_north", "candidate_templates": ["direct", "south_clear"], "expected_disposition": "recommend" },
+    { "id": "dev-impossible-01", "split": "development", "category": "impossible", "evaluated_at": "2026-07-20T16:12:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 28000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["direct"], "expected_disposition": "abstain" },
+    { "id": "dev-impossible-02", "split": "development", "category": "impossible", "evaluated_at": "2026-07-20T16:13:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 27000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["wrong_endpoint"], "expected_disposition": "abstain" },
+    { "id": "dev-impossible-03", "split": "development", "category": "impossible", "evaluated_at": "2026-07-20T16:14:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 26000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": [], "expected_disposition": "abstain" },
+    { "id": "dev-missing-01", "split": "development", "category": "missing_evidence", "evaluated_at": "2026-07-20T16:15:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": null, "evidence_complete": false, "hazard_template": "central", "candidate_templates": ["north_clear"], "expected_disposition": "abstain" },
+    { "id": "dev-missing-02", "split": "development", "category": "missing_evidence", "evaluated_at": "2026-07-20T16:16:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 25000, "evidence_complete": false, "hazard_template": "central", "candidate_templates": ["north_clear"], "expected_disposition": "abstain" },
+    { "id": "dev-missing-03", "split": "development", "category": "missing_evidence", "evaluated_at": "2026-07-20T16:17:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": null, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["south_clear"], "expected_disposition": "abstain" },
+    { "id": "held-multi-01", "split": "held_out", "category": "multi_candidate", "evaluated_at": "2026-07-20T17:00:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 28000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["direct", "north_clear", "south_clear"], "expected_disposition": "recommend" },
+    { "id": "held-multi-02", "split": "held_out", "category": "multi_candidate", "evaluated_at": "2026-07-20T17:01:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 27000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["south_clear", "direct"], "expected_disposition": "recommend" },
+    { "id": "held-multi-03", "split": "held_out", "category": "multi_candidate", "evaluated_at": "2026-07-20T17:02:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 26000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["wrong_endpoint", "direct", "north_clear"], "expected_disposition": "recommend" },
+    { "id": "held-multi-04", "split": "held_out", "category": "multi_candidate", "evaluated_at": "2026-07-20T17:03:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 25000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["north_clear", "south_clear", "direct"], "expected_disposition": "recommend" },
+    { "id": "held-safe-01", "split": "held_out", "category": "baseline_safe", "evaluated_at": "2026-07-20T17:04:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 24000, "evidence_complete": true, "hazard_template": "far_north", "candidate_templates": ["direct", "north_clear"], "expected_disposition": "recommend" },
+    { "id": "held-safe-02", "split": "held_out", "category": "baseline_safe", "evaluated_at": "2026-07-20T17:05:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 23000, "evidence_complete": true, "hazard_template": "far_north", "candidate_templates": ["direct"], "expected_disposition": "recommend" },
+    { "id": "held-impossible-01", "split": "held_out", "category": "impossible", "evaluated_at": "2026-07-20T17:06:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 28000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["direct"], "expected_disposition": "abstain" },
+    { "id": "held-impossible-02", "split": "held_out", "category": "impossible", "evaluated_at": "2026-07-20T17:07:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 27000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["wrong_endpoint"], "expected_disposition": "abstain" },
+    { "id": "held-impossible-03", "split": "held_out", "category": "impossible", "evaluated_at": "2026-07-20T17:08:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 26000, "evidence_complete": true, "hazard_template": "central", "candidate_templates": [], "expected_disposition": "abstain" },
+    { "id": "held-missing-01", "split": "held_out", "category": "missing_evidence", "evaluated_at": "2026-07-20T17:09:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": null, "evidence_complete": false, "hazard_template": "central", "candidate_templates": ["north_clear"], "expected_disposition": "abstain" },
+    { "id": "held-missing-02", "split": "held_out", "category": "missing_evidence", "evaluated_at": "2026-07-20T17:10:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": 25000, "evidence_complete": false, "hazard_template": "central", "candidate_templates": ["south_clear"], "expected_disposition": "abstain" },
+    { "id": "held-missing-03", "split": "held_out", "category": "missing_evidence", "evaluated_at": "2026-07-20T17:11:00Z", "origin_code": "SIM1", "destination_code": "SIM2", "origin": { "longitude_degrees": -125.0, "latitude_degrees": 37.0 }, "destination": { "longitude_degrees": -119.0, "latitude_degrees": 37.0 }, "aircraft_altitude_feet_msl": null, "evidence_complete": true, "hazard_template": "central", "candidate_templates": ["north_clear", "south_clear"], "expected_disposition": "abstain" }
+  ]
+}

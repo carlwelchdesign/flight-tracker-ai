@@ -1,0 +1,16 @@
+{
+  "experiment_id": "offline_route_candidate_ranking",
+  "dataset_version": "ft502-cases-v1",
+  "generated_at": "2026-07-22",
+  "held_out_cases": 12,
+  "recommendations": 6,
+  "abstentions": 6,
+  "baseline_hazard_clear_rate": 0.3333333333333333,
+  "selected_hazard_clear_rate": 1.0,
+  "hazard_clear_improvement_percentage_points": 66.66666666666667,
+  "median_added_distance_percent": 2.259266,
+  "deterministic_replay": true,
+  "hard_constraint_violations": 0,
+  "operational_delivery_enabled": false,
+  "domain_review_status": "pending_independent_aviation_domain_reviewer"
+}
