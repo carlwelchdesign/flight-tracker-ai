@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FeatureCollection, LineString, Point } from "geojson";
 import type { GeoJSONSource, Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
 import type { EstimatedTrajectory, TrajectoryPoint } from "@/lib/flight-trajectories";
@@ -22,6 +22,7 @@ import { PublicWeatherOverlay } from "./public-weather-overlay";
 import { selectedWeather, weatherGeoJson, type WeatherSelection } from "./public-weather-map";
 import { WindParticleLayer } from "./wind-particle-layer";
 import { AirportIntelligencePanel } from "./airport-intelligence-panel";
+import { MapFloatingPanel } from "./map-floating-panel";
 
 type Props = {
   aircraft: PublicAircraft[];
@@ -43,6 +44,7 @@ type Props = {
 };
 
 type MarkerEntry = { marker: MapLibreMarker; element: HTMLButtonElement; animationFrame: number | null };
+type MapPanelId = "weather" | "airport";
 
 const DEFAULT_CENTER: [number, number] = [-122.38, 37.62];
 const TRAJECTORY_SOURCE_ID = "selected-aircraft-trajectory";
@@ -80,18 +82,33 @@ export function LiveTrackerMap({
   const initialViewRef = useRef(view);
   const onSelectRef = useRef(onSelect);
   const onViewChangeRef = useRef(onViewChange);
+  const onWeatherSelectRef = useRef<(selection: WeatherSelection | null) => void>(() => undefined);
   const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [windField, setWindField] = useState<PublicWindField | null>(null);
   const [windState, setWindState] = useState<"idle" | "loading" | "current" | "degraded" | "unavailable">("idle");
   const [weatherSelection, setWeatherSelection] = useState<WeatherSelection | null>(null);
+  const [visiblePanels, setVisiblePanels] = useState<Record<MapPanelId, boolean>>({ weather: true, airport: true });
+  const [activePanel, setActivePanel] = useState<MapPanelId>("weather");
+  const panelMenuSummaryRef = useRef<HTMLElement>(null);
   const hasFitRef = useRef(false);
   const regionalAirport = region.airport === "DEMO" ? "SFO" : region.airport;
   const selectedAirportWeather = selectedWeather(weather, weatherSelection);
   const airportSelected = weatherSelection?.kind === "observation" &&
     selectedAirportWeather !== null && "station_code" in selectedAirportWeather &&
     selectedAirportWeather.station_code === `K${regionalAirport}`;
+
+  const handleWeatherSelection = useCallback((selection: WeatherSelection | null) => {
+    setWeatherSelection(selection);
+    const selected = selectedWeather(weather, selection);
+    const selectsRegionalAirport = selection?.kind === "observation" && selected !== null &&
+      "station_code" in selected && selected.station_code === `K${regionalAirport}`;
+    if (selectsRegionalAirport) {
+      setVisiblePanels((current) => ({ ...current, airport: true }));
+      setActivePanel("airport");
+    }
+  }, [regionalAirport, weather]);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -100,6 +117,10 @@ export function LiveTrackerMap({
   useEffect(() => {
     onViewChangeRef.current = onViewChange;
   }, [onViewChange]);
+
+  useEffect(() => {
+    onWeatherSelectRef.current = handleWeatherSelection;
+  }, [handleWeatherSelection]);
 
   useEffect(() => {
     windFieldRef.current = windField;
@@ -127,7 +148,7 @@ export function LiveTrackerMap({
         map.on("load", () => {
           if (disposed) return;
           addAtmosphericRasterLayers(map);
-          addWeatherLayers(map, setWeatherSelection);
+          addWeatherLayers(map, (selection) => onWeatherSelectRef.current(selection));
           addTrajectoryLayers(map);
           setMapReady(true);
         });
@@ -308,6 +329,17 @@ export function LiveTrackerMap({
     if (mapRef.current) fitTraffic(mapRef.current, aircraft);
   }
 
+  function togglePanel(panel: MapPanelId) {
+    const nextVisible = !visiblePanels[panel];
+    setVisiblePanels((current) => ({ ...current, [panel]: nextVisible }));
+    if (nextVisible) setActivePanel(panel);
+  }
+
+  function closePanel(panel: MapPanelId) {
+    panelMenuSummaryRef.current?.focus();
+    setVisiblePanels((current) => ({ ...current, [panel]: false }));
+  }
+
   return (
     <section className="ops-panel live-map-panel" aria-labelledby="live-map-title">
       <div className="ops-panel-heading live-map-heading">
@@ -322,6 +354,17 @@ export function LiveTrackerMap({
           <button type="button" onClick={handleFitTraffic} disabled={aircraft.length === 0}>
             Fit traffic
           </button>
+          <details className="map-panel-menu">
+            <summary ref={panelMenuSummaryRef}>Panels</summary>
+            <div role="group" aria-label="Map panels">
+              <button type="button" aria-pressed={visiblePanels.weather} onClick={() => togglePanel("weather")}>
+                <span>NOAA layers</span><small>{visiblePanels.weather ? "Shown" : "Hidden"}</small>
+              </button>
+              <button type="button" aria-pressed={visiblePanels.airport} onClick={() => togglePanel("airport")}>
+                <span>{`K${regionalAirport}`} forecast / PIREPs</span><small>{visiblePanels.airport ? "Shown" : "Hidden"}</small>
+              </button>
+            </div>
+          </details>
         </div>
       </div>
       <div className="live-map-stage">
@@ -334,33 +377,53 @@ export function LiveTrackerMap({
         {!mapReady && <div className="map-loading">Loading navigable map…</div>}
         {mapError && <div className="map-error" role="status">{mapError}</div>}
         <div className="map-help">Drag to pan · Scroll to zoom · Right-drag to rotate</div>
-        <PublicWeatherOverlay
-          snapshot={weather}
-          state={weatherState}
-          retained={weatherRetained}
-          showHazards={layers.hazards}
-          showObservations={layers.observations}
-          selection={weatherSelection}
-          onShowHazards={handleShowHazards}
-          onShowObservations={handleShowObservations}
-          onSelect={setWeatherSelection}
-          onRetry={onRetryWeather}
-          atmosphere={{
-            showRadar: layers.radar,
-            showSatellite: layers.satellite,
-            showSurfaceWind: layers.surfaceWind,
-            showModelWind: layers.modelWind,
-            windLevel: layers.windLevel,
-            windState: layers.modelWind ? windState : "idle",
-            windField,
-            onShowRadar: (value) => onLayersChange({ ...layers, radar: value }),
-            onShowSatellite: (value) => onLayersChange({ ...layers, satellite: value }),
-            onShowSurfaceWind: (value) => onLayersChange({ ...layers, surfaceWind: value }),
-            onShowModelWind: (value) => onLayersChange({ ...layers, modelWind: value }),
-            onWindLevel: (value: WindLevelCode) => onLayersChange({ ...layers, windLevel: value }),
-          }}
-        />
-        <AirportIntelligencePanel key={region.airport} airport={regionalAirport} forceOpen={airportSelected} />
+        <MapFloatingPanel
+          className="weather-map-panel"
+          label="NOAA weather panel"
+          title="Weather layers"
+          visible={visiblePanels.weather}
+          active={activePanel === "weather"}
+          onActivate={() => setActivePanel("weather")}
+          onClose={() => closePanel("weather")}
+        >
+          <PublicWeatherOverlay
+            snapshot={weather}
+            state={weatherState}
+            retained={weatherRetained}
+            showHazards={layers.hazards}
+            showObservations={layers.observations}
+            selection={weatherSelection}
+            onShowHazards={handleShowHazards}
+            onShowObservations={handleShowObservations}
+            onSelect={handleWeatherSelection}
+            onRetry={onRetryWeather}
+            atmosphere={{
+              showRadar: layers.radar,
+              showSatellite: layers.satellite,
+              showSurfaceWind: layers.surfaceWind,
+              showModelWind: layers.modelWind,
+              windLevel: layers.windLevel,
+              windState: layers.modelWind ? windState : "idle",
+              windField,
+              onShowRadar: (value) => onLayersChange({ ...layers, radar: value }),
+              onShowSatellite: (value) => onLayersChange({ ...layers, satellite: value }),
+              onShowSurfaceWind: (value) => onLayersChange({ ...layers, surfaceWind: value }),
+              onShowModelWind: (value) => onLayersChange({ ...layers, modelWind: value }),
+              onWindLevel: (value: WindLevelCode) => onLayersChange({ ...layers, windLevel: value }),
+            }}
+          />
+        </MapFloatingPanel>
+        <MapFloatingPanel
+          className="airport-map-panel"
+          label={`K${regionalAirport} forecast and nearby PIREPs panel`}
+          title="Airport intelligence"
+          visible={visiblePanels.airport}
+          active={activePanel === "airport"}
+          onActivate={() => setActivePanel("airport")}
+          onClose={() => closePanel("airport")}
+        >
+          <AirportIntelligencePanel key={region.airport} airport={regionalAirport} forceOpen={airportSelected} />
+        </MapFloatingPanel>
         <aside className="trajectory-legend" aria-label="Selected aircraft trajectory legend">
           <span className="trajectory-observed"><i aria-hidden="true" />{mode === "replay" ? "Replay trail" : "Observed trail"}</span>
           <small>{mode === "replay"

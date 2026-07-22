@@ -26,4 +26,5 @@ Every ticket section has delivery fields. `Branch`, `Final commit`, and `Pull re
 - [FT-419 — Product README and screenshots](FT-419-product-readme.md)
 - [FT-420 — Public footer social links](FT-420-social-footer-links.md)
 - [FT-421 — Replay aircraft heading alignment](FT-421-replay-heading-alignment.md)
+- [FT-422 — Draggable and recoverable map panels](FT-422-draggable-map-panels.md)
 - [M5 — Optimization research](M5-optimization.md): FT-501–FT-503

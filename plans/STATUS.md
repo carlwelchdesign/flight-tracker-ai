@@ -5,10 +5,10 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active ticket: FT-403/FT-502 — independent validation gates
-- Branch: External evidence branches begin only when reviewer records exist
-- Pull request: FT-421 [#62](https://github.com/carlwelchdesign/flight-tracker-ai/pull/62) passes required checks
-- Owner: Product research and independent aviation-domain review
+- Active ticket: FT-422 — draggable and recoverable map panels
+- Branch: `fix/ft-422-draggable-map-panels`
+- Pull request: Pending
+- Owner: Frontend engineering and product design
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
@@ -72,6 +72,12 @@ Last updated: 2026-07-22
 | M5 | 2 | 3 |
 
 ## Handoff notes
+
+- FT-422 is in progress on `fix/ft-422-draggable-map-panels`. It will replace
+  overlapping fixed map overlays with two independently closable, bounded
+  draggable panels and one accessible Panels menu that can reopen either panel.
+  The existing weather and airport-intelligence data boundaries remain
+  unchanged.
 
 - FT-421 is complete through implementation commit `2bd1349` and PR
   [#62](https://github.com/carlwelchdesign/flight-tracker-ai/pull/62). FT303's

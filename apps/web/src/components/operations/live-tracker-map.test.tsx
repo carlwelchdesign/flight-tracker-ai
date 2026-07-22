@@ -1,4 +1,5 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PUBLIC_LIVE_REGION } from "@/lib/public-live-regions";
 import { DEFAULT_PUBLIC_WEATHER_LAYERS } from "@/lib/public-tracker-url";
@@ -188,6 +189,29 @@ describe("LiveTrackerMap lifecycle and motion", () => {
 
     expect(await screen.findByText("Basemap temporarily unavailable")).toHaveAttribute("role", "status");
     expect(screen.getByLabelText(/Interactive aircraft map/i)).toBeInTheDocument();
+  });
+
+  it("closes, reopens, and raises independent map panels", async () => {
+    const user = userEvent.setup();
+    renderMap([]);
+    const weatherPanel = screen.getByRole("region", { name: "NOAA weather panel" });
+    const airportPanel = screen.getByRole("region", { name: "KSFO forecast and nearby PIREPs panel" });
+
+    expect(weatherPanel).toHaveClass("is-active");
+    fireEvent.focus(screen.getByRole("button", { name: "Move KSFO forecast and nearby PIREPs panel. Use arrow keys to move and Home to reset." }));
+    expect(airportPanel).toHaveClass("is-active");
+
+    await user.click(screen.getByRole("button", { name: "Close NOAA weather panel" }));
+    expect(screen.queryByRole("region", { name: "NOAA weather panel" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByText("Panels"));
+    await user.click(screen.getByRole("button", { name: /NOAA layers.*Hidden/i }));
+    expect(screen.getByRole("region", { name: "NOAA weather panel" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close KSFO forecast and nearby PIREPs panel" }));
+    expect(screen.queryByRole("region", { name: "KSFO forecast and nearby PIREPs panel" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /KSFO forecast \/ PIREPs.*Hidden/i }));
+    expect(screen.getByRole("region", { name: "KSFO forecast and nearby PIREPs panel" })).toBeInTheDocument();
   });
 });
 
