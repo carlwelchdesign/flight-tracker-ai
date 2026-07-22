@@ -9,17 +9,28 @@ describe("public AI draft panel", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     render(<PublicAiDraftPanel />);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.getByText(/no live aircraft, weather, tenant, or free-form prompt/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Compare a route option" })).toBeInTheDocument();
+    expect(screen.getByText(/uses a sample scenario—not live aircraft or weather/i)).toBeInTheDocument();
+    expect(screen.queryByText("Human-reviewed AI")).not.toBeInTheDocument();
   });
 
-  it("separates facts, generated wording, and human review state", async () => {
+  it("presents a plain-language comparison with technical provenance collapsed", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(payload())));
     render(<PublicAiDraftPanel />);
-    fireEvent.click(screen.getByRole("button", { name: "Generate AI draft" }));
-    expect(await screen.findByText("OpenAI · gpt-5.6-luna")).toBeInTheDocument();
-    expect(screen.getByText("Awaiting human review")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Deterministic source facts" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Review candidate" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show sample" }));
+    expect(await screen.findByText("Sample data")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tradeoffs" })).toBeInTheDocument();
+    expect(screen.getByText("North arc")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "North arc stays 25.0 NM from the hazard and adds 8.0 NM" })).toBeInTheDocument();
+    expect(screen.getByText("Compared with the baseline, this option adds 2.0 % to the route.")).toBeInTheDocument();
+    expect(screen.getByText("How this was calculated")).toBeInTheDocument();
+    expect(screen.getByText(/Summary: OpenAI gpt-5.6-luna/)).toBeInTheDocument();
+    expect(screen.queryByText("north_arc")).not.toBeInTheDocument();
+    expect(screen.getByText("Route option North arc")).toBeInTheDocument();
+    expect(screen.getByText("sample scenario")).toBeInTheDocument();
+    expect(screen.queryByText("Deterministic source facts")).not.toBeInTheDocument();
+    expect(screen.queryByText("Generated draft · not approved")).not.toBeInTheDocument();
+    expect(screen.queryByText(/deterministic fixture rule/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /approve|send/i })).not.toBeInTheDocument();
   });
 });
@@ -32,10 +43,10 @@ function payload() {
         closest_approach: { value: 25, unit: "NM", display: "25.0 NM" },
         added_distance: { value: 8, unit: "NM", display: "8.0 NM" },
         added_distance_percent: { value: 2, unit: "%", display: "2.0 %" },
-        citations: [{ id: "candidate", label: "Candidate", source: "synthetic fixture", observed_at: "2026-07-22T12:00:00Z" }],
+        citations: [{ id: "candidate", label: "Pre-authored candidate north_arc", source: "synthetic fixture", observed_at: "2026-07-22T12:00:00Z" }],
         boundary: "Synthetic only",
       },
-      generated_wording: { headline: "Review candidate", body: "Review the evidence.", caveat: "Not operational.", fact_ids: ["candidate"] },
+      generated_wording: { headline: "Review candidate", body: "Candidate north_arc shows a closest approach of 25.0 NM.", caveat: "Not operational.", fact_ids: ["candidate"] },
       generation: { generator: "openai_responses_api", model: "gpt-5.6-luna", policy_version: 1, generated_at: "2026-07-22T12:00:00Z", fallback_reason: null },
       review_status: "awaiting_review",
     },

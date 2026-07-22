@@ -5,9 +5,9 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active tickets: FT-403 neutral recruiter validation and FT-502 independent
-  aviation-domain review
-- Branch: external evidence branches as those sessions become available
+- Active tickets: FT-424 plain route comparison, FT-403 neutral recruiter
+  validation, and FT-502 independent aviation-domain review
+- Branch: `fix/ft-424-plain-route-comparison`
 - Pull request: FT-423 [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66)
   is merged
 - Owner: Project owner and external reviewers
@@ -15,8 +15,9 @@ Last updated: 2026-07-22
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Run the remaining neutral recruiter session and independent
-  aviation-domain review without weakening either external evidence gate.
+- Next action: Complete FT-424's public copy correction, then run the remaining
+  neutral recruiter session and independent aviation-domain review without
+  weakening either external evidence gate.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.
@@ -74,6 +75,11 @@ Last updated: 2026-07-22
 | M5 | 2 | 3 |
 
 ## Handoff notes
+
+- FT-424 is in progress on `fix/ft-424-plain-route-comparison`. It reframes the
+  fixed FT-504 demo around the actual route tradeoff, moves model and rule
+  provenance into a disclosure, and removes AI-centric internal language
+  without changing the backend integration or safety boundary.
 
 - FT-423 is complete through implementation commit `af0f4a0`, PR
   [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66), and merge
