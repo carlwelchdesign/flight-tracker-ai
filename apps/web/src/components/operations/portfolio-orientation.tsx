@@ -22,7 +22,7 @@ export function PortfolioOrientation() {
 
       <dl className="portfolio-orientation-modes">
         <div><dt>Reliable demo</dt><dd>Deterministic replay</dd></div>
-        <div><dt>Live context</dt><dd>NOAA weather · optional ADSB.lol positions</dd></div>
+        <div><dt>Live context</dt><dd>NOAA weather · optional ADS-B positions</dd></div>
         <div><dt>Decision boundary</dt><dd>Rules rank evidence; a person takes action</dd></div>
       </dl>
     </section>

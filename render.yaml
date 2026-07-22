@@ -62,6 +62,10 @@ services:
         value: "75"
       - key: ADSB_LOL_USER_AGENT
         value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
+      - key: ENABLE_AIRPLANES_LIVE_FALLBACK
+        value: "true"
+      - key: AIRPLANES_LIVE_USER_AGENT
+        value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
       - key: RUST_LOG
         value: flight_tracker_api=info
 
@@ -127,6 +131,10 @@ services:
       - key: ADSB_LOL_POLL_INTERVAL_SECONDS
         value: "60"
       - key: ADSB_LOL_USER_AGENT
+        value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
+      - key: ENABLE_AIRPLANES_LIVE_FALLBACK
+        value: "true"
+      - key: AIRPLANES_LIVE_USER_AGENT
         value: flight-tracker-ai/0.1 (+https://github.com/carlwelchdesign/flight-tracker-ai)
       - key: RUST_LOG
         value: flight_tracker_api=info

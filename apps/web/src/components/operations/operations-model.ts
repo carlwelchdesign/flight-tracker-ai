@@ -171,12 +171,15 @@ export function formatSpeed(view: FlightView): string {
 }
 
 export function isLivePosition(view: FlightView): boolean {
-  return (view.latest_position?.source.provider ?? view.flight.source.provider) === "adsb.lol";
+  return ["adsb.lol", "airplanes.live"].includes(
+    view.latest_position?.source.provider ?? view.flight.source.provider,
+  );
 }
 
 export function sourceLabel(view: FlightView): string {
   const provider = view.latest_position?.source.provider ?? view.flight.source.provider;
   if (provider === "adsb.lol") return "ADSB.lol · best effort";
+  if (provider === "airplanes.live") return "Airplanes.live fallback · best effort";
   if (provider === "simulation") return "Deterministic replay";
   return provider;
 }

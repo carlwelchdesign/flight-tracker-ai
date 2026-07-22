@@ -61,12 +61,13 @@ export function LivePositionSource({
 
       {showAttribution && status?.attribution && (
         <p className="live-position-attribution">
-          Contains information from{" "}
-          <a href={status.attribution.source_url} target="_blank" rel="noreferrer">ADSB.lol</a>,
-          available under the{" "}
-          <a href={status.attribution.license_url} target="_blank" rel="noreferrer">
-            Open Database License (ODbL)
-          </a>.
+          <a href={status.attribution.source_url} target="_blank" rel="noreferrer">
+            {status.attribution.source_name}
+          </a>{" "}
+          live positions ·{" "}
+          <a href={status.attribution.terms_url} target="_blank" rel="noreferrer">
+            {status.attribution.terms_label}
+          </a>
         </p>
       )}
     </section>
@@ -78,11 +79,17 @@ function sourceTitle(status: LivePositionStatus | null): string {
   const titles: Record<LivePositionStatus["state"], string> = {
     disabled: "Off · deterministic replay is the default",
     connecting: "Connecting to best-effort positions",
-    current: "ADSB.lol positions available",
+    current: `${providerName(status.provider)} positions available`,
     degraded: "Live positions degraded · replay preserved",
     unavailable: "Live positions unavailable · replay preserved",
   };
   return titles[status.state];
+}
+
+function providerName(provider: string | null): string {
+  if (provider === "adsb.lol") return "ADSB.lol";
+  if (provider === "airplanes.live") return "Airplanes.live fallback";
+  return "Live";
 }
 
 function sourceDescription(status: LivePositionStatus | null, message: string | null): string {

@@ -9,12 +9,41 @@ use serde::Serialize;
 
 use crate::domain::OperatorId;
 
-const PROVIDER: &str = "adsb.lol";
 const FEED: &str = "point";
-const ATTRIBUTION_TEXT: &str =
-    "Contains information from ADSB.lol, available under the Open Database License (ODbL).";
-const SOURCE_URL: &str = "https://adsb.lol/";
-const LICENSE_URL: &str = "https://opendatacommons.org/licenses/odbl/1-0/";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LivePositionProvider {
+    AdsbLol,
+    AirplanesLive,
+}
+
+impl LivePositionProvider {
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::AdsbLol => "adsb.lol",
+            Self::AirplanesLive => "airplanes.live",
+        }
+    }
+
+    pub const fn attribution(self) -> LivePositionAttribution {
+        match self {
+            Self::AdsbLol => LivePositionAttribution {
+                text: "Contains information from ADSB.lol, available under the Open Database License (ODbL).",
+                source_name: "ADSB.lol",
+                source_url: "https://adsb.lol/",
+                terms_label: "Open Database License (ODbL)",
+                terms_url: "https://opendatacommons.org/licenses/odbl/1-0/",
+            },
+            Self::AirplanesLive => LivePositionAttribution {
+                text: "Airplanes.live fallback data is displayed under its published non-commercial API terms.",
+                source_name: "Airplanes.live",
+                source_url: "https://airplanes.live/",
+                terms_label: "non-commercial API terms",
+                terms_url: "https://airplanes.live/api-guide/",
+            },
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct LivePositionRegion {
@@ -36,8 +65,10 @@ pub enum LivePositionState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LivePositionAttribution {
     pub text: &'static str,
+    pub source_name: &'static str,
     pub source_url: &'static str,
-    pub license_url: &'static str,
+    pub terms_label: &'static str,
+    pub terms_url: &'static str,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -89,9 +120,10 @@ impl LivePositionStatus {
     }
 
     fn connecting(now: DateTime<Utc>, region: LivePositionRegion, stale_after: Duration) -> Self {
+        let provider = LivePositionProvider::AdsbLol;
         Self {
             enabled: true,
-            provider: Some(PROVIDER),
+            provider: Some(provider.id()),
             feed: Some(FEED),
             state: LivePositionState::Connecting,
             best_effort: true,
@@ -108,11 +140,7 @@ impl LivePositionStatus {
             stale_after_seconds: stale_after.as_secs(),
             last_error_code: None,
             region: Some(region),
-            attribution: Some(LivePositionAttribution {
-                text: ATTRIBUTION_TEXT,
-                source_url: SOURCE_URL,
-                license_url: LICENSE_URL,
-            }),
+            attribution: Some(provider.attribution()),
         }
     }
 }
@@ -151,6 +179,7 @@ impl LivePositionStatusStore {
     pub(crate) fn record_success(
         &self,
         operator_id: OperatorId,
+        provider: LivePositionProvider,
         now: DateTime<Utc>,
         newest_position_at: Option<DateTime<Utc>>,
         coverage: PositionCoverage,
@@ -162,6 +191,9 @@ impl LivePositionStatusStore {
         let Some(status) = statuses.get_mut(&operator_id) else {
             return;
         };
+        status.provider = Some(provider.id());
+        status.feed = Some(FEED);
+        status.attribution = Some(provider.attribution());
         status.state = if coverage.fresh_position_count > 0 {
             LivePositionState::Current
         } else {
@@ -254,6 +286,7 @@ mod tests {
 
         store.record_success(
             operator,
+            LivePositionProvider::AirplanesLive,
             now(4),
             Some(now(3)),
             PositionCoverage {
@@ -268,6 +301,8 @@ mod tests {
         assert_eq!(recovered.state, LivePositionState::Current);
         assert_eq!(recovered.consecutive_failures, 0);
         assert_eq!(recovered.aircraft_count, 2);
+        assert_eq!(recovered.provider, Some("airplanes.live"));
+        assert_eq!(recovered.attribution.unwrap().source_name, "Airplanes.live");
         assert!(recovered.last_error_code.is_none());
     }
 

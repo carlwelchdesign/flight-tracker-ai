@@ -5,18 +5,20 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active tickets: FT-403 neutral recruiter validation and FT-502 independent
-  aviation-domain review
-- Branch: external evidence branches as those sessions become available
+- Active tickets: FT-423 live-position provider failover, FT-403 neutral
+  recruiter validation, and FT-502 independent aviation-domain review
+- Branch: `fix/ft-423-aircraft-provider-failover`
 - Pull request: FT-504 [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64)
-  is merged
+  is merged; FT-423 [#66](https://github.com/carlwelchdesign/flight-tracker-ai/pull/66)
+  is open
 - Owner: Project owner and external reviewers
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Run the remaining neutral recruiter session and independent
-  aviation-domain review without weakening either external evidence gate.
+- Next action: Complete FT-423 implementation and hosted verification, then run
+  the remaining neutral recruiter session and independent aviation-domain
+  review without weakening either external evidence gate.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.
@@ -74,6 +76,11 @@ Last updated: 2026-07-22
 | M5 | 2 | 3 |
 
 ## Handoff notes
+
+- FT-423 is in progress on `fix/ft-423-aircraft-provider-failover`. ADSB.lol
+  remains primary; Airplanes.live is being added as a rate-limited,
+  portfolio-only secondary source with actual-provider attribution and replay
+  retained as the guaranteed fallback.
 
 - FT-504 is complete through implementation commit `063f2df`, PR
   [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64), and merge

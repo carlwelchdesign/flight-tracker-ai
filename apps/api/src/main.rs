@@ -12,8 +12,9 @@ use flight_tracker_api::{
     health::CriticalWorkerRegistry,
     ingestion::{IngestionHub, IngestionSubscription},
     live_positions::{
-        AdsbLolClient, AdsbLolClientConfig, AdsbLolRuntimeConfig, LivePositionStatusStore,
-        RetryPolicy as AdsbLolRetryPolicy, public_live_region_catalog, spawn_adsb_lol_runtime,
+        AdsbLolClient, AdsbLolClientConfig, AdsbLolRuntimeConfig, LivePositionClientChain,
+        LivePositionProvider, LivePositionStatusStore, RetryPolicy as AdsbLolRetryPolicy,
+        public_live_region_catalog, spawn_adsb_lol_runtime,
     },
     replay::{ReplayHandle, ReplayScenario, spawn_replay_runtime},
     retention::{RetentionStore, spawn_retention_scheduler},
@@ -146,13 +147,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         let ingestion = IngestionHub::new(256);
         ingestion_subscriptions.push(ingestion.subscription("adsb_lol_fleet_projection"));
-        let client = AdsbLolClient::new(AdsbLolClientConfig {
+        let fallback_enabled = adsb_lol_config.airplanes_live_fallback.is_some();
+        let primary_attempts = if fallback_enabled {
+            1
+        } else {
+            AdsbLolRetryPolicy::default().max_attempts
+        };
+        let primary = AdsbLolClient::new(AdsbLolClientConfig {
+            provider: LivePositionProvider::AdsbLol,
             base_url: adsb_lol_config.base_url,
             user_agent: adsb_lol_config.user_agent,
             connect_timeout: Duration::from_secs(3),
             request_timeout: Duration::from_secs(12),
-            retry: AdsbLolRetryPolicy::default(),
+            retry: AdsbLolRetryPolicy {
+                max_attempts: primary_attempts,
+                ..AdsbLolRetryPolicy::default()
+            },
+            minimum_request_interval: None,
         })?;
+        let fallback = adsb_lol_config
+            .airplanes_live_fallback
+            .map(|fallback| {
+                AdsbLolClient::new(AdsbLolClientConfig {
+                    provider: LivePositionProvider::AirplanesLive,
+                    base_url: fallback.base_url,
+                    user_agent: fallback.user_agent,
+                    connect_timeout: Duration::from_secs(3),
+                    request_timeout: Duration::from_secs(12),
+                    retry: AdsbLolRetryPolicy {
+                        max_attempts: 2,
+                        ..AdsbLolRetryPolicy::default()
+                    },
+                    minimum_request_interval: Some(Duration::from_secs(1)),
+                })
+            })
+            .transpose()?;
+        let clients = LivePositionClientChain::new(primary, fallback);
         let regions =
             public_live_region_catalog(adsb_lol_config.operator_id, adsb_lol_config.region);
         for (index, preset) in regions.iter().enumerate() {
@@ -160,7 +190,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .poll_interval
                 .mul_f64(index as f64 / regions.len() as f64);
             spawn_adsb_lol_runtime(
-                client.clone(),
+                clients.clone(),
                 ingestion.clone(),
                 live_position_statuses.clone(),
                 AdsbLolRuntimeConfig {
@@ -177,6 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         tracing::info!(
             provider = "adsb.lol",
+            fallback_provider = fallback_enabled.then_some("airplanes.live"),
             feed = "point",
             region_count = regions.len(),
             "best-effort regional live aircraft positions enabled"

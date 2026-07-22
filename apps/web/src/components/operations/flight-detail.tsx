@@ -124,8 +124,8 @@ export function FlightDetail({
         </div>
         {positionOnly ? (
           <p className="position-only-note">
-            ADSB.lol supplies a best-effort position, not authoritative route, schedule, delay,
-            cancellation, or operational status facts. Nothing is inferred here.
+            The live ADS-B provider supplies a best-effort position, not authoritative route,
+            schedule, delay, cancellation, or operational status facts. Nothing is inferred here.
           </p>
         ) : (
           <dl className="schedule-row">

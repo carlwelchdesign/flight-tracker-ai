@@ -27,8 +27,10 @@ const status = {
   },
   attribution: {
     text: "Contains information from ADSB.lol, available under the Open Database License (ODbL).",
+    source_name: "ADSB.lol",
     source_url: "https://adsb.lol/",
-    license_url: "https://opendatacommons.org/licenses/odbl/1-0/",
+    terms_label: "Open Database License (ODbL)",
+    terms_url: "https://opendatacommons.org/licenses/odbl/1-0/",
   },
 };
 

@@ -33,8 +33,10 @@ export type PublicLiveStatus = {
   } | null;
   attribution: {
     text: string;
+    source_name: string;
     source_url: string;
-    license_url: string;
+    terms_label: string;
+    terms_url: string;
   } | null;
 };
 
@@ -93,7 +95,20 @@ function isStatus(value: unknown): value is PublicLiveStatus {
     typeof value.state === "string" &&
     ["disabled", "connecting", "current", "degraded", "unavailable"].includes(value.state) &&
     typeof value.observed_at === "string" &&
-    typeof value.aircraft_count === "number"
+    typeof value.aircraft_count === "number" &&
+    nullableString(value.provider) &&
+    (value.attribution === null || isAttribution(value.attribution))
+  );
+}
+
+function isAttribution(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.text === "string" &&
+    typeof value.source_name === "string" &&
+    typeof value.source_url === "string" &&
+    typeof value.terms_label === "string" &&
+    typeof value.terms_url === "string"
   );
 }
 

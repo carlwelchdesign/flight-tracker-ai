@@ -14,7 +14,13 @@ const status = {
   stale_position_count: 0,
   stale_after_seconds: 30,
   region: { latitude_degrees: 37.62, longitude_degrees: -122.38, radius_nautical_miles: 25 },
-  attribution: { text: "ADSB.lol ODbL", source_url: "https://adsb.lol/", license_url: "https://example.test/license" },
+  attribution: {
+    text: "ADSB.lol ODbL",
+    source_name: "ADSB.lol",
+    source_url: "https://adsb.lol/",
+    terms_label: "Open Database License (ODbL)",
+    terms_url: "https://example.test/license",
+  },
 };
 
 describe("parsePublicLiveSnapshot", () => {

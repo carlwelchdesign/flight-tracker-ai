@@ -32,8 +32,10 @@ export type LivePositionStatus = {
   } | null;
   attribution: {
     text: string;
+    source_name: string;
     source_url: string;
-    license_url: string;
+    terms_label: string;
+    terms_url: string;
   } | null;
 };
 
@@ -110,8 +112,10 @@ function isAttribution(value: unknown): boolean {
   return (
     isRecord(value) &&
     typeof value.text === "string" &&
+    typeof value.source_name === "string" &&
     typeof value.source_url === "string" &&
-    typeof value.license_url === "string"
+    typeof value.terms_label === "string" &&
+    typeof value.terms_url === "string"
   );
 }
 

@@ -127,7 +127,7 @@ failure-behavior check, not a coverage benchmark.
 | Candidate | Outcome | Reason |
 | --- | --- | --- |
 | ADSB.lol | Selected for an optional position layer | ODbL provides explicit public-use rights and attribution rules; official API documentation exposes a bounded regional endpoint. The project can honor `no-store` through an ephemeral adapter. |
-| Airplanes.live | Not selected | Its official guide says non-commercial use, one request per second, and no SLA, but the reviewed public pages did not state an equally precise data license, attribution, retention, or redistribution contract. Do not use it as an automatic secondary live provider. |
+| Airplanes.live | Selected only as portfolio failover by ADR-020 | Its official guide says non-commercial use, one request per second, and no SLA. Its public pages do not state an equally precise data license, attribution, retention, or redistribution contract as ADSB.lol, so use is limited to ephemeral attributed display in this non-commercial portfolio after ADSB.lol fails. |
 | OpenSky | Ineligible without a new agreement | Its default terms require prior written licensing for automated/operational hosted use. That external approval is outside the portfolio scope. |
 | Deterministic replay | Required fallback | It is versioned, testable, provider-independent, and available without network or license dependencies. |
 
@@ -161,6 +161,10 @@ The Rust process accepts one optional ADSB.lol configuration:
   `30`.
 - `ADSB_LOL_API_BASE_URL` exists for controlled tests and defaults to the
   official HTTPS API.
+- `ENABLE_AIRPLANES_LIVE_FALLBACK=true` opts into the portfolio-only secondary
+  source; omission or `false` leaves the original ADSB.lol-to-replay behavior.
+- `AIRPLANES_LIVE_API_BASE_URL` defaults to the official HTTPS API and exists
+  for controlled tests. `AIRPLANES_LIVE_USER_AGENT` must identify the app.
 
 The runtime performs one sequential regional request at a time. It publishes
 the transient normalized batch only to the in-memory fleet projection; the
@@ -168,6 +172,21 @@ persistence and alert workers do not subscribe to this source. The raw response
 and normalized current positions therefore terminate in process and are never
 written to PostgreSQL. Provider failures update source state independently of
 critical replay worker health.
+
+ADR-020 adds one optional compatible fallback. When
+`ENABLE_AIRPLANES_LIVE_FALLBACK=true`, the runtime attempts ADSB.lol first and
+calls `https://api.airplanes.live/v2/point/...` only after primary failure. All
+fallback client clones share one process-wide limiter that spaces every request,
+including retries, by at least one second. A successful primary request makes no
+fallback request. The accepted provider is carried through normalization,
+status, public aircraft records, logs, and attribution.
+
+The fallback does not change the data boundary: Airplanes.live responses are
+not persisted, cached, exported, redistributed, or sent to an LLM. It is an
+owner-approved exception for this public non-commercial portfolio, not an
+authorization for a commercial or operational product. If both providers fail,
+the last accepted picture may remain visible without a current claim and replay
+remains usable.
 
 Authenticated clients can read `GET /api/live-positions/status`. The
 tenant-scoped, provider-neutral response reports `disabled`, `connecting`,

@@ -453,7 +453,7 @@ async fn public_live_positions(
         .fleet
         .list_provider_positions(
             preset.operator_id,
-            PUBLIC_LIVE_PROVIDER,
+            status.provider.unwrap_or(PUBLIC_LIVE_PROVIDER),
             observed_after,
             PUBLIC_LIVE_LIMIT,
         )
@@ -876,7 +876,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn public_live_positions_are_operator_bound_and_sanitized() {
+    async fn public_live_positions_follow_the_active_provider_and_remain_sanitized() {
         let scenario = ReplayScenario::from_json(include_str!(
             "../../../fixtures/replay/m1-operations-v1.json"
         ))
@@ -884,18 +884,18 @@ mod tests {
         let fleet = FleetStore::new(32);
         for event in [&scenario.events[1], &scenario.events[5]] {
             let mut batch = scenario.batch_for(event).unwrap();
-            batch.envelope.provider = PUBLIC_LIVE_PROVIDER.into();
+            batch.envelope.provider = "airplanes.live".into();
             batch.envelope.feed = "point".into();
             batch.envelope.provider_record_id = Some("a1b2c3".into());
             match &mut batch.events[0] {
                 CanonicalEvent::Flight(value) => {
-                    value.source.provider = PUBLIC_LIVE_PROVIDER.into();
+                    value.source.provider = "airplanes.live".into();
                     value.source.feed = "point".into();
                     value.times.event_time = Utc::now();
                     value.source.provider_record_id = Some("a1b2c3".into());
                 }
                 CanonicalEvent::AircraftPosition(value) => {
-                    value.source.provider = PUBLIC_LIVE_PROVIDER.into();
+                    value.source.provider = "airplanes.live".into();
                     value.source.feed = "point".into();
                     value.times.event_time = Utc::now();
                     value.source.provider_record_id = Some("a1b2c3".into());
@@ -914,6 +914,19 @@ mod tests {
             },
             Duration::from_secs(30),
             Utc::now(),
+        );
+        live_positions.record_success(
+            scenario.operator_id,
+            live_positions::LivePositionProvider::AirplanesLive,
+            Utc::now(),
+            Some(Utc::now()),
+            live_positions::PositionCoverage {
+                aircraft_count: 1,
+                fresh_position_count: 1,
+                stale_position_count: 0,
+                rejected_record_count: 0,
+                missing_callsign_count: 0,
+            },
         );
         let database = unavailable_database();
         let app = build_router_with_services_and_health(
@@ -963,7 +976,8 @@ mod tests {
         assert_eq!(payload["region_code"], "sfo");
         assert_eq!(payload["region_name"], "San Francisco");
         assert_eq!(payload["data"].as_array().unwrap().len(), 1);
-        assert_eq!(payload["data"][0]["provider"], PUBLIC_LIVE_PROVIDER);
+        assert_eq!(payload["status"]["provider"], "airplanes.live");
+        assert_eq!(payload["data"][0]["provider"], "airplanes.live");
         assert_eq!(payload["data"][0]["icao_hex"], "A1B2C3");
         assert!(payload["data"][0].get("provider_record_id").is_none());
         assert!(payload["data"][0].get("operator_id").is_none());

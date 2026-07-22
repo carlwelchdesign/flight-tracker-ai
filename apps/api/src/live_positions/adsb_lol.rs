@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use rand::RngExt;
@@ -19,12 +19,11 @@ use crate::{
     ingestion::NormalizedEventBatch,
 };
 
-use super::status::{LivePositionRegion, PositionCoverage};
+use super::status::{LivePositionProvider, LivePositionRegion, PositionCoverage};
 
 const MAX_RESPONSE_BYTES: usize = 1_048_576;
 const MAX_POSITION_AGE_SECONDS: f64 = 300.0;
 const ID_NAMESPACE: Uuid = Uuid::from_u128(0xd6254fe2_ecc1_5d9a_aac0_073def280ee7);
-const PROVIDER: &str = "adsb.lol";
 const FEED: &str = "point";
 
 #[derive(Debug, Clone)]
@@ -57,26 +56,28 @@ impl RetryPolicy {
 
 #[derive(Debug, Clone)]
 pub struct AdsbLolClientConfig {
+    pub provider: LivePositionProvider,
     pub base_url: Url,
     pub user_agent: String,
     pub connect_timeout: Duration,
     pub request_timeout: Duration,
     pub retry: RetryPolicy,
+    pub minimum_request_interval: Option<Duration>,
 }
 
 #[derive(Debug, Error)]
 pub enum AdsbLolError {
-    #[error("ADSB.lol request failed: {0}")]
+    #[error("live-position provider request failed: {0}")]
     Request(#[from] reqwest::Error),
-    #[error("ADSB.lol returned HTTP {status}")]
+    #[error("live-position provider returned HTTP {status}")]
     Http { status: StatusCode },
-    #[error("ADSB.lol response exceeded the one-megabyte safety limit")]
+    #[error("live-position provider response exceeded the one-megabyte safety limit")]
     ResponseTooLarge,
-    #[error("ADSB.lol returned malformed JSON: {0}")]
+    #[error("live-position provider returned malformed JSON: {0}")]
     MalformedJson(serde_json::Error),
-    #[error("ADSB.lol payload is invalid: {0}")]
+    #[error("live-position provider payload is invalid: {0}")]
     InvalidPayload(&'static str),
-    #[error("ADSB.lol client configuration is invalid: {0}")]
+    #[error("live-position provider client configuration is invalid: {0}")]
     Configuration(String),
 }
 
@@ -98,6 +99,7 @@ impl AdsbLolError {
 
 #[derive(Debug, Clone)]
 pub(crate) struct AdsbLolPayload {
+    pub provider: LivePositionProvider,
     pub value: Value,
     pub received_at: DateTime<Utc>,
 }
@@ -105,8 +107,31 @@ pub(crate) struct AdsbLolPayload {
 #[derive(Clone)]
 pub struct AdsbLolClient {
     client: reqwest::Client,
+    provider: LivePositionProvider,
     base_url: Url,
     retry: RetryPolicy,
+    request_gate: Option<RequestGate>,
+}
+
+#[derive(Clone)]
+struct RequestGate {
+    next_allowed: Arc<tokio::sync::Mutex<tokio::time::Instant>>,
+    minimum_interval: Duration,
+}
+
+impl RequestGate {
+    fn new(minimum_interval: Duration) -> Self {
+        Self {
+            next_allowed: Arc::new(tokio::sync::Mutex::new(tokio::time::Instant::now())),
+            minimum_interval,
+        }
+    }
+
+    async fn wait(&self) {
+        let mut next_allowed = self.next_allowed.lock().await;
+        tokio::time::sleep_until(*next_allowed).await;
+        *next_allowed = tokio::time::Instant::now() + self.minimum_interval;
+    }
 }
 
 impl AdsbLolClient {
@@ -139,8 +164,10 @@ impl AdsbLolClient {
             .build()?;
         Ok(Self {
             client,
+            provider: config.provider,
             base_url: config.base_url,
             retry: config.retry,
+            request_gate: config.minimum_request_interval.map(RequestGate::new),
         })
     }
 
@@ -158,10 +185,13 @@ impl AdsbLolClient {
             .map_err(|error| AdsbLolError::Configuration(error.to_string()))?;
         let mut attempt = 1;
         loop {
+            if let Some(gate) = &self.request_gate {
+                gate.wait().await;
+            }
             let result = self.client.get(url.clone()).send().await;
             match result {
                 Ok(response) if response.status().is_success() => {
-                    return read_payload(response).await;
+                    return read_payload(response, self.provider).await;
                 }
                 Ok(response) => {
                     let status = response.status();
@@ -183,7 +213,10 @@ impl AdsbLolClient {
     }
 }
 
-async fn read_payload(mut response: reqwest::Response) -> Result<AdsbLolPayload, AdsbLolError> {
+async fn read_payload(
+    mut response: reqwest::Response,
+    provider: LivePositionProvider,
+) -> Result<AdsbLolPayload, AdsbLolError> {
     if response
         .content_length()
         .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
@@ -199,6 +232,7 @@ async fn read_payload(mut response: reqwest::Response) -> Result<AdsbLolPayload,
     }
     let value = serde_json::from_slice(&bytes).map_err(AdsbLolError::MalformedJson)?;
     Ok(AdsbLolPayload {
+        provider,
         value,
         received_at: Utc::now(),
     })
@@ -282,6 +316,7 @@ pub(crate) fn normalize_snapshot(
             "processed time precedes received time",
         ));
     }
+    let provider = payload.provider;
     let response: AdsbLolResponse =
         serde_json::from_value(payload.value).map_err(AdsbLolError::MalformedJson)?;
     let response_time =
@@ -380,6 +415,7 @@ pub(crate) fn normalize_snapshot(
         batches.push(to_batch(
             candidate,
             operator_id,
+            provider,
             payload.received_at,
             processed_at,
         )?);
@@ -401,18 +437,20 @@ pub(crate) fn normalize_snapshot(
 fn to_batch(
     candidate: Candidate,
     operator_id: OperatorId,
+    provider: LivePositionProvider,
     received_at: DateTime<Utc>,
     processed_at: DateTime<Utc>,
 ) -> Result<NormalizedEventBatch, AdsbLolError> {
     let raw_bytes = serde_json::to_vec(&candidate.raw).map_err(AdsbLolError::MalformedJson)?;
     let raw_hash = format!("{:x}", Sha256::digest(&raw_bytes));
-    let flight_identity = format!("{}:{}:{PROVIDER}", operator_id.as_uuid(), candidate.hex);
+    let flight_identity = format!("{}:{}:live-position", operator_id.as_uuid(), candidate.hex);
     let flight_id = FlightId::from_uuid(Uuid::new_v5(&ID_NAMESPACE, flight_identity.as_bytes()));
     let envelope_identity = format!(
-        "{}:{}:{}:{}",
+        "{}:{}:{}:{}:{}",
         operator_id.as_uuid(),
         candidate.hex,
         candidate.event_time.timestamp_millis(),
+        provider.id(),
         raw_hash
     );
     let envelope_id =
@@ -423,7 +461,7 @@ fn to_batch(
     ));
     let source = SourceAttribution {
         envelope_id,
-        provider: PROVIDER.into(),
+        provider: provider.id().into(),
         feed: FEED.into(),
         provider_record_id: Some(candidate.hex.clone()),
     };
@@ -433,7 +471,7 @@ fn to_batch(
         id: envelope_id,
         operator_id,
         schema_version: SchemaVersion::V1,
-        provider: PROVIDER.into(),
+        provider: provider.id().into(),
         feed: FEED.into(),
         provider_record_id: Some(candidate.hex),
         event_time: Some(candidate.event_time),
@@ -569,6 +607,7 @@ mod tests {
 
     fn synthetic_payload(records: Vec<Value>) -> AdsbLolPayload {
         AdsbLolPayload {
+            provider: LivePositionProvider::AdsbLol,
             value: json!({ "now": 1784654160000_i64, "ac": records }),
             received_at: received_at(),
         }
@@ -617,6 +656,38 @@ mod tests {
         );
     }
 
+    #[test]
+    fn fallback_provider_identity_reaches_every_canonical_source() {
+        let mut payload = synthetic_payload(vec![json!({
+            "hex": "A1B2C3",
+            "lat": 37.62,
+            "lon": -122.38,
+            "seen_pos": 2.5,
+            "type": "adsb_icao"
+        })]);
+        payload.provider = LivePositionProvider::AirplanesLive;
+        let snapshot = normalize_snapshot(
+            payload,
+            OperatorId::new(),
+            Utc.with_ymd_and_hms(2026, 7, 21, 17, 16, 2).unwrap(),
+            Duration::from_secs(30),
+        )
+        .unwrap();
+        let batch = &snapshot.batches[0];
+        assert_eq!(batch.envelope.provider, "airplanes.live");
+        for event in &batch.events {
+            match event {
+                CanonicalEvent::Flight(value) => {
+                    assert_eq!(value.source.provider, "airplanes.live")
+                }
+                CanonicalEvent::AircraftPosition(value) => {
+                    assert_eq!(value.source.provider, "airplanes.live")
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
     #[tokio::test]
     async fn duplicate_and_out_of_order_snapshots_cannot_replace_newer_state() {
         let operator = OperatorId::new();
@@ -643,6 +714,7 @@ mod tests {
         .unwrap();
         let older = normalize_snapshot(
             AdsbLolPayload {
+                provider: LivePositionProvider::AdsbLol,
                 value: json!({
                     "now": 1784654100000_i64,
                     "ac": [{"hex": "a1b2c3", "lat": 40.0, "lon": -120.0,
@@ -700,6 +772,7 @@ mod tests {
     fn rejects_malformed_top_level_payload_without_publishing_partial_state() {
         let result = normalize_snapshot(
             AdsbLolPayload {
+                provider: LivePositionProvider::AdsbLol,
                 value: json!({
                     "now": "not-a-timestamp",
                     "ac": {"unexpected": "object"}
@@ -746,6 +819,7 @@ mod tests {
         let address = listener.local_addr().unwrap();
         tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
         let client = AdsbLolClient::new(AdsbLolClientConfig {
+            provider: LivePositionProvider::AdsbLol,
             base_url: Url::parse(&format!("http://{address}/")).unwrap(),
             user_agent: "flight-tracker-ai-test/1.0".into(),
             connect_timeout: Duration::from_secs(1),
@@ -755,6 +829,7 @@ mod tests {
                 base_delay: Duration::ZERO,
                 max_delay: Duration::ZERO,
             },
+            minimum_request_interval: None,
         })
         .unwrap();
         client
@@ -789,6 +864,7 @@ mod tests {
         let address = listener.local_addr().unwrap();
         tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
         let client = AdsbLolClient::new(AdsbLolClientConfig {
+            provider: LivePositionProvider::AdsbLol,
             base_url: Url::parse(&format!("http://{address}/")).unwrap(),
             user_agent: "flight-tracker-ai-test/1.0".into(),
             connect_timeout: Duration::from_millis(10),
@@ -798,6 +874,7 @@ mod tests {
                 base_delay: Duration::ZERO,
                 max_delay: Duration::ZERO,
             },
+            minimum_request_interval: None,
         })
         .unwrap();
         let error = client
@@ -827,6 +904,7 @@ mod tests {
         let address = listener.local_addr().unwrap();
         tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
         let client = AdsbLolClient::new(AdsbLolClientConfig {
+            provider: LivePositionProvider::AdsbLol,
             base_url: Url::parse(&format!("http://{address}/")).unwrap(),
             user_agent: "flight-tracker-ai-test/1.0".into(),
             connect_timeout: Duration::from_secs(1),
@@ -836,6 +914,7 @@ mod tests {
                 base_delay: Duration::ZERO,
                 max_delay: Duration::ZERO,
             },
+            minimum_request_interval: None,
         })
         .unwrap();
 
@@ -849,6 +928,49 @@ mod tests {
             .unwrap_err();
         assert!(matches!(error, AdsbLolError::ResponseTooLarge));
         assert_eq!(error.code(), "response_too_large");
+    }
+
+    #[tokio::test]
+    async fn cloned_clients_share_the_fallback_request_gate() {
+        let router = Router::new().route(
+            "/v2/point/37.62/-122.38/25",
+            get(|| async { Json(json!({ "now": 1784654160000_i64, "ac": [] })) }),
+        );
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let client = AdsbLolClient::new(AdsbLolClientConfig {
+            provider: LivePositionProvider::AirplanesLive,
+            base_url: Url::parse(&format!("http://{address}/")).unwrap(),
+            user_agent: "flight-tracker-ai-test/1.0".into(),
+            connect_timeout: Duration::from_secs(1),
+            request_timeout: Duration::from_secs(1),
+            retry: RetryPolicy {
+                max_attempts: 1,
+                base_delay: Duration::ZERO,
+                max_delay: Duration::ZERO,
+            },
+            minimum_request_interval: Some(Duration::from_millis(50)),
+        })
+        .unwrap();
+        let second_client = client.clone();
+        let started = tokio::time::Instant::now();
+        let (first, second) = tokio::join!(
+            client.fetch_point(LivePositionRegion {
+                latitude_degrees: 37.62,
+                longitude_degrees: -122.38,
+                radius_nautical_miles: 25,
+            }),
+            second_client.fetch_point(LivePositionRegion {
+                latitude_degrees: 37.62,
+                longitude_degrees: -122.38,
+                radius_nautical_miles: 25,
+            })
+        );
+
+        assert!(first.is_ok());
+        assert!(second.is_ok());
+        assert!(started.elapsed() >= Duration::from_millis(45));
     }
 
     #[test]

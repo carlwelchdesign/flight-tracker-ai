@@ -207,6 +207,29 @@
   synthetic human approval of the fixed evidence. Validation failure or provider
   unavailability must use the deterministic template and remain visible.
 
+### ADR-020 — Portfolio live positions use an explicit two-provider chain
+
+- Date: 2026-07-22
+- Decision: Keep ADSB.lol as the primary live-position source and attempt
+  Airplanes.live only after a primary request fails. Deterministic replay remains
+  the guaranteed provider-independent fallback.
+- Reason: ADSB.lol experienced a sustained service outage while the compatible
+  Airplanes.live bounded point endpoint remained responsive across the curated
+  regions. A failover prevents one free provider outage from removing the live
+  portfolio demonstration.
+- Rights boundary: Airplanes.live publishes non-commercial use, a one-request-
+  per-second rate limit, and no SLA or uptime guarantee, but not the same precise
+  license grant as ADSB.lol's ODbL terms. The owner approves it only for this
+  public non-commercial portfolio. Any commercial, operational, redistributed,
+  or separately retained use requires a new review and written rights where
+  necessary.
+- Technical constraint: Share one process-wide fallback limiter across every
+  region and retry; never exceed one Airplanes.live request per second. Preserve
+  bounded regional queries, `no-store`, ephemeral in-memory handling, actual-
+  provider attribution, and the bans on persistence, export, and LLM use.
+- Supersession: This supersedes ADR-011's statement that replay is the only
+  fallback, but preserves all other ADR-011 and ADR-013 safety boundaries.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |

@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PublicLiveSnapshot } from "@/lib/public-live-positions";
 import { PublicFlightTrackerDemo } from "./public-flight-tracker-demo";
 
 describe("public flight tracker demo", () => {
@@ -385,9 +386,49 @@ describe("public flight tracker demo", () => {
     expect(screen.getByText("Live position only")).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
+
+  it("shows the active fallback provider and its terms in the public footer", async () => {
+    const fallback = livePayload();
+    fallback.status.provider = "airplanes.live";
+    fallback.status.attribution = {
+      text: "Airplanes.live fallback data is displayed under its published non-commercial API terms.",
+      source_name: "Airplanes.live",
+      source_url: "https://airplanes.live/",
+      terms_label: "non-commercial API terms",
+      terms_url: "https://airplanes.live/api-guide/",
+    };
+    fallback.data[0].provider = "airplanes.live";
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const payload = url.includes("/weather")
+        ? weatherPayload()
+        : url.includes("/atmosphere/")
+          ? windPayload()
+          : url.includes("/replay/attention")
+            ? attentionPayload()
+            : fallback;
+      return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+    }));
+
+    render(<PublicFlightTrackerDemo />);
+
+    expect(await screen.findByRole("link", { name: "Airplanes.live" })).toHaveAttribute(
+      "href",
+      "https://airplanes.live/",
+    );
+    expect(screen.getByRole("link", { name: "non-commercial API terms" })).toHaveAttribute(
+      "href",
+      "https://airplanes.live/api-guide/",
+    );
+    vi.unstubAllGlobals();
+  });
 });
 
-function livePayload(regionCode = "sfo", regionName = "San Francisco", callsign = "UAL123") {
+function livePayload(
+  regionCode = "sfo",
+  regionName = "San Francisco",
+  callsign = "UAL123",
+): PublicLiveSnapshot {
   return {
     region_code: regionCode,
     region_name: regionName,
