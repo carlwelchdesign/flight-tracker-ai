@@ -49,8 +49,8 @@ Verification evidence:
 Status: In progress
 
 Branch: `feat/ft-502-offline-recommendations`
-Final commit: Pending
-Pull request: Pending
+Final commit: `49c8c85`
+Pull request: [#50](https://github.com/carlwelchdesign/flight-tracker-ai/pull/50)
 
 Generate explainable recommendations against historical or simulated scenarios without connecting them to live operations.
 
@@ -82,6 +82,8 @@ Verification evidence:
   2.259% median added distance, zero hard-constraint violations, and
   deterministic output. Independent domain review remains honestly pending in
   [`../evidence/ft-502/DOMAIN_REVIEW.md`](../evidence/ft-502/DOMAIN_REVIEW.md).
+- GitHub CI passed Rust, web, and API/PostGIS smoke checks; Vercel preview also
+  passed. PR #50 merged to `main` as `8aca521`.
 
 ## FT-503 — Add human-reviewed message drafting
 
