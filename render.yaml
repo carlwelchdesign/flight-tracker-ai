@@ -5,9 +5,9 @@ services:
     plan: free
     region: virginia
     repo: https://github.com/carlwelchdesign/flight-tracker-ai
-    # FT-404 is verified from its feature branch before the release PR merges.
-    # Change both service branches to main in the final promotion commit.
-    branch: feat/ft-405-live-navigable-tracker
+    # Production follows merged, verified release commits and still requires a
+    # manual deploy because autoDeployTrigger is disabled below.
+    branch: main
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
@@ -72,7 +72,7 @@ services:
     plan: free
     region: virginia
     repo: https://github.com/carlwelchdesign/flight-tracker-ai
-    branch: feat/ft-405-live-navigable-tracker
+    branch: main
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
