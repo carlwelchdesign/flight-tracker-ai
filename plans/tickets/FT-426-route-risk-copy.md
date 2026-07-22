@@ -3,8 +3,8 @@
 Status: In progress
 
 Branch: `fix/ft-426-route-risk-copy`
-Final implementation commit: Pending
-Pull request: Pending
+Final implementation commit: `6e48fd0`
+Pull request: [#72](https://github.com/carlwelchdesign/flight-tracker-ai/pull/72)
 Owner: Frontend engineering and content design
 
 Replace the aircraft inspector's internal “Decision intelligence / Not

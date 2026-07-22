@@ -8,7 +8,8 @@ Last updated: 2026-07-22
 - Active tickets: FT-426 route-risk copy, FT-403 neutral recruiter validation,
   and FT-502 independent aviation-domain review
 - Branch: `fix/ft-426-route-risk-copy`
-- Pull request: FT-426 pending; FT-425
+- Pull request: FT-426 [#72](https://github.com/carlwelchdesign/flight-tracker-ai/pull/72)
+  is open; FT-425
   [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70) is merged
 - Owner: Project owner and external reviewers
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
@@ -78,7 +79,9 @@ Last updated: 2026-07-22
 
 - FT-426 is in progress on `fix/ft-426-route-risk-copy`. It replaces the
   internal “Decision intelligence / Not evaluated” label with a direct route-
-  data explanation without changing evaluation behavior.
+  data explanation without changing evaluation behavior. Implementation commit
+  `6e48fd0` is in PR
+  [#72](https://github.com/carlwelchdesign/flight-tracker-ai/pull/72).
 
 - FT-425 is complete through implementation commit `ba478c3`, PR
   [#70](https://github.com/carlwelchdesign/flight-tracker-ai/pull/70), merge commit
