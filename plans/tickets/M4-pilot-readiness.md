@@ -127,9 +127,10 @@ Status: Complete
 Branch: `feat/ft-404-production-deployment`
 Hosted closeout branch: `fix/ft-404-hosted-smoke-closeout`
 Latest implementation commit: `7f529e3`
-Final commit: Pending scope-closeout commit on `fix/ft-404-public-first-experience`
+Final commit: `0083cc6`
 Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
 Hosted closeout pull request: [#36](https://github.com/carlwelchdesign/flight-tracker-ai/pull/36)
+Public-first scope pull request: [#38](https://github.com/carlwelchdesign/flight-tracker-ai/pull/38)
 Owner: Platform, backend, security, and full-stack engineering
 
 Deploy the public Next.js interface on Vercel while placing the Rust API, optional continuous ingestion, and PostgreSQL/PostGIS on infrastructure suited to those persistent workloads.
