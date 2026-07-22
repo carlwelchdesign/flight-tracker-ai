@@ -7,7 +7,7 @@ Last updated: 2026-07-22
 - Current milestone: M5 — Optimization research and controlled recommendations
 - Active ticket: FT-504 — public AI drafting demonstration
 - Branch: `feat/ft-504-public-ai-draft-demo`
-- Pull request: Pending
+- Pull request: FT-504 [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64)
 - Owner: Backend, AI product, and frontend engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter

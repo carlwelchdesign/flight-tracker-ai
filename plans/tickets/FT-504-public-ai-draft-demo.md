@@ -3,8 +3,8 @@
 Status: In progress
 
 Branch: `feat/ft-504-public-ai-draft-demo`
-Final commit: Pending
-Pull request: Pending
+Final implementation commit: `063f2df`
+Pull request: [#64](https://github.com/carlwelchdesign/flight-tracker-ai/pull/64)
 Owner: Backend, AI product, and frontend engineering
 
 Make the existing FT-503 OpenAI integration visible in the public portfolio
