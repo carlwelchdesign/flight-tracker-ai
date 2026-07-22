@@ -7,8 +7,8 @@ Default owner: Data/optimization lead, with aviation-domain and trust review.
 Status: Complete
 
 Branch: `docs/ft-501-optimization-feasibility`
-Final commit: Pending
-Pull request: Pending
+Final commit: `63efda7`
+Pull request: [#48](https://github.com/carlwelchdesign/flight-tracker-ai/pull/48)
 
 Specify one narrow recommendation problem, required inputs, baseline, constraints, truth data, and evaluation method before implementing an optimizer.
 
@@ -41,8 +41,8 @@ Verification evidence:
 - ADR-017 selects the existing Rust backend for the bounded FT-502 experiment
   and resolves OD-005. The decision must be revisited before introducing a
   separate numerical service or expanding beyond offline fixture evaluation.
-- Final commit and pull-request references will be recorded in a closeout
-  update after CI and merge verification.
+- GitHub CI passed Rust, web, and API/PostGIS smoke checks; Vercel preview also
+  passed. PR #48 merged to `main` as `4ca076a`.
 
 ## FT-502 — Build an offline recommendation experiment
 
