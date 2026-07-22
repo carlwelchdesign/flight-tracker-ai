@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-412 — Remove public intro sections
-- Branch: `fix/ft-412-remove-top-intro-sections`
-- Pull request: [#33](https://github.com/carlwelchdesign/flight-tracker-ai/pull/33)
-- Owner: Frontend product engineering
+- Active ticket: FT-403/FT-404 — remaining recruiter-validation and hosted-auth gates
+- Branch: `main`
+- Pull request: [#33](https://github.com/carlwelchdesign/flight-tracker-ai/pull/33) merged
+- Owner: Backend and full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Merge the verified FT-412 delivery, then resume the remaining
-  recruiter-validation and authenticated hosted smoke gates.
+- Next action: Resume the remaining recruiter-validation and authenticated
+  hosted smoke gates.
 
 ## Milestone checklist
 
@@ -64,8 +64,9 @@ Last updated: 2026-07-21
 
 ## Handoff notes
 
-- FT-412 is complete in PR [#33](https://github.com/carlwelchdesign/flight-tracker-ai/pull/33)
-  at implementation commit `0f38fc6`. CI run
+- FT-412 is complete and merged into `main` through PR
+  [#33](https://github.com/carlwelchdesign/flight-tracker-ai/pull/33) at merge
+  commit `914ca72`; implementation commit `0f38fc6` owns the product change. CI run
   [29890580981](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29890580981)
   passes all five checks. Preview `dpl_Ew9JXZngfxCAi4gkaoeenaDWzVBr`
   begins directly with the Flight Tracker AI header, contains neither removed
