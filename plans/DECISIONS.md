@@ -176,6 +176,22 @@
   deployment, security, observability, and validation boundaries.
 - Resolution: OD-005 is resolved in favor of Rust for the bounded FT-502 scope.
 
+### ADR-018 — Shared links use one truthful branded portfolio preview
+
+- Date: 2026-07-22
+- Decision: Publish one stable root-page title, description, canonical URL, and
+  1200 by 630 generated social card for Open Graph and Twitter/X link previews.
+- Reason: The production URL currently exposes only basic document metadata, so
+  sharing it can produce a generic hosting-platform preview that does not show
+  the flight-tracker product.
+- Constraint: Preview copy may describe the public tracker's implemented live
+  regional traffic, deterministic replay, trajectories, aviation weather, and
+  explainable attention. It must retain the portfolio and non-operational
+  boundary and must not include ephemeral aircraft, provider, tenant, or user
+  data.
+- Future extension: Per-aircraft or per-region preview images require a separate
+  ticket with bounded public inputs and stale-link behavior under R-20.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |

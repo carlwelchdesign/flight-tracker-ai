@@ -4,6 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 import { authMode } from "@/lib/auth-server";
 import { HOSTED_CLERK_PROVIDER_OPTIONS } from "@/lib/security-policy";
+import { siteMetadata } from "./site-metadata";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,11 +16,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Flight Tracker AI · Portfolio Demonstration",
-  description:
-    "A non-commercial portfolio demonstration of source-attributed airline operations monitoring.",
-};
+export const metadata: Metadata = siteMetadata;
 
 export default async function RootLayout({
   children,
