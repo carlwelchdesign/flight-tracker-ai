@@ -5,17 +5,16 @@ Last updated: 2026-07-22
 ## Current state
 
 - Current milestone: M5 — Optimization research and controlled recommendations
-- Active ticket: FT-419 — refresh the product README and screenshots
-- Branch: `docs/ft-419-product-readme`
-- Pull request: Pending
-- Owner: Product documentation
+- Active ticket: FT-403/FT-502 — independent validation gates
+- Branch: External evidence branches begin only when reviewer records exist
+- Pull request: FT-419 [#60](https://github.com/carlwelchdesign/flight-tracker-ai/pull/60) passes required checks
+- Owner: Product research and independent aviation-domain review
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
   validation and FT-502 independent aviation-domain review remain external
   gates.
-- Next action: Document the current public feature set, capture production
-  desktop and mobile views, and publish the ticket pull request. FT-403 and
-  FT-502 remain the external validation gates after this documentation ticket.
+- Next action: Record the neutral recruiter session and independent
+  aviation-domain review when actual reviewer evidence is available.
 - Sequencing exception: On 2026-07-22 the project owner explicitly authorized
   FT-503 engineering to proceed while FT-502's independent domain review
   remains pending; the review requirement itself is unchanged.
@@ -73,6 +72,17 @@ Last updated: 2026-07-22
 | M5 | 2 | 3 |
 
 ## Handoff notes
+
+- FT-419 is complete through documentation commit `0e4c6f1` and PR
+  [#60](https://github.com/carlwelchdesign/flight-tracker-ai/pull/60). The README
+  now leads with the production product, accurately describes the shipped
+  exploration and decision-intelligence features, distinguishes live, replay,
+  deterministic, and human-reviewed AI boundaries, and retains concise setup
+  and architecture guidance. Current production replay screenshots cover a
+  1440 by 1000 desktop viewport and a 390 by 844 mobile viewport with no browser
+  errors. GitHub Actions run
+  [29940600554](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29940600554)
+  passed all required checks, and the Vercel preview completed successfully.
 
 - FT-418 is complete through implementation commit `6a9adc9`, PR
   [#58](https://github.com/carlwelchdesign/flight-tracker-ai/pull/58), and merge
