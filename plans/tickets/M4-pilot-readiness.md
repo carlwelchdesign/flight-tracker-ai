@@ -126,10 +126,10 @@ Status: In progress
 
 Branch: `feat/ft-404-production-deployment`
 Hosted closeout branch: `fix/ft-404-hosted-smoke-closeout`
-Latest implementation commit: `6a4929e`
+Latest implementation commit: `7f529e3`
 Final commit: Pending
 Pull request: [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
-Hosted closeout pull request: Pending
+Hosted closeout pull request: [#36](https://github.com/carlwelchdesign/flight-tracker-ai/pull/36)
 Owner: Platform, backend, security, and full-stack engineering
 
 Deploy the public Next.js interface on Vercel while placing the Rust API, optional continuous ingestion, and PostgreSQL/PostGIS on infrastructure suited to those persistent workloads.
@@ -256,7 +256,9 @@ link. A shared Rust health helper now keeps worker liveness heartbeats
 independent from polling cadence and provider latency while provider freshness
 remains separately fail-closed. All 101 Rust library tests, 13 binary tests,
 integration/doc tests, strict Clippy, formatting, and eight FT-404 verifier
-tests pass locally. Staging and production promotion evidence remains pending.
+tests pass locally. Implementation commit `7f529e3` is published in draft PR
+[#36](https://github.com/carlwelchdesign/flight-tracker-ai/pull/36). Staging and
+production promotion evidence remains pending.
 
 On 2026-07-21, Neon retained the manual production snapshot
 `main at 2026-07-21 20:46:51 UTC (manual)` with no expiry. A temporary isolated
