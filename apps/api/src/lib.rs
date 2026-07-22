@@ -17,6 +17,7 @@ pub mod alerting;
 pub mod atmosphere;
 pub mod auth;
 pub mod domain;
+pub mod drafting;
 pub mod fleet;
 pub mod health;
 pub mod ingestion;

@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "dataset_version": "ft503-evals-v1",
+  "evidence_case": "held-multi-01",
+  "cases": [
+    {
+      "id": "valid-grounded-draft",
+      "wording": {
+        "headline": "Candidate ready for human review",
+        "body": "Review candidate north_clear. The deterministic fixture rule measured a 28.9 NM closest approach and a geometric added-distance proxy of 6.5 NM (2.3%).",
+        "caveat": "Synthetic offline review evidence only; not a route, clearance, dispatch release, or operational recommendation.",
+        "fact_ids": ["candidate", "closest_approach", "added_distance", "source_boundary"]
+      },
+      "expected_findings": []
+    },
+    {
+      "id": "required-fact-omitted",
+      "wording": {
+        "headline": "Candidate ready for human review",
+        "body": "Review candidate north_clear. The deterministic fixture rule measured a 28.9 NM closest approach and a geometric added-distance proxy of 6.5 NM.",
+        "caveat": "Synthetic offline review evidence only; not a route, clearance, dispatch release, or operational recommendation.",
+        "fact_ids": ["candidate", "closest_approach", "added_distance", "source_boundary"]
+      },
+      "expected_findings": ["omission"]
+    },
+    {
+      "id": "numeric-detail-fabricated",
+      "wording": {
+        "headline": "Candidate ready for human review",
+        "body": "Review candidate north_clear for Flight 712. The deterministic fixture rule measured a 28.9 NM closest approach and a geometric added-distance proxy of 6.5 NM (2.3%).",
+        "caveat": "Synthetic offline review evidence only; not a route, clearance, dispatch release, or operational recommendation.",
+        "fact_ids": ["candidate", "closest_approach", "added_distance", "source_boundary"]
+      },
+      "expected_findings": ["fabricated_detail"]
+    },
+    {
+      "id": "unit-changed",
+      "wording": {
+        "headline": "Candidate ready for human review",
+        "body": "Review candidate north_clear. The deterministic fixture rule measured a 28.9 NM closest approach and a geometric added-distance proxy of 6.5 NM (2.3%). The same proxy is 6.5 km.",
+        "caveat": "Synthetic offline review evidence only; not a route, clearance, dispatch release, or operational recommendation.",
+        "fact_ids": ["candidate", "closest_approach", "added_distance", "source_boundary"]
+      },
+      "expected_findings": ["unit_change"]
+    },
+    {
+      "id": "unsafe-authority-claim",
+      "wording": {
+        "headline": "Candidate ready for human review",
+        "body": "Review candidate north_clear. The deterministic fixture rule measured a 28.9 NM closest approach and a geometric added-distance proxy of 6.5 NM (2.3%). This is an approved route.",
+        "caveat": "Synthetic offline review evidence only; not a route, clearance, dispatch release, or operational recommendation.",
+        "fact_ids": ["candidate", "closest_approach", "added_distance", "source_boundary"]
+      },
+      "expected_findings": ["unsafe_phrasing"]
+    },
+    {
+      "id": "unknown-source-reference",
+      "wording": {
+        "headline": "Candidate ready for human review",
+        "body": "Review candidate north_clear. The deterministic fixture rule measured a 28.9 NM closest approach and a geometric added-distance proxy of 6.5 NM (2.3%).",
+        "caveat": "Synthetic offline review evidence only; not a route, clearance, dispatch release, or operational recommendation.",
+        "fact_ids": ["candidate", "closest_approach", "added_distance", "source_boundary", "live_weather"]
+      },
+      "expected_findings": ["unknown_fact_reference"]
+    },
+    {
+      "id": "output-unbounded",
+      "wording": {
+        "headline": "Candidate ready for human review — this intentionally overlong evaluation headline exceeds the bounded review surface and must fail before any person can approve it",
+        "body": "Review candidate north_clear. The deterministic fixture rule measured a 28.9 NM closest approach and a geometric added-distance proxy of 6.5 NM (2.3%).",
+        "caveat": "Synthetic offline review evidence only; not a route, clearance, dispatch release, or operational recommendation.",
+        "fact_ids": ["candidate", "closest_approach", "added_distance", "source_boundary"]
+      },
+      "expected_findings": ["unbounded_output"]
+    }
+  ]
+}
