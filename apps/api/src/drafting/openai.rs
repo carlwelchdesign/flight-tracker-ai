@@ -71,12 +71,6 @@ impl OpenAiDraftClient {
             .await
             .map_err(map_transport_error)?;
         let status = response.status();
-        if status == StatusCode::TOO_MANY_REQUESTS {
-            return Err(DraftError::Generation(GenerationFailureCode::RateLimited));
-        }
-        if !status.is_success() {
-            return Err(DraftError::Generation(GenerationFailureCode::Unavailable));
-        }
         if response
             .content_length()
             .is_some_and(|length| length > MAX_RESPONSE_BYTES)
@@ -91,9 +85,28 @@ impl OpenAiDraftClient {
                 GenerationFailureCode::InvalidResponse,
             ));
         }
+        if !status.is_success() {
+            return Err(DraftError::Generation(classify_error_response(
+                status, &bytes,
+            )));
+        }
         let value: Value = serde_json::from_slice(&bytes)
             .map_err(|_| DraftError::Generation(GenerationFailureCode::InvalidResponse))?;
         parse_response(value)
+    }
+}
+
+fn classify_error_response(status: StatusCode, body: &[u8]) -> GenerationFailureCode {
+    if status != StatusCode::TOO_MANY_REQUESTS {
+        return GenerationFailureCode::Unavailable;
+    }
+    let code = serde_json::from_slice::<Value>(body)
+        .ok()
+        .and_then(|value| value.pointer("/error/code")?.as_str().map(str::to_owned));
+    if code.as_deref() == Some("insufficient_quota") {
+        GenerationFailureCode::QuotaExhausted
+    } else {
+        GenerationFailureCode::RateLimited
     }
 }
 
@@ -241,6 +254,24 @@ mod tests {
                 GenerationFailureCode::InvalidResponse
             ))
         ));
+    }
+
+    #[test]
+    fn quota_exhaustion_is_distinct_from_transient_rate_limiting() {
+        let exhausted = json!({"error": {"code": "insufficient_quota"}}).to_string();
+        let limited = json!({"error": {"code": "rate_limit_exceeded"}}).to_string();
+        assert_eq!(
+            classify_error_response(StatusCode::TOO_MANY_REQUESTS, exhausted.as_bytes()),
+            GenerationFailureCode::QuotaExhausted
+        );
+        assert_eq!(
+            classify_error_response(StatusCode::TOO_MANY_REQUESTS, limited.as_bytes()),
+            GenerationFailureCode::RateLimited
+        );
+        assert_eq!(
+            classify_error_response(StatusCode::FORBIDDEN, b"{}"),
+            GenerationFailureCode::Unavailable
+        );
     }
 
     #[test]

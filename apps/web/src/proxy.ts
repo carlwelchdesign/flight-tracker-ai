@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/public/live-positions",
   "/api/public/airport-intelligence",
   "/api/public/atmosphere/wind",
+  "/api/public/ai-draft",
   "/api/public/replay/attention",
   "/api/public/replay/timeline",
   "/api/public/weather",

@@ -31,6 +31,9 @@ navigable map.
   map position, replay time, and weather layers.
 - **Airport intelligence** — inspect bounded TAF forecast periods and nearby
   PIREPs for the selected region with source time and freshness visible.
+- **Human-reviewed AI drafting** — request a constrained OpenAI draft for one
+  fixed synthetic recommendation, inspect its deterministic facts and
+  citations, and see whether the validated deterministic fallback was used.
 
 The public experience is read-only and does not require an account.
 
@@ -55,11 +58,11 @@ The product deliberately distinguishes its evidence:
 | Aviation weather         | NOAA Aviation Weather Center observations, forecasts, pilot reports, and hazards                                    |
 | Atmospheric context      | NOAA nowCOAST imagery plus a bounded Open-Meteo GFS/HRRR wind grid                                                  |
 | Attention and projection | Deterministic rules and geometry with explicit assumptions and labels                                               |
-| AI drafting              | An internal, human-reviewed Rust experiment with deterministic fallback; not exposed as an automatic public feature |
+| AI drafting              | Fixed-input, process-cached OpenAI wording over synthetic evidence, validated in Rust with deterministic fallback and no approval or send path |
 
-Deterministic code owns eligibility and severity. OpenAI may support constrained
-drafting research, but model output cannot select routes, approve itself, send
-messages, or trigger operational actions.
+Deterministic code owns eligibility and severity. OpenAI can draft constrained
+wording for the visible synthetic demonstration, but model output cannot select
+routes, approve itself, send messages, or trigger operational actions.
 
 ## Architecture
 
