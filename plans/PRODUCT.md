@@ -14,6 +14,12 @@ The first viewer is a recruiter or hiring manager exploring a convincing dispatc
 
 “Show me which active flights need attention, why they need attention, how fresh the evidence is, and what action has already been taken.”
 
+For the public portfolio experience, that job must be understandable without
+sign-in: a viewer should be able to select a demonstration flight, inspect why
+it needs attention, replay the evidence change over time, and share the exact
+view. Authentication remains necessary only for protected operational actions,
+tenant evidence, and audit history.
+
 ## MVP workflow
 
 1. Dispatcher opens the operations console.
@@ -59,6 +65,10 @@ The first viewer is a recruiter or hiring manager exploring a convincing dispatc
 | Detection latency | Hazard update to alert creation measured and reported; initial target under 60 seconds |
 | Workflow completeness | Dispatcher can acknowledge, comment, dismiss, and resolve an alert |
 | False-positive learning | Dismissal reason is captured for later rule tuning |
+| Public explanation comprehension | A neutral reviewer identifies the attention flight and explains the contributing evidence without facilitator help |
+| Replay comprehension | A neutral reviewer finds when the attention state changed using the time machine and telemetry charts |
+| Shareable demonstration | A direct URL restores the intended region, scenario or aircraft, replay time, and visible layers |
+| Airport weather comprehension | A neutral reviewer distinguishes a current METAR, TAF forecast, and nearby PIREP |
 
 ## Product gates
 

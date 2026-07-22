@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-07-21
+Last updated: 2026-07-22
 
 ## Current state
 
@@ -10,8 +10,11 @@ Last updated: 2026-07-21
 - Pull request: [#33](https://github.com/carlwelchdesign/flight-tracker-ai/pull/33) merged
 - Owner: Backend and full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Resume the remaining recruiter-validation and authenticated
-  hosted smoke gates.
+- Next action: Complete the remaining recruiter-validation and authenticated
+  hosted smoke gates, then begin FT-413 on its dedicated feature branch.
+- Approved delivery direction: M4 completion → FT-413 public attention
+  explanation → FT-414 time machine and telemetry → FT-415 search/shareable
+  URLs → FT-416 airport TAF/PIREP intelligence → existing M5 research.
 
 ## Milestone checklist
 
@@ -20,6 +23,7 @@ Last updated: 2026-07-21
 - [x] M2 — Live weather and hazard intelligence
 - [x] M3 — Portfolio live data and operational workflow
 - [ ] M4 — Portfolio launch and demonstration hardening
+- [ ] M4.1 — Public decision intelligence and exploration
 - [ ] M5 — Optimization research and controlled recommendations
 
 ## Current product correction
@@ -60,9 +64,17 @@ Last updated: 2026-07-21
 | M2 | 4 | 4 |
 | M3 | 4 | 4 |
 | M4 | 2 | 4 |
+| M4.1 | 0 | 4 |
 | M5 | 0 | 3 |
 
 ## Handoff notes
+
+- The post-launch product direction is now durable in
+  [`tickets/M4.1-public-decision-intelligence.md`](tickets/M4.1-public-decision-intelligence.md).
+  FT-413 through FT-416 each require an isolated feature branch, intentional
+  commits, one PR to `main`, required checks, hosted browser evidence, and
+  updated ticket checklists. They remain queued behind completion of FT-403 and
+  FT-404 and precede the unchanged FT-501 through FT-503 recommendation work.
 
 - FT-412 is complete and merged into `main` through PR
   [#33](https://github.com/carlwelchdesign/flight-tracker-ai/pull/33) at merge
