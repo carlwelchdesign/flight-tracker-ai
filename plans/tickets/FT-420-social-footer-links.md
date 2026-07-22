@@ -1,10 +1,10 @@
 # FT-420 — Add portfolio social links to the public footer
 
-Status: In progress
+Status: Complete
 
 Branch: `feat/ft-420-social-footer-links`
-Final commit: Pending
-Pull request: Pending
+Final commit: `5cba771`
+Pull request: [#61](https://github.com/carlwelchdesign/flight-tracker-ai/pull/61)
 Owner: Frontend engineering
 
 Add accessible LinkedIn and GitHub SVG links at the bottom of the public flight
@@ -15,16 +15,16 @@ Dependencies: FT-419
 
 ## Acceptance checklist
 
-- [ ] The public page footer includes recognizable LinkedIn and GitHub SVG
+- [x] The public page footer includes recognizable LinkedIn and GitHub SVG
       marks without adding an icon dependency.
-- [ ] LinkedIn opens Carl Welch's profile and GitHub opens this project's
+- [x] LinkedIn opens Carl Welch's profile and GitHub opens this project's
       repository in a new tab.
-- [ ] Both links have accessible names, visible hover/focus treatment, and safe
+- [x] Both links have accessible names, visible hover/focus treatment, and safe
       external-link attributes.
-- [ ] The footer remains usable at desktop and mobile widths.
-- [ ] Focused tests, lint, type checking, production build, runtime browser
+- [x] The footer remains usable at desktop and mobile widths.
+- [x] Focused tests, lint, type checking, production build, runtime browser
       verification, and diff hygiene pass.
-- [ ] Branch, final commit, pull request, required checks, and hosted evidence
+- [x] Branch, final commit, pull request, required checks, and hosted evidence
       are recorded before completion.
 
 ## Non-goals
@@ -34,4 +34,17 @@ Dependencies: FT-419
 
 ## Verification evidence
 
-Pending.
+- The focused public tracker test passes all 12 cases, including exact link
+  destinations, accessible names, SVG treatment, and external-link attributes.
+- Web lint and TypeScript pass. The complete web suite passes all 143 tests
+  across 43 files, and the production build completes successfully.
+- Local browser verification at 1440 by 1000 and 390 by 844 showed both footer
+  marks. The mobile document measured `scrollWidth === clientWidth` at 390
+  pixels, and both DOM destinations matched the accepted URLs.
+- `git diff --check` passes. The change adds no package dependency or generated
+  asset.
+- GitHub Actions run
+  [29941214012](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29941214012)
+  passed Rust, web, and API/PostGIS checks. Vercel preview deployment
+  `CvGjWKk5CrbvvxpjK38sNrj5wDZX` completed successfully; its generated preview
+  URL remains access-protected by the project's Vercel deployment policy.
