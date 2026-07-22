@@ -38,6 +38,8 @@ export type PublicLiveStatus = {
 };
 
 export type PublicLiveSnapshot = {
+  region_code: string | null;
+  region_name: string | null;
   status: PublicLiveStatus;
   data: PublicAircraft[];
 };
@@ -46,7 +48,15 @@ export function parsePublicLiveSnapshot(value: unknown): PublicLiveSnapshot {
   if (!isRecord(value) || !isStatus(value.status) || !Array.isArray(value.data)) {
     throw new Error("Live tracker returned an unexpected payload");
   }
-  return { status: value.status, data: value.data.map(parseAircraft) };
+  if (!nullableString(value.region_code) || !nullableString(value.region_name)) {
+    throw new Error("Live tracker returned an invalid region");
+  }
+  return {
+    region_code: value.region_code,
+    region_name: value.region_name,
+    status: value.status,
+    data: value.data.map(parseAircraft),
+  };
 }
 
 function parseAircraft(value: unknown): PublicAircraft {
@@ -77,7 +87,7 @@ function isStatus(value: unknown): value is PublicLiveStatus {
   );
 }
 
-function nullableString(value: unknown): boolean {
+function nullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
 }
 

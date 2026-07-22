@@ -5,6 +5,7 @@ import type { FeatureCollection, LineString, Point } from "geojson";
 import type { GeoJSONSource, Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
 import type { EstimatedTrajectory, TrajectoryPoint } from "@/lib/flight-trajectories";
 import type { PublicAircraft, PublicLiveStatus } from "@/lib/public-live-positions";
+import type { PublicLiveRegion } from "@/lib/public-live-regions";
 import type { PublicWeatherSnapshot, PublicWeatherState } from "@/lib/public-weather";
 import { liveMarkerRotationDegrees } from "./aircraft-marker-heading";
 import { PublicWeatherOverlay } from "./public-weather-overlay";
@@ -12,6 +13,7 @@ import { weatherGeoJson, type WeatherSelection } from "./public-weather-map";
 
 type Props = {
   aircraft: PublicAircraft[];
+  region: PublicLiveRegion;
   selectedId: string | null;
   status: PublicLiveStatus | null;
   mode: "live" | "stale" | "replay";
@@ -39,6 +41,7 @@ const WEATHER_STATION_LABEL_LAYER_ID = "public-weather-station-label";
 
 export function LiveTrackerMap({
   aircraft,
+  region,
   selectedId,
   status,
   mode,
@@ -111,6 +114,13 @@ export function LiveTrackerMap({
       mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    hasFitRef.current = false;
+    if (!map || !mapReady) return;
+    map.easeTo({ center: [...region.center], zoom: 7.5, duration: 600 });
+  }, [mapReady, region]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -191,7 +201,7 @@ export function LiveTrackerMap({
       <div className="ops-panel-heading live-map-heading">
         <div>
           <p className="ops-eyebrow">Navigable airspace</p>
-          <h2 id="live-map-title">Bay Area traffic</h2>
+          <h2 id="live-map-title">{region.name} traffic</h2>
         </div>
         <div className="live-map-actions">
           <span className={`live-source-pill source-${mode}`}>

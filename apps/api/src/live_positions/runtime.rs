@@ -18,6 +18,7 @@ const MINIMUM_POLL_INTERVAL: Duration = Duration::from_secs(30);
 pub struct AdsbLolRuntimeConfig {
     pub operator_id: OperatorId,
     pub region: LivePositionRegion,
+    pub initial_delay: Duration,
     pub poll_interval: Duration,
     pub stale_after: Duration,
 }
@@ -76,6 +77,7 @@ async fn run_runtime(
     config: AdsbLolRuntimeConfig,
     probe: WorkerProbe,
 ) {
+    tokio::time::sleep(config.initial_delay).await;
     let mut poll = interval(config.poll_interval);
     poll.set_missed_tick_behavior(MissedTickBehavior::Delay);
     loop {
@@ -145,6 +147,7 @@ mod tests {
                 longitude_degrees: -122.38,
                 radius_nautical_miles: 25,
             },
+            initial_delay: Duration::ZERO,
             poll_interval: Duration::from_secs(30),
             stale_after: Duration::from_secs(30),
         };

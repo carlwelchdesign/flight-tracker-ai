@@ -5,13 +5,13 @@ Last updated: 2026-07-21
 ## Current state
 
 - Current milestone: M4 — Portfolio launch and demonstration hardening
-- Active ticket: FT-405 — Live navigable flight tracker release closeout
-- Branch: `feat/ft-405-live-navigable-tracker`
-- Pull request: [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25)
-- Owner: Full-stack product engineering
+- Active ticket: FT-410 — Regional live-traffic selector
+- Branch: `feat/ft-410-regional-traffic-selector`
+- Pull request: Pending
+- Owner: Backend and full-stack product engineering
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 2/4 complete, with recruiter-demo validation and public portfolio deployment still explicit gates
-- Next action: Close the remaining FT-405 direct motion/lifecycle coverage and
-  forced hosted fallback checks before merging the parent release PR.
+- Next action: Deliver a curated, bounded Rust-owned live-region catalog and a
+  public airport selector, then open the ticket PR and confirm required checks.
 
 ## Milestone checklist
 
@@ -23,6 +23,12 @@ Last updated: 2026-07-21
 - [ ] M5 — Optimization research and controlled recommendations
 
 ## Current product correction
+
+- PR [#25](https://github.com/carlwelchdesign/flight-tracker-ai/pull/25) is
+  merged through PR [#24](https://github.com/carlwelchdesign/flight-tracker-ai/pull/24)
+  into `main`. FT-410 now owns the correction from one fixed SFO feed to a
+  curated set of bounded live-traffic regions. See
+  [`FT-410-regional-traffic-selector.md`](tickets/FT-410-regional-traffic-selector.md).
 
 - FT-408 is complete and merged through stacked PR [#28](https://github.com/carlwelchdesign/flight-tracker-ai/pull/28).
   It ports NOAA METAR and SIGMET capability to the public navigable map through
@@ -57,6 +63,14 @@ Last updated: 2026-07-21
 | M5 | 0 | 3 |
 
 ## Handoff notes
+
+- FT-410 implementation is locally verified on
+  `feat/ft-410-regional-traffic-selector`. Rust owns seven 50-NM airport
+  regions with isolated in-memory projections and evenly staggered 75-second
+  polling. A production-built browser run switched from 132 current SFO
+  aircraft to 173 current LAX aircraft without reload, rendered 173 markers,
+  preserved the selected-aircraft-first layout, and had zero mobile horizontal
+  overflow. PR and CI evidence remain pending.
 
 - FT-409 is complete and merged into FT-405 through PR [#29](https://github.com/carlwelchdesign/flight-tracker-ai/pull/29)
   at `a99c47f`. The selected-aircraft evidence panel now precedes the current

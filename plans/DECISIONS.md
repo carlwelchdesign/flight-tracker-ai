@@ -88,6 +88,14 @@
 - Constraint: Retain at most ten minutes and 25 observations per aircraft; discard them on reload; never write, export, log, analyze, or send them to an LLM. Label the solid line `Observed trail` and the dashed line `Estimated 5-min projection`.
 - Product boundary: The projection is presentation-only. It is not a filed route, destination prediction, ETA, conflict forecast, safety recommendation, or new source observation. Missing motion facts produce no projection.
 
+### ADR-013 — Public live coverage uses a curated regional catalog
+
+- Date: 2026-07-21
+- Decision: Expand the single SFO picture to seven Rust-owned 50-NM airport regions: SFO, LAX, SEA, DEN, ORD, ATL, and JFK. The browser may select only these identifiers; arbitrary coordinates, radii, and nationwide queries remain unavailable.
+- Reason: Recruiters should be able to explore meaningfully different traffic without turning the portfolio into an open ADS-B proxy or implying complete national coverage.
+- Rate boundary: Poll each region every 75 seconds, stagger starts evenly across the interval, and retain independent ephemeral status/projection state. This cadence was selected after local live verification found a rolling rate limit at 60 seconds; the 75-second cycle completed with all seven regions current and zero consecutive failures.
+- Data boundary: Preserve ADR-011: provider records remain in memory only, are never persisted/exported/sent to an LLM, keep `no-store` and ODbL attribution, and fall back to a clearly simulated regional picture.
+
 ## Open decisions
 
 | ID | Question | Needed by | Resolution evidence |
