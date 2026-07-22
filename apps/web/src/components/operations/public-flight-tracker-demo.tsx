@@ -599,51 +599,70 @@ function AircraftInspector({
   attentionFailed: boolean;
   onRetryAttention: () => void;
 }) {
+  const truthNote = mode === "replay"
+    ? "Replay points are deterministic scenario facts. Between source points, marker motion and telemetry are labeled visual interpolation—not a new observation, filed route, destination prediction, or ETA."
+    : "The solid trail contains accepted observations. The dashed projection is a geometric estimate from current heading and speed—not a filed route, destination, ETA, or new source observation.";
   return (
     <section className="ops-panel live-inspector" aria-labelledby="aircraft-detail-title">
       <div className="ops-panel-heading">
         <div><p className="ops-eyebrow">Selected aircraft</p><h2 id="aircraft-detail-title">{aircraft ? displayCallsign(aircraft) : "None selected"}</h2></div>
         <span className={`source-badge source-${mode}`}>{mode}</span>
       </div>
-      <AttentionExplanation
-        aircraft={aircraft}
-        mode={mode}
-        attention={attention}
-        loading={attentionLoading}
-        failed={attentionFailed}
-        onRetry={onRetryAttention}
-      />
       {aircraft ? (
-        <dl className="aircraft-facts">
-          <Fact label="Altitude" value={formatAltitude(aircraft)} />
-          <Fact label="Ground speed" value={formatSpeed(aircraft)} />
-          <Fact label="Heading" value={aircraft.heading_true_degrees == null ? "Not supplied" : `${Math.round(aircraft.heading_true_degrees)}° true`} />
-          <Fact label="Position" value={`${aircraft.latitude_degrees.toFixed(4)}, ${aircraft.longitude_degrees.toFixed(4)}`} />
-          <Fact label={mode === "replay" ? "Position time" : "Observed"} value={formatTimestamp(aircraft.observed_at)} />
-          <Fact label={mode === "replay" ? "Last source fact" : "Received"} value={formatTimestamp(aircraft.received_at)} />
-          <Fact
-            label={mode === "replay" ? "Scenario time" : "Snapshot age"}
-            value={mode === "replay" ? formatTimestamp(aircraft.observed_at) : formatAge(aircraft.observed_at)}
-          />
-          <Fact label="Freshness" value={mode === "replay" ? "Simulated" : isAircraftStale(aircraft, status) ? "Stale" : "Fresh"} />
-          <Fact label="Provider state" value={mode === "replay" ? "Deterministic replay" : status?.state ?? "Connecting"} />
-          {aircraft.icao_hex && <Fact label="ICAO hex" value={aircraft.icao_hex} />}
-          <Fact label="Source quality" value={mode === "replay" ? aircraft.quality === "estimated" ? "Visual interpolation" : "Observed replay point" : aircraft.quality} />
-          <Fact
-            label="Observed trail"
-            value={mode === "replay" ? trail.length === 0 ? "No history yet" : `${trail.length} replay points` : trail.length < 2 ? "Starts after next refresh" : `${trail.length} source points`}
-          />
-          <Fact
-            label="Estimated projection"
-            value={projection ? `${projection.horizon_minutes} min · ${projection.distance_nautical_miles.toFixed(1)} NM` : "Not available"}
-          />
-        </dl>
+        <>
+          {mode === "replay" && (
+            <AttentionExplanation
+              aircraft={aircraft}
+              mode={mode}
+              attention={attention}
+              loading={attentionLoading}
+              failed={attentionFailed}
+              onRetry={onRetryAttention}
+            />
+          )}
+          <dl className="aircraft-facts aircraft-facts-primary">
+            <Fact label="Altitude" value={formatAltitude(aircraft)} />
+            <Fact label="Ground speed" value={formatSpeed(aircraft)} />
+            <Fact label="Heading" value={aircraft.heading_true_degrees == null ? "Not supplied" : `${Math.round(aircraft.heading_true_degrees)}° true`} />
+            <Fact label="Freshness" value={mode === "replay" ? "Simulated" : isAircraftStale(aircraft, status) ? "Stale" : "Fresh"} />
+          </dl>
+          <details className="aircraft-more">
+            <summary>More aircraft details</summary>
+            {mode !== "replay" && (
+              <AttentionExplanation
+                aircraft={aircraft}
+                mode={mode}
+                attention={attention}
+                loading={attentionLoading}
+                failed={attentionFailed}
+                onRetry={onRetryAttention}
+              />
+            )}
+            <dl className="aircraft-facts aircraft-facts-secondary">
+              <Fact label="Position" value={`${aircraft.latitude_degrees.toFixed(4)}, ${aircraft.longitude_degrees.toFixed(4)}`} />
+              <Fact label={mode === "replay" ? "Position time" : "Observed"} value={formatTimestamp(aircraft.observed_at)} />
+              <Fact label={mode === "replay" ? "Last source fact" : "Received"} value={formatTimestamp(aircraft.received_at)} />
+              <Fact
+                label={mode === "replay" ? "Scenario time" : "Snapshot age"}
+                value={mode === "replay" ? formatTimestamp(aircraft.observed_at) : formatAge(aircraft.observed_at)}
+              />
+              <Fact label="Provider state" value={mode === "replay" ? "Deterministic replay" : status?.state ?? "Connecting"} />
+              {aircraft.icao_hex && <Fact label="ICAO hex" value={aircraft.icao_hex} />}
+              <Fact label="Source quality" value={mode === "replay" ? aircraft.quality === "estimated" ? "Visual interpolation" : "Observed replay point" : aircraft.quality} />
+              <Fact
+                label="Observed trail"
+                value={mode === "replay" ? trail.length === 0 ? "No history yet" : `${trail.length} replay points` : trail.length < 2 ? "Starts after next refresh" : `${trail.length} source points`}
+              />
+              <Fact
+                label="Estimated projection"
+                value={projection ? `${projection.horizon_minutes} min · ${projection.distance_nautical_miles.toFixed(1)} NM` : "Not available"}
+              />
+            </dl>
+            <p className="truth-note">{truthNote}</p>
+          </details>
+        </>
       ) : <p className="empty-traffic">Choose an aircraft to inspect its supplied position and motion facts.</p>}
-      <p className="truth-note">
-        {mode === "replay"
-          ? "Replay points are deterministic scenario facts. Between source points, marker motion and telemetry are labeled visual interpolation—not a new observation, filed route, destination prediction, or ETA."
-          : "The solid trail contains accepted observations. The dashed projection is a geometric estimate from current heading and speed—not a filed route, destination, ETA, or new source observation."}
-      </p>
+      {!aircraft && <p className="truth-note">{truthNote}</p>}
     </section>
   );
 }

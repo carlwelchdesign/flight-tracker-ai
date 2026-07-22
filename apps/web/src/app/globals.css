@@ -355,7 +355,7 @@ a:focus-visible {
 }
 .live-map-panel { min-width: 0; display: flex; flex-direction: column; }
 .tracker-url-loading { min-height: 540px; align-items: center; justify-content: center; color: #8aa1a7; font: 550 10px/1.4 "Geist Mono", monospace; }
-.live-tracker-sidebar { min-height: 0; display: grid; grid-template-rows: minmax(320px, 1.4fr) minmax(230px, .6fr); gap: 8px; }
+.live-tracker-sidebar { min-height: 0; display: grid; grid-template-rows: minmax(220px, .55fr) minmax(320px, 1.45fr); gap: 8px; }
 .tracker-exploration-controls { display: grid; gap: 7px; padding: 9px 10px; border-bottom: 1px solid var(--line); background: #08171d; }
 .aircraft-search-control { display: grid; gap: 5px; }
 .aircraft-search-control span { color: var(--subtle); font: 550 8px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .08em; }
@@ -562,11 +562,16 @@ a:focus-visible {
 .live-flight-row span,
 .live-flight-row time { color: #89a1a7; font: 500 9px/1.25 "Geist Mono", monospace; }
 .live-flight-row time { grid-column: 2; grid-row: 1; }
-.live-inspector { align-self: stretch; max-height: none; overflow: auto; }
+.live-inspector { min-height: 0; align-self: stretch; max-height: none; display: flex; flex-direction: column; overflow: auto; }
 .aircraft-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
 .aircraft-facts div { padding: 12px 13px; border-right: 1px solid #193039; border-bottom: 1px solid #193039; }
 .aircraft-facts dt { margin-bottom: 5px; color: #6e8990; font: 600 8px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .08em; }
 .aircraft-facts dd { margin: 0; color: #dce8ea; font: 570 11px/1.35 "Geist Mono", monospace; text-transform: capitalize; }
+.aircraft-facts-primary div { padding-block: 10px; }
+.aircraft-more { border-top: 1px solid #29454e; }
+.aircraft-more summary { padding: 10px 13px; color: #8ed9ca; background: #09191f; font: 620 8px/1 "Geist Mono", monospace; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
+.aircraft-more[open] summary { border-bottom: 1px solid #29454e; }
+.aircraft-more summary:focus-visible { outline: 2px solid #78e3d2; outline-offset: -3px; }
 .truth-note,
 .empty-traffic { margin: 0; padding: 12px 13px; color: #789198; font: 500 9px/1.45 "Geist Mono", monospace; }
 .attention-explanation { display: grid; gap: 0; border-top: 1px solid #2f515b; background: linear-gradient(180deg, rgb(14 37 44 / 92%), rgb(7 22 28 / 96%)); }
@@ -646,6 +651,7 @@ a:focus-visible {
   .live-tracker-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
   .live-map-panel { grid-row: auto; }
   .live-map-stage { min-height: 540px; }
+  .live-tracker-sidebar { grid-template-rows: minmax(220px, 320px) minmax(360px, 560px); }
 }
 
 @media (max-width: 620px) {
