@@ -7,7 +7,7 @@ Last updated: 2026-07-22
 - Current milestone: M5 — Optimization research and controlled recommendations
 - Active ticket: FT-403/FT-502 — independent validation gates
 - Branch: External evidence branches begin only when reviewer records exist
-- Pull request: FT-417 [#56](https://github.com/carlwelchdesign/flight-tracker-ai/pull/56) passed required checks and is ready to merge
+- Pull request: FT-417 [#56](https://github.com/carlwelchdesign/flight-tracker-ai/pull/56) is merged
 - Owner: Product research and independent aviation-domain review
 - Overall status: M0, M1, M2, and M3 are complete; M4 is 3/4 complete,
   M4.1 engineering is 5/5 complete, and M5 is 2/3 complete. Neutral recruiter
@@ -73,15 +73,19 @@ Last updated: 2026-07-22
 
 ## Handoff notes
 
-- FT-417 is complete through implementation commit `8715401` and PR
-  [#56](https://github.com/carlwelchdesign/flight-tracker-ai/pull/56). The root
+- FT-417 is complete through implementation commit `8715401`, PR
+  [#56](https://github.com/carlwelchdesign/flight-tracker-ai/pull/56), and merge
+  commit `515b32e`. The root
   page now publishes canonical, Open Graph, and Twitter/X metadata plus a
   generated 1200 by 630 branded PNG. CI run
   [29937128296](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29937128296)
   passed all required checks. Production deployment
-  `dpl_2VhnnX6Q1CN7XhcrMvQf73fh8Nd1` is assigned to
+  `dpl_5WsRREDHHuNMiT8mwt8MYP8FA4q7` from merged `main` is assigned to
   `flight-tracker-ai-one.vercel.app`; anonymous root and image requests both
   return HTTP 200, and the image route does not redirect through Clerk.
+  Main-branch CI run
+  [29937558009](https://github.com/carlwelchdesign/flight-tracker-ai/actions/runs/29937558009)
+  passed Rust, web, and API/PostGIS checks after merge.
 
 - FT-405 closeout commit `b6a5944` adds direct polling, MapLibre lifecycle,
   marker selection, interpolation, reduced-motion, cleanup, and map-failure
