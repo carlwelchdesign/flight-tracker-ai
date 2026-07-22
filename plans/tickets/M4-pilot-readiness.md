@@ -260,6 +260,25 @@ tests pass locally. Implementation commit `7f529e3` is published in draft PR
 [#36](https://github.com/carlwelchdesign/flight-tracker-ai/pull/36). Staging and
 production promotion evidence remains pending.
 
+Hosted closeout evidence (2026-07-22): PR
+[#36](https://github.com/carlwelchdesign/flight-tracker-ai/pull/36) merged as
+`f172b53`. Vercel production deployment
+`dpl_73QyiQoAFRkCJdMUm9weAoDEUoXZ` was promoted to
+`flight-tracker-ai-one.vercel.app` after the Clerk production proxy verified
+successfully; Vercel's marketplace DNS check remains inapplicable to the
+provider-owned `vercel.app` hostname and was explicitly bypassed during the
+controlled promotion. Render staging deploy
+`dep-d9g786brjlhs73brr7ig` passed first, followed by production deploy
+`dep-d9g79trtqb8s73b5ovn0`; both run exact commit `f172b53` and return HTTP 200
+`{"status":"ok"}` from `/health` and `{"status":"ready"}` from
+`/readiness`. The sanitized FT-404 verifier passed all five public web,
+security-header, API health, API readiness, and unauthenticated-denial checks
+against both staging and production API origins. The production browser also
+rendered current regional ADS-B traffic, the navigable map, selected-aircraft
+evidence, NOAA weather layers, atmospheric overlays, source labels, and the
+protected-console sign-in link. Authenticated session and hosted FT-401 drill
+evidence remain open and are not represented as complete.
+
 On 2026-07-21, Neon retained the manual production snapshot
 `main at 2026-07-21 20:46:51 UTC (manual)` with no expiry. A temporary isolated
 branch restored `main` from 13:45 PDT and matched production with PostGIS
