@@ -7,7 +7,8 @@ navigable map.
 [Explore the live tracker](https://flight-tracker-ai-one.vercel.app) ·
 [Read the engineering plan](plans/README.md)
 
-![Flight Tracker AI replay view with telemetry, weather layers, and an explainable aircraft attention panel](docs/images/flight-tracker-desktop.png)
+<img width="1028" height="583" alt="image" src="https://github.com/user-attachments/assets/b694abd3-0cb4-48ca-bc74-e402ce0150ba" />
+
 
 ## What you can explore
 
