@@ -41,7 +41,7 @@ The public experience is read-only and does not require an account.
 ### Responsive by design
 
 <p align="center">
-  <img width="390" src="docs/images/flight-tracker-mobile.png" alt="Flight Tracker AI mobile time machine and telemetry view" />
+  <img width="388" height="841" alt="image" src="https://github.com/user-attachments/assets/19283638-5975-45f6-b76c-9c7b6983e13c" />
 </p>
 
 ## Product boundaries
